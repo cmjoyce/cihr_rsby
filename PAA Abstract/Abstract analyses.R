@@ -52,7 +52,7 @@ df$state_new <- ifelse(df$survey == "DLHS4" & df$state_new == 36, 28, df$state_n
 
 
 #Removing all values in new to repopulate.
-df$state_new <- ifelse(df$survey == "NFHS4", df$state_new == NA, df$state_new)
+df$state_new <- ifelse(df$survey == "NFHS4",is.na(df$state_new), df$state_new)
 
 #making jammu and kashmir 1 (14 in nfhs4)
 df <- df %>% mutate(state_try = case_when(survey == "NFHS4" & state == 14 ~ 1,
@@ -161,7 +161,7 @@ df <- df %>% mutate(nonbirth = case_when(survey == "DLHS3" & miscarriage_abortio
 
 
 #removing old miscarriage, aboriton, stillbirth variable
-df <- df %>% select(-c(miscarriage_abortion_stillbirth))
+#df <- df %>% select(-c(miscarriage_abortion_stillbirth))
 
 #making any non live birth outcome variable
 df$any_nonbirth <- ifelse(df$nonbirth > 0, 1, 0) 
@@ -179,6 +179,14 @@ df$miscarriage_sb <- ifelse(is.na(df$nonbirth), 0, df$miscarriage_sb)
 df$abortion <- ifelse(df$nonbirth == 2, 1, 0)
 df$abortion <- ifelse(is.na(df$nonbirth), 0, df$abortion)
 
+#making just stillbirth variable
+df$stillbirth <- ifelse(df$nonbirth == 3, 1, 0)
+df$stillbirth <- ifelse(is.na(df$nonbirth), 0, df$stillbirth)
+
+#making just miscarriage variable
+df$miscarriage <- ifelse(df$nonbirth == 1, 1, 0)
+df$miscarriage <- ifelse(is.na(df$nonbirth), 0, df$miscarriage)
+
 # analyses ----------------------------------------------------------------
 
 #calculating weights. For NFHS surveys weights must be divided by 1000000
@@ -194,16 +202,16 @@ df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
 
 # using new covariates of state, any primary, urban location, and if part of scheduled group
 
-lm <- lm(any_nonbirth ~ state + primary + urban + scheduled_group, data = df)
+#lm <- lm(any_nonbirth ~ state + primary + urban + scheduled_group, data = df)
 
-summary(lm)
+#summary(lm)
 
-lm_msb <- lm(miscarriage_sb ~ state + primary + urban + scheduled_group, data = df)
-summary(lm_msb)
+#lm_msb <- lm(miscarriage_sb ~ state + primary + urban + scheduled_group, data = df)
+#summary(lm_msb)
 
 
-lm_abort <- lm(abortion ~ state + primary + urban + scheduled_group, data = df)
-summary(lm_abort)
+#lm_abort <- lm(abortion ~ state + primary + urban + scheduled_group, data = df)
+#summary(lm_abort)
 
 #summary(glm(miscarriage_sb ~ state + primary + urban + scheduled_group, family = binomial(link = "logit"), data = df))
 
@@ -218,59 +226,59 @@ design <- svydesign(ids = df$psu, weights = df$weight, nest = TRUE, data = df)
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 
-complexglm_log <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design, 
-                         family = quasibinomial(),
-                         data = df)
+#complexglm_log <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design, 
+                         #family = quasibinomial(),
+                         #data = df)
 
-complexglm_rate <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design,
-                          data = df)
-
-
-complexglm_log_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design, 
-                             family = quasibinomial(),
-                             data = df)
-
-complexglm_rate_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design,
-                              data = df)
-
-complexglm_log_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design, 
-                               family = quasibinomial(),
-                               data = df)
-
-complexglm_rate_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design,
-                                data = df)
-
-summary(complexglm_rate)
-summary(complexglm_log)
-print(summary(complexglm_rate))
-summary(complexglm_rate_msb)
-summary(complexglm_log_msb)
-summary(complexglm_rate_abort)
-summary(complexglm_log_abort)
+#complexglm_rate <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design,
+                          #data = df)
 
 
-print(summary(complexglm_log))
+#complexglm_log_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design, 
+                             #family = quasibinomial(),
+                            # data = df)
+
+#complexglm_rate_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design,
+#                              data = df)
+
+#complexglm_log_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design, 
+#                               family = quasibinomial(),
+#                               data = df)
+
+#complexglm_rate_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design,
+#                                data = df)
+
+#summary(complexglm_rate)
+#summary(complexglm_log)
+#print(summary(complexglm_rate))
+#summary(complexglm_rate_msb)
+#summary(complexglm_log_msb)
+#summary(complexglm_rate_abort)
+#summary(complexglm_log_abort)
+
+
+#print(summary(complexglm_log))
 
 library(stargazer)
 
-rates_any <- complexglm_rate$coefficients*100
+#rates_any <- complexglm_rate$coefficients*100
 
-rates_msb <- complexglm_rate_msb$coefficients*100
-rates_abort <- complexglm_rate_abort$coefficients*100
+#rates_msb <- complexglm_rate_msb$coefficients*100
+#rates_abort <- complexglm_rate_abort$coefficients*100
 
 #95% confidence intervals
-confint(complexglm_rate)*100
-confint(complexglm_rate_msb)*100
-confint(complexglm_rate_abort)*100
+#confint(complexglm_rate)*100
+#confint(complexglm_rate_msb)*100
+#confint(complexglm_rate_abort)*100
 
 ## One way of getting regression tables 
-stargazer(complexglm_rate, complexglm_rate_msb, complexglm_rate_abort,
+#stargazer(complexglm_rate, complexglm_rate_msb, complexglm_rate_abort,
           #covariate.labels = c("Constant", "Policy Implementation", "Month of Birth"),
           #dep.var.caption  = "",
           #dep.var.labels   = c("Paid Job","Formal Labor Contract"), 
-          model.numbers = FALSE, intercept.bottom = FALSE, 
-          type = "html", 
-          out = "abstract_table.htm")
+#          model.numbers = FALSE, intercept.bottom = FALSE, 
+#          type = "html", 
+#          out = "abstract_table.htm")
 
 library(gtsummary)
 
@@ -280,15 +288,15 @@ df$bpl <- ifelse(df$bpl == 1, 1, 0)
 
 #rural == 0, 1s as they must be urbans.
 
-df$urban <- factor(df$urban, 
+df$urban_rural <- factor(df$urban, 
                         levels = c(0, 1),
                         labels = c("Rural", "Urban"))
 
 
-df %>% select(age, urban, years_school, bpl, scheduled_group, tot_live_births) %>% tbl_summary(
+df %>% select(age, urban_rural, years_school, bpl, scheduled_group, tot_live_births) %>% tbl_summary(
   label = list(
     age ~ "Age",
-    urban ~ "Rural / Urban",
+    urban_rural ~ "Rural / Urban",
     years_school ~ "Years of School Completed",
     bpl ~ "Holds BPL Card",
     scheduled_group ~ "Scheduled Caste or Tribe",
@@ -303,8 +311,7 @@ tbl_regression(complexglm_log, exponentiate = TRUE) %>% modify_header(label = "*
 theme_gtsummary_journal(journal = "jama")
 theme_gtsummary_compact()
 
-t1 <-
-  svyglm(any_nonbirth ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
+t1 <- svyglm(miscarriage ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
          family = quasibinomial(),
          data = df) %>%
   tbl_regression(exponentiate = TRUE,
@@ -316,7 +323,7 @@ t1 <-
                    scheduled_group ~ "Scheduled Caste or Tribe",
                    age ~ "Age")) %>% modify_header(label = "") %>% modify_column_hide(columns = p.value) 
 
-t2 <- svyglm(miscarriage_sb ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
+t2 <- svyglm(abortion ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
              family = quasibinomial(),
              data = df) %>%
   tbl_regression(exponentiate = TRUE,
@@ -328,7 +335,7 @@ t2 <- svyglm(miscarriage_sb ~ state + bpl + primary + urban + scheduled_group + 
                    scheduled_group ~ "Scheduled Caste or Tribe",
                    age ~ "Age")) %>% modify_header(label = "") %>% modify_column_hide(columns = p.value)
 
-t3 <- svyglm(abortion ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
+t3 <- svyglm(stillbirth ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
              family = quasibinomial(),
              data = df) %>%
   tbl_regression(exponentiate = TRUE,
@@ -339,11 +346,10 @@ t3 <- svyglm(abortion ~ state + bpl + primary + urban + scheduled_group + age, d
                    urban ~ "Lives Urban Locale",
                    scheduled_group ~ "Scheduled Caste or Tribe",
                    age ~ "Age")) %>% modify_header(label = "") %>% modify_column_hide(columns = p.value)
-
 
 
 tbl_merge <-
   tbl_merge(
     tbls = list(t1, t2, t3),
-    tab_spanner = c("**Any Termination**", "**Miscarriage or Stillbirth**", "**Induced Abortion**")
+    tab_spanner = c("**Miscarriage**", "**Abortion**", "**Stillbirth**")
   ) 

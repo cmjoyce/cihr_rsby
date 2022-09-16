@@ -1,0 +1,1625 @@
+---
+title: "NFHS Link"
+output: html_document
+date: '2022-05-17'
+---
+
+```{r setup, include=FALSE}
+setwd(".././NFHS")
+library(data.table)
+library(tidyverse)
+
+
+library(haven)
+
+#nfhs5 <- read_dta("IAIR74FL.DTA")
+
+#write.csv(nfhs5, "nfhs5_women.csv")
+
+#nfhs4 <- fread("nfhs4women_full.csv", select = c(1:686, 3775:3787, 4081:4087))
+
+women <- read_dta("IAIR73FL_DC.DTA", col_select = c(1:134, 154:254, 355:394, 454:519, 560:604,
+                                                    681:687, 723:891, 927:963, 1533:1545, 
+                                                    1707:1731, 3215:3223, 3775:3787, 3872, 4081:4087))
+
+
+hh <- read_dta("IAHR74FL.DTA", col_select = c(1:30, 101:200))
+#which(colnames(hh) == "sh58") ## keeping only case IDs and BPL card for HH
+
+#keeping only variables needed for merge -- cluster number, household number, state, and BPL card
+hh <- hh %>% select(hv001, hv002, hv024, sh58)
+
+#renaming for merging so variables match between datasets (except bpl variable)
+hh <- dplyr::rename(hh, v001 = hv001, v002 = hv002, v024 = hv024, bpl = sh58)
+
+#adding in BPL card variable
+nfhs4 <- left_join(
+  women,
+  hh,
+  by = c("v001", "v002", "v024")
+)
+
+#write.csv(nfhs4, "nfhs4_link.csv") 
+
+```
+
+```{r}
+nfhs4 <- read.csv("nfhs4_link.csv")
+
+#renaming
+
+nfhs4 <- dplyr::rename(nfhs4, state = v024, wt = v005,  district = sdistri, psu = v021, religion = v130, caste = v131,
+                rural_urban = v025, caste_group = s116, source_water = v113,  
+                toilet = v116,
+                health_ins = v481, esis = v481a, cghs = v481b, shis = v481c,
+                rsby = v481d, chip = v481e, other_employer = v481f, reimburse = v481g,
+                other_private = v481h, other_insurance = v481x, 
+                date = v008, month = v006, year = v007,
+                age = v012, years_school = v133, #age_at_marriage = s309 (can add if needed),
+                age_first_birth = v212, ever_terminated = v228, month_last_terminated = v229, 
+                year_last_terminated = v230, months_last_termination_occurred = v233, other_terminations = v234,
+                miscarriage_abortion_stillbirth = s234, 
+                tot_live_births = v201, 
+                tot_preg = v224, 
+                month_received_anc = m13_1, num_anc_visits = m14_1, type_delivery = m17_1, place_delivery = m15_1, 
+                pp_checkup = m71_1,
+                using_method = s329, current_method =v312,
+                fp_future = v362)
+
+#making index_mob, index_yob, month received anc, number of anc visits, type of delivery, and place of delivery variables based on most recent LIVE birth to match DLHS
+#making most recent live birth index child month and year of birth. Using midx so we restrict to births from 2010 onwards. 
+
+nfhs4$index_mob <- ifelse(nfhs4$midx_1 == 1, nfhs4$b1_01, NA)
+
+#checking if most recent child was a live birth, if yes filling in year of birth. If non-live birth leaving as NA. 1 is live birth.
+nfhs4$index_yob <- ifelse(nfhs4$midx_1 == 1, nfhs4$b2_01, NA)
+
+
+#who conducted the delivery for the most recent live birth. Each option is a different. Making each option variable and then will collapse across for medical vs. traditional. 
+
+#a-c are health professionals, looking to see if received any medical at all, even if it was received concurrently with traditional. D, E, and F are empty.
+nfhs4 <- nfhs4 %>% mutate(assist_medical = case_when(m3a_1 == 1 ~ 1,
+                                                     m3b_1 == 1 ~ 1,
+                                                     m3c_1 == 1 ~ 1,
+                                                     TRUE ~ 0))
+# g and h are traditional, i and j are empty, l is other, m is empty, n is no one
+nfhs4 <- nfhs4 %>% mutate(assist_non_medical = case_when(m3g_1 == 1 ~ 1,
+                                                     m3h_1 == 1 ~ 1,
+                                                     m3l_1 == 1 ~ 1,
+                                                     TRUE ~ 0))
+
+nfhs4 <- nfhs4 %>% mutate(no_assist = m3n_1)
+
+#matching to dlhs with one variable
+nfhs4 <- nfhs4 %>% mutate(conducted_delivery = case_when(assist_medical == 1 ~ 1,
+                                                         assist_non_medical == 1 ~ 2,
+                                                         no_assist == 1 ~ 3,
+                                                         TRUE ~ NA_real_)) 
+
+#making don't know NA
+nfhs4$pp_checkup <- ifelse(nfhs4$pp_checkup == 998, NA, nfhs4$pp_checkup)
+
+nfhs4$pp_checkup <- ifelse(nfhs4$pp_checkup < 203, 1, 0)
+
+
+#July 20 2022 removing fertility calendar
+nfhs4 <- nfhs4 %>% select(caseid, wt, month, year, date, age, v018, v019, 
+                          state, psu,  rural_urban, years_school, source_water, toilet,
+                          religion, caste, v150, v190, v191,
+                          tot_live_births, v208, v209, age_first_birth, 
+                          current_method, fp_future, v367, index_mob, index_yob, month_received_anc, num_anc_visits,
+                          type_delivery, place_delivery, conducted_delivery, pp_checkup, health_ins, esis, cghs, shis, rsby, chip, other_employer, 
+                          reimburse, other_private, other_insurance, district, sslumc, sslumo, caste_group,
+                          ever_terminated, month_last_terminated, year_last_terminated, months_last_termination_occurred,
+                          other_terminations, miscarriage_abortion_stillbirth, 
+                          using_method, s190s, s190u, s191u, s190us,
+                          s190r, s191r, s190rs, bpl)
+
+
+
+```
+
+```{r}
+
+#moving variables to match dlhs order
+nfhs4 <- nfhs4 %>% relocate(state, .before = wt)
+nfhs4 <- nfhs4 %>% relocate(district, .after = state)
+
+
+nfhs4 <- nfhs4 %>% relocate(date, .before = month)
+nfhs4 <- nfhs4 %>% relocate(wt, .before = s190s)
+
+
+nfhs4 <- nfhs4 %>% relocate(religion, .before = years_school)
+nfhs4 <- nfhs4 %>% relocate(caste, .before = years_school)
+nfhs4 <- nfhs4 %>% relocate(caste_group, .before = years_school)
+
+
+nfhs4 <- nfhs4 %>% select(-c("v150"))
+
+nfhs4 <- dplyr::rename(nfhs4, w_index = v190)
+nfhs4 <- dplyr::rename(nfhs4, wi_factor = v191)
+
+nfhs4 <- nfhs4 %>% relocate(w_index, .after = wt)
+nfhs4 <- nfhs4 %>% relocate(wi_factor, .after = w_index)
+
+
+
+nfhs4 <- nfhs4 %>% relocate(bpl, .after = toilet)
+nfhs4 <- nfhs4 %>% relocate(health_ins, .after = bpl)
+nfhs4 <- nfhs4 %>% relocate(esis, .after = health_ins)
+nfhs4 <- nfhs4 %>% relocate(cghs, .after = esis)
+nfhs4 <- nfhs4 %>% relocate(shis, .after = cghs)
+nfhs4 <- nfhs4 %>% relocate(rsby, .after = esis)
+nfhs4 <- nfhs4 %>% relocate(chip, .after = rsby)
+nfhs4 <- nfhs4 %>% relocate(other_employer, .after = chip)
+nfhs4 <- nfhs4 %>% relocate(reimburse, .after = other_employer)
+nfhs4 <- nfhs4 %>% relocate(other_private, .after = reimburse)
+nfhs4 <- nfhs4 %>% relocate(other_insurance, .after = other_private)
+
+
+nfhs4 <- nfhs4 %>% relocate(age_first_birth, .after = other_insurance)
+
+
+
+#at end will add in contraceptive calendar variables in nfhs to match dlhs questions. DLHS will also need to check variables to ensure it's within last 5 years (Q137 in dlhs3 questionnaire)
+
+
+```
+
+```{r}
+
+#July 26th -- changing contraceptive calendar to make pregnancies only dataset
+
+#using NFHS contraceptive calendar
+#vcal 1 is pregnancies and contraception, vcal 2 is reason for discontinuation, vcal 6 is ultrasound conducted. no other vcal columns used.
+
+#NOTE vcal_7 has data on births, miscarriages, abortions, and stillbirths. Rerunning all code below with vcal_7
+
+#Need vcal_7 as has delineated births/miscarraiges/abortions/stillbirths/terminations. Will calculate whether is stillbirth by number of pregnancy months
+
+########################################
+
+#nfhs4_preg <- subset(nfhs4, select = c(caseid, v017, v018, v019,vcal_7))
+
+#looking at length of string
+head(nfhs4$vcal_7)
+range(nchar(nfhs4$vcal_7)) #80 months in string
+
+#reversing calendar string
+strReverse <- function(x)
+   sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")
+nfhs4$rev_cal7 <- strReverse(nfhs4$vcal_7)
+
+# 6) trim a string of leading and trailing spaces
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+nfhs4$trim_cal7 <- trim(nfhs4$vcal_7)
+head(nfhs4$trim_cal7)
+
+#trimming reversed calendar
+nfhs4$revtrimcal7 <- trim(nfhs4$rev_cal7)
+
+range(nchar(nfhs4$rev_cal7)) #between 61 and 75 months for each participant
+table(nchar(nfhs4$rev_cal7))
+
+#making separate contraceptive calendar dataset
+fertcal4 <- subset(nfhs4, select = c("caseid", "v017", "v018", "v019", "vcal_7", "trim_cal7", "rev_cal7"))
+write.csv(fertcal4, "fertcal4.csv")
+
+
+
+#CODING IN R TO GET SOME RESULTS AS FROM STATA.
+
+#reading in r string code run on cluster to compare
+nfhs4_preg <- read.csv("fertcalendar4.csv")
+
+#looking at previous stillbirth. This will be represented by at least 7 months of pregnancy followed by termination, since type of termination was only asked for the most recent one. In the calendar string, each letter represents a month, therefore if there are 6Ps and then a T that counts as 7 months of pregnancy. 
+
+
+nfhs4_preg$prev_stillbirth <- ifelse(grepl("TPPPPPP", nfhs4_preg$vcal_7) == TRUE, 1, 0)
+
+
+nfhs4_preg$lt <- regexpr("T", nfhs4_preg$vcal_7, fixed = TRUE)
+nfhs4_preg$lt <- ifelse(nfhs4_preg$lt < 0, NA, nfhs4_preg$lt)
+
+nfhs4_preg$vcal_len <- nchar(nfhs4_preg$vcal_7)
+
+nfhs4_preg$lt_cmc <- nfhs4_preg$v017 + nfhs4_preg$vcal_len - nfhs4_preg$lt ##checked and it works
+
+nfhs4_preg$la <- regexpr("A", nfhs4_preg$vcal_7, fixed = TRUE)
+nfhs4_preg$la <- ifelse(nfhs4_preg$la < 0, NA, nfhs4_preg$la)
+
+nfhs4_preg$la_cmc <- nfhs4_preg$v017 + nfhs4_preg$vcal_len - nfhs4_preg$la
+
+nfhs4_preg$lm <- regexpr("M", nfhs4_preg$vcal_7, fixed = TRUE)
+nfhs4_preg$lm <- ifelse(nfhs4_preg$lm < 0, NA, nfhs4_preg$lm)
+
+nfhs4_preg$lm_cmc <- nfhs4_preg$v017 + nfhs4_preg$vcal_len - nfhs4_preg$lm
+
+nfhs4_preg$ls <- regexpr("S", nfhs4_preg$vcal_7, fixed = TRUE)
+nfhs4_preg$ls <- ifelse(nfhs4_preg$ls < 0, NA, nfhs4_preg$ls)
+
+nfhs4_preg$ls_cmc <- nfhs4_preg$v017 + nfhs4_preg$vcal_len - nfhs4_preg$ls
+
+nfhs4_preg$lb <- regexpr("B", nfhs4_preg$vcal_7, fixed = TRUE)
+nfhs4_preg$lb <- ifelse(nfhs4_preg$lb < 0, NA, nfhs4_preg$lb)
+
+nfhs4_preg$lb_cmc <- nfhs4_preg$v017 + nfhs4_preg$vcal_len - nfhs4_preg$lb
+
+#august 9th, looking at stillbirths with less than 7 months of pregnancy
+
+nfhs4_preg$stillbirth <- regexpr("SPPPPPP", nfhs4_preg$vcal_7, fixed = TRUE)
+
+#marking those with last event a stillbirth but pregnancy less than 7 months a miscarriage.
+nfhs4_preg$true_stillbirth <- ifelse(nfhs4_preg$ls > 0 & nfhs4_preg$stillbirth < 0, "M", nfhs4_preg$ls)
+
+#if spot 80 is pregnant (i.e. calendar starts when they are already pregnant) then we leave as a stillbirth
+
+# true stillbirths would be when calendar starts with any of these "S" |"PS" | "PPS" |"PPPS" | "PPPPS" |"PPPPPS"
+
+nfhs4_preg$cal_pregnant <- str_ends(nfhs4_preg$vcal_7, "S", negate = FALSE)
+nfhs4_preg$cal_pregnant_1 <- str_ends(nfhs4_preg$vcal_7, "SP", negate = FALSE)
+nfhs4_preg$cal_pregnant_2 <- str_ends(nfhs4_preg$vcal_7, "SPP", negate = FALSE)
+nfhs4_preg$cal_pregnant_3 <- str_ends(nfhs4_preg$vcal_7, "SPPP", negate = FALSE)
+nfhs4_preg$cal_pregnant_4 <- str_ends(nfhs4_preg$vcal_7, "SPPPP", negate = FALSE)
+nfhs4_preg$cal_pregnant_5 <- str_ends(nfhs4_preg$vcal_7, "SPPPPP", negate = FALSE)
+
+nfhs4_preg <- nfhs4_preg %>% mutate(calstart_sb = case_when(cal_pregnant == TRUE ~ 1,
+                                                                  cal_pregnant_1 == TRUE ~ 1,
+                                                                  cal_pregnant_2 == TRUE ~ 1,
+                                                                  cal_pregnant_3 == TRUE ~ 1,
+                                                                  cal_pregnant_4 == TRUE ~ 1,
+                                                                  cal_pregnant_5 == TRUE ~ 1,
+                                                                  TRUE ~ 0))
+#now making these into stillbirths
+
+nfhs4_preg$true_stillbirth <- ifelse(nfhs4_preg$calstart_sb == 1 & nfhs4_preg$true_stillbirth == "M", nfhs4_preg$ls, nfhs4_preg$true_stillbirth)
+
+
+
+
+#separating out the variables we need
+nfhs4_preg <- nfhs4_preg %>% select(c(caseid, v017, v018, v019, vcal_7, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm, lm_cmc, ls, ls_cmc, lb, lb_cmc, true_stillbirth))
+
+#last pregnancy variable -- minimum value of all outcomes.
+#Reason for minimum value: This is from contraceptive calendar which counts each month from month of interview backward. If we had reversed the string code we would be counting forwards.
+nfhs4_preg$lp <- pmin(nfhs4_preg$la, nfhs4_preg$lb, nfhs4_preg$lm, nfhs4_preg$ls, nfhs4_preg$lt, na.rm = TRUE)
+nfhs4_preg$lp <- as.numeric(nfhs4_preg$lp)
+
+
+#making variable match DLHS coding so that birth is 1, stillbirth is 2, etc.
+nfhs4_preg <- nfhs4_preg %>% mutate(outcome = case_when(lp == lb ~ "1",
+                                                      lp == ls ~ "2", lp == la ~ "3", lp == lm ~ "4",
+                                                      lp == lt ~ "T",
+                                                      TRUE ~ 'other'))
+#Making "other" label NA
+
+nfhs4_preg$outcome <- ifelse(nfhs4_preg$outcome == 'other', NA, nfhs4_preg$outcome)
+
+#making outcome year and month from cmc. Depending on most recent outcome, using cmc date to match. Using trunc so only whole numbers are given
+
+#DHS gives calculations for year and month from CMC:
+#  Year = ( ( CMC - 1 )/12 ) + 1900           
+#Month = CMC - ( ( Year - 1900 ) * 12 )
+nfhs4_preg <- nfhs4_preg %>% mutate(year_event1 = case_when(outcome == 1 ~ trunc((lb_cmc-1)/12 + 1900),
+                                                      outcome == 2 ~ trunc((ls_cmc-1)/12 + 1900), 
+                                                      outcome == 3 ~ trunc((la_cmc-1)/12 + 1900), 
+                                                      outcome == 4 ~ trunc((lm_cmc-1)/12 + 1900),
+                                                      outcome ==  "T" ~ trunc((lt_cmc-1)/12 + 1900),
+                                                      TRUE ~ NA_real_))
+
+nfhs4_preg <- nfhs4_preg %>% mutate(month_event1 = case_when(outcome == 1 ~ lb_cmc - ((year_event1 - 1900)*12),
+                                                      outcome == 2 ~ ls_cmc - ((year_event1 - 1900)*12), 
+                                                      outcome == 3 ~ la_cmc - ((year_event1 - 1900)*12), 
+                                                      outcome == 4 ~ lm_cmc - ((year_event1 - 1900)*12),
+                                                      outcome ==  "T" ~ lt_cmc - ((year_event1 - 1900)*12),
+                                                      TRUE ~ NA_real_))
+#changing outcome to miscarriage for 214 of those who classified outcome as stillbirth with < 7 months of pregnancy.
+#4 in list of outcomes is miscarriage,
+
+#first have to make NAs into 0s so they can be used in logic
+
+nfhs4_preg$truesb <- ifelse(is.na(nfhs4_preg$true_stillbirth), 0, nfhs4_preg$true_stillbirth)
+
+#making true miscarriages (pregnancy < 7 months) that have most recent outcome defined as 
+
+nfhs4_preg$outcome <- ifelse(nfhs4_preg$truesb == "M" & nfhs4_preg$outcome == 2, 4, nfhs4_preg$outcome)
+
+  
+#Aug 14th, now need to find timing between events and not just live births.
+
+#Using stringr package in tidyverse for this so can use stringr::extract_all
+#Looking for all instances of Birth, Stillbirth, miscarriage, abortion, etc.
+
+nfhs4_preg$allevent <- str_locate_all(nfhs4_preg$vcal_7, c("B|M|S|A|T"))
+
+nfhs4_preg <- nfhs4_preg %>% mutate(events = str_locate_all(nfhs4_preg$vcal_7, c("B|M|S|A|T"))) %>%
+          unnest(events) %>% group_by(caseid) %>% mutate(event = paste0('event', row_number())) %>%
+          spread(event, events)
+
+#creating interval in pregnancies variable. 
+
+nfhs4_preg$interval_preg <- nfhs4_preg$event2 - nfhs4_preg$event1
+  
+
+#keeping only variables needed for merge
+nfhs4_preg <- nfhs4_preg %>% select(c(caseid, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
+
+
+```
+
+
+```{r}
+names(dlhs)
+
+names(nfhs4)
+
+#removing births in last year, duration of current pregnancy, current pregnancy wanted
+nfhs4 <- nfhs4 %>% select(-c("v209"))
+                             #, "v214", "v225"))
+
+nfhs4 <- nfhs4 %>% dplyr::rename(births_last5 = v208)
+                                 #, 
+                          #pregnant = v213
+                          #)
+#dropping contraceptive calendar variables now that all outcomes have been calculated
+nfhs4 <- nfhs4 %>% select(-c("v018", "v019"))
+                              #"vcal_1", "vcal_2", "vcal_7"))
+
+#making year and month of last termination to be just for those who answered miscarriage/abortion/stillbirth
+#nfhs4$termination_month <- ifelse(nfhs4$miscarriage_abortion_stillbirth > 0, nfhs4$month_last_terminated, NA)
+
+#nfhs4 <- nfhs4 %>% dplyr::rename(num_induc_abort = abortion, 
+#                          num_spont_abort = miscarriage, 
+#                          num_still_births = stillbirth
+#                          )
+#dropping total pregnancies and multiples variable
+dlhs <- dlhs %>% select(-c("tot_preg", "multiples"))
+
+#adding in survey variable
+nfhs4$survey <- c("NFHS4")
+
+#matching health insurance location
+nfhs4 <- nfhs4 %>% relocate(cghs, .after = rsby)
+nfhs4 <- nfhs4 %>% relocate(reimburse, .after = cghs)
+
+#making new contraceptive variables to match between nfhs4 and nfhs5
+# 0 = not using; 1 = pill; 2 = iud; 3 = injections; 4 = diaphragm; 5 = condom/nirodh; 6 = female sterilization; 7 = male sterilization;
+# 8 = rhythm/periodic abstinence; 9 = withdrawal; (skips 10-12) 13 = Lactaional amenorrhea (LAM); 14 = female condom; 15 = foam or jelly; 
+# (skips 16-17) 18 = standard days
+table(nfhs4$current_method)
+
+names(dlhs)
+#  methods mentioned in dlhs "fem_ster"          
+# "vasectomy"          "iud"                "bcp"                "emerg_contracept"   "inject"             "condom_nirodh"     
+#  "female_condom"      "rhythm"             "withdrawal"         "other_method"
+
+
+#doing this afer merge
+
+### stopping here and combining NFHS4 and NFHS5. Deciding on some recoding and then combining with DLHS
+
+
+
+```
+
+```{r}
+
+
+library(data.table)
+
+nfhs5 <- fread("IAIR7AFL.csv", select = c(1:106, 167:267, 547:592, 673:707,
+                                                  776:1058, 1653:1664, 1919:1928, 3619:3664, 
+                                                  3936:3941, 4519:4631, 5867:5872))
+
+#nfhs5 <- read_dta("IAIR7AFL.DTA", col_select = c(1:10))
+
+
+
+hh_nfhs5 <- read_dta("IAHR7AFL.DTA", col_select = c(1:30, 150:260))
+#which(colnames(hh) == "sh58") ## keeping only case IDs and BPL card for HH
+
+#keeping only variables needed for merge -- cluster number, household number, state, and BPL card
+hh_nfhs5 <- hh_nfhs5 %>% select(hv001, hv002, hv024, sh75)
+
+#renaming for merging so variables match between datasets (except bpl variable)
+hh5 <- dplyr::rename(hh_nfhs5, v001 = hv001, v002 = hv002, v024 = hv024, bpl= sh75)
+
+#adding in BPL card variable
+nfhs5 <- left_join(
+  nfhs5,
+  hh5,
+  by = c("v001", "v002", "v024")
+)
+
+
+write.csv(nfhs5, "nfhs5_link.csv")
+```
+
+```{r}
+nfhs5 <- read.csv("nfhs5_link.csv")
+
+#renaming
+
+nfhs5 <- dplyr::rename(nfhs5, state = v024, wt = v005,  district = sdist, psu = v021, religion = v130, caste = v131,
+                rural_urban = v025, caste_group = s116, source_water = v113,  
+                toilet = v116,
+                health_ins = v481, esis = v481a, cghs = v481b, shis = v481c,
+                rsby = v481d, chip = v481e, other_employer = v481f, reimburse = v481g,
+                other_private = v481h, other_insurance = v481x, 
+                date = v008, month = v006, year = v007,
+                age = v012, years_school = v133, #age_at_marriage = s309 (can add if needed),
+                age_first_birth = v212, ever_terminated = v228, month_last_terminated = v229, 
+                year_last_terminated = v230, months_last_termination_occurred = v233, other_terminations = v234,
+                miscarriage_abortion_stillbirth = s234, 
+                tot_live_births = v201, 
+                tot_preg = v224, 
+                month_received_anc = m13_1, num_anc_visits = m14_1, type_delivery= m17_1, place_delivery = m15_1, #jsy = s453a_1  (can add if needed), 
+                pp_checkup = m71_1,
+                using_method = s329, current_method =v312,
+                fp_future = v362)
+
+#making index_mob, index_yob, month received anc, number of anc visits, type of delivery, and place of delivery variables based on most recent LIVE birth to match DLHS
+
+#making most recent live birth index child month and year of birth. Using only up to 2011 to match questionnaire. 
+
+nfhs5$index_mob <- ifelse(nfhs5$midx_1 == 1, nfhs5$b1_01, NA)
+
+
+#checking if most recent child was a live birth, if yes filling in year of birth. If non-live birth leaving as NA. 1 is live birth.
+nfhs5$index_yob <- ifelse(nfhs5$midx_1 == 1, nfhs5$b2_01, NA)
+
+
+#Of note: I'm 90% positive the index mob and yob match the delivery for most recent birth that is asked for both live and stillbirths. If limit to live births then the numbers add up. Have also removed births from before 2014, as that seems to have been asked.
+
+#now going through prenatal + delivery variables for just most recent live birth to match dlhs
+#month_received_anc = m13_1, num_anc_visits = m14_1, type_delivery 
+                #= m17_1, place_delivery = m15_1, 
+                #pp_checkup = m71_1,
+#filling with most recent birth if it was live. Only asked for most recent birth so don't have to go through the rest to fill. 
+
+#a-c are health professionals, looking to see if received any medical at all, even if it was received concurrently with traditional. D, E, and F are empty.
+nfhs5 <- nfhs5 %>% mutate(assist_medical = case_when(m3a_1 == 1 ~ 1,
+                                                     m3b_1 == 1 ~ 1,
+                                                     m3c_1 == 1 ~ 1,
+                                                     TRUE ~ 0))
+# g and h are traditional, i and j are empty, k is other, l and m are empty, n is no one
+nfhs5 <- nfhs5 %>% mutate(assist_non_medical = case_when(m3g_1 == 1 ~ 1,
+                                                     m3h_1 == 1 ~ 1,
+                                                     m3k_1 == 1 ~ 1,
+                                                     TRUE ~ 0))
+
+nfhs5 <- nfhs5 %>% mutate(no_assist = m3n_1)
+
+#matching to dlhs with one variable
+nfhs5 <- nfhs5 %>% mutate(conducted_delivery = case_when(assist_medical == 1 ~ 1,
+                                                         assist_non_medical == 1 ~ 2,
+                                                         no_assist == 1 ~ 3,
+                                                         TRUE ~ NA_real_)) 
+
+#making within last 48 hours to match dlhs. all responses with 1 in front are hours, 2 in front are days. We are looking at <= 202, 
+table(nfhs5$pp_checkup)
+#making NAs
+nfhs5$pp_checkup <- ifelse(nfhs5$pp_checkup == 998, NA, nfhs5$pp_checkup)
+
+nfhs5$pp_checkup <- ifelse(nfhs5$pp_checkup < 203, 1, 0)
+
+nfhs5 <- nfhs5 %>% select(caseid, wt, month, year, date, age, v018, v019, 
+                          state, psu, rural_urban, years_school, source_water, toilet,
+                          religion, caste, v150, v190, v191,
+                          tot_live_births, v208, v209, age_first_birth, 
+                          current_method, fp_future, v367, index_mob, index_yob, month_received_anc, num_anc_visits,  
+                          type_delivery, place_delivery, conducted_delivery,
+                          pp_checkup, health_ins, esis, cghs, shis, rsby, chip, other_employer, 
+                          reimburse, other_private, other_insurance, district, caste_group,
+                          ever_terminated, month_last_terminated, year_last_terminated, months_last_termination_occurred,
+                          other_terminations, miscarriage_abortion_stillbirth, using_method, bpl)
+
+
+
+
+```
+
+
+```{r}
+
+#moving variables to match dlhs order
+nfhs5 <- nfhs5 %>% relocate(state, .before = wt)
+nfhs5 <- nfhs5 %>% relocate(district, .after = state)
+
+nfhs5 <- nfhs5 %>% relocate(date, .before = month)
+#nfhs5 <- nfhs5 %>% relocate(wt, .before = s190s)
+
+
+nfhs5 <- nfhs5 %>% relocate(religion, .before = years_school)
+nfhs5 <- nfhs5 %>% relocate(caste, .before = years_school)
+nfhs5 <- nfhs5 %>% relocate(caste_group, .before = years_school)
+
+
+nfhs5 <- nfhs5 %>% select(-c("v150"))
+
+nfhs5 <- rename(nfhs5, w_index = v190)
+nfhs5 <- rename(nfhs5, wi_factor = v191)
+
+nfhs5 <- nfhs5 %>% relocate(w_index, .after = wt)
+nfhs5 <- nfhs5 %>% relocate(wi_factor, .after = w_index)
+
+
+nfhs5 <- nfhs5 %>% relocate(bpl, .after = toilet)
+nfhs5 <- nfhs5 %>% relocate(health_ins, .after = bpl)
+nfhs5 <- nfhs5 %>% relocate(esis, .after = health_ins)
+nfhs5 <- nfhs5 %>% relocate(cghs, .after = esis)
+nfhs5 <- nfhs5 %>% relocate(shis, .after = cghs)
+nfhs5 <- nfhs5 %>% relocate(rsby, .after = esis)
+nfhs5 <- nfhs5 %>% relocate(chip, .after = rsby)
+nfhs5 <- nfhs5 %>% relocate(other_employer, .after = chip)
+nfhs5 <- nfhs5 %>% relocate(reimburse, .after = other_employer)
+nfhs5 <- nfhs5 %>% relocate(other_private, .after = reimburse)
+nfhs5 <- nfhs5 %>% relocate(other_insurance, .after = other_private)
+
+nfhs5 <- nfhs5 %>% relocate(age_first_birth, .after = other_insurance)
+
+#at end will add in contraceptive calendar variables in nfhs to match dlhs questions. DLHS will also need to check variables to ensure it's within last 5 years (Q137 in dlhs3 questionnaire)
+
+
+```
+
+```{r}
+#July 26 2022 using contraceptive calendar to create pregnancies dataset
+
+#using NFHS contraceptive calendar
+#scal 1 is pregnancies and contraception, scal 2 is ultrasound conducted, scal 3 is reason for discontinuation. no other vcal columns used.
+
+##### Not using vcal as that's been recoded into the DHS numbers. Scal is original columns with abortions/stillbirths/etc.
+
+
+#looking at length of string
+head(nfhs5$scal_1)
+range(nchar(nfhs5$scal_1)) #60 to 86 months in string
+
+#reversing calendar string
+strReverse <- function(x)
+   sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")
+nfhs5$rev_cal1 <- strReverse(nfhs5$scal_1)
+
+# 6) trim a string of leading and trailing spaces
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+nfhs5$trim_cal <- trim(nfhs5$scal_1)
+head(nfhs5$trim_cal)
+
+#trimming reversed calendar
+nfhs5$revtrimcal <- trim(nfhs5$rev_cal1)
+
+range(nchar(nfhs5$trim_cal)) #between 61 and 75 months for each participant
+table(nchar(nfhs5$trim_cal))
+
+#Note: have not used reverse calendar for this as only need counts. If need timing then would use rev cal.
+
+#string split
+#strsplit(nfhs5$vcal_1, split = "")
+
+########################################
+
+
+
+########## Note -- fertility took all variables from contraceptive calendar, not just last 5 years. To match to dlhs3 and dlhs4 will probably have to limit to last 4 years. Best bet is to probably calculate the number of months of fertility data we have for each person and then weight the number of abortions/stillbirths/miscarriages by each time period. See what AHS time period is...
+
+
+#making separate contraceptive calendar dataset (need to do this with original nfhs5 dataset before changed)
+nfhs5_preg <- subset(nfhs5, select = c("caseid", "v017", "v018", "v019","scal_1"))
+
+
+#looking at previous stillbirth. This will be represented by at least 7 months of pregnancy followed by termination, since type of termination was only asked for the most recent one. In the calendar string, each letter represents a month, therefore if there are 6Ps and then a T that counts as 7 months of pregnancy. 
+
+nfhs5_preg$prev_stillbirth <- ifelse(grepl("TPPPPPP", nfhs5_preg$scal_1) == TRUE, 1, 0)
+
+nfhs5_preg$lt <- regexpr("TPPPPPP", nfhs5_preg$scal_1, fixed = TRUE)
+nfhs5_preg$lt <- ifelse(nfhs5_preg$lt < 0, NA, nfhs5_preg$lt)
+
+nfhs5_preg$vcal_len <- nchar(nfhs5_preg$scal_1)
+
+nfhs5_preg$lt_cmc <- nfhs5_preg$v017 + nfhs5_preg$vcal_len - nfhs5_preg$lt ##checked and it works
+
+nfhs5_preg$la <- regexpr("A", nfhs5_preg$scal_1, fixed = TRUE)
+nfhs5_preg$la <- ifelse(nfhs5_preg$la < 0, NA, nfhs5_preg$la)
+
+nfhs5_preg$la_cmc <- nfhs5_preg$v017 + nfhs5_preg$vcal_len - nfhs5_preg$la
+
+nfhs5_preg$lm <- regexpr("M", nfhs5_preg$scal_1, fixed = TRUE)
+nfhs5_preg$lm <- ifelse(nfhs5_preg$lm < 0, NA, nfhs5_preg$lm)
+
+nfhs5_preg$lm_cmc <- nfhs5_preg$v017 + nfhs5_preg$vcal_len - nfhs5_preg$lm
+
+nfhs5_preg$ls <- regexpr("S", nfhs5_preg$scal_1, fixed = TRUE)
+nfhs5_preg$ls <- ifelse(nfhs5_preg$ls < 0, NA, nfhs5_preg$ls)
+
+nfhs5_preg$ls_cmc <- nfhs5_preg$v017 + nfhs5_preg$vcal_len - nfhs5_preg$ls
+
+nfhs5_preg$lb <- regexpr("B", nfhs5_preg$scal_1, fixed = TRUE)
+nfhs5_preg$lb <- ifelse(nfhs5_preg$lb < 0, NA, nfhs5_preg$lb)
+
+nfhs5_preg$lb_cmc <- nfhs5_preg$v017 + nfhs5_preg$vcal_len - nfhs5_preg$lb
+
+#august 9th, looking at stillbirths with less than 7 months of pregnancy
+
+nfhs5_preg$stillbirth <- regexpr("SPPPPPP", nfhs5_preg$scal_1, fixed = TRUE)
+
+#marking those with last event a stillbirth but pregnancy less than 7 months a miscarriage.
+nfhs5_preg$true_stillbirth <- ifelse(nfhs5_preg$ls > 0 & nfhs5_preg$stillbirth < 0, "M", nfhs5_preg$ls)
+
+#if spot 80 is pregnant (i.e. calendar starts when they are already pregnant) then we leave as a stillbirth
+
+# true stillbirths would be when calendar starts with any of these "S" |"PS" | "PPS" |"PPPS" | "PPPPS" |"PPPPPS"
+
+nfhs5_preg$cal_pregnant <- str_ends(nfhs5_preg$scal_1, "S", negate = FALSE)
+nfhs5_preg$cal_pregnant_1 <- str_ends(nfhs5_preg$scal_1, "SP", negate = FALSE)
+nfhs5_preg$cal_pregnant_2 <- str_ends(nfhs5_preg$scal_1, "SPP", negate = FALSE)
+nfhs5_preg$cal_pregnant_3 <- str_ends(nfhs5_preg$scal_1, "SPPP", negate = FALSE)
+nfhs5_preg$cal_pregnant_4 <- str_ends(nfhs5_preg$scal_1, "SPPPP", negate = FALSE)
+nfhs5_preg$cal_pregnant_5 <- str_ends(nfhs5_preg$scal_1, "SPPPPP", negate = FALSE)
+
+nfhs5_preg <- nfhs5_preg %>% mutate(calstart_sb = case_when(cal_pregnant == TRUE ~ 1,
+                                                                  cal_pregnant_1 == TRUE ~ 1,
+                                                                  cal_pregnant_2 == TRUE ~ 1,
+                                                                  cal_pregnant_3 == TRUE ~ 1,
+                                                                  cal_pregnant_4 == TRUE ~ 1,
+                                                                  cal_pregnant_5 == TRUE ~ 1,
+                                                                  TRUE ~ 0))
+#now making these into stillbirths
+
+nfhs5_preg$true_stillbirth <- ifelse(nfhs5_preg$calstart_sb == 1 & nfhs5_preg$true_stillbirth == "M", nfhs5_preg$ls, nfhs5_preg$true_stillbirth)
+
+
+
+#separating out the variables we need
+#nfhs5_preg <- nfhs5_preg %>% select(c(caseid, v017, v018, v019, scal_1, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm,
+#                                      lm_cmc, ls, ls_cmc, lb, lb_cmc))
+
+#last pregnancy variable -- minimum value of all outcomes.
+#Reason for minimum value: This is from contraceptive calendar which counts each month from month of interview backward. If we had reversed the string code we would be counting forwards.
+nfhs5_preg$lp <- pmin(nfhs5_preg$la, nfhs5_preg$lb, nfhs5_preg$lm, nfhs5_preg$ls, nfhs5_preg$lt, na.rm = TRUE)
+nfhs5_preg$lp <- as.numeric(nfhs5_preg$lp)
+
+
+#making variable match DLHS coding so that birth is 1, stillbirth is 2, etc.
+nfhs5_preg <- nfhs5_preg %>% mutate(outcome = case_when(lp == lb ~ "1",
+                                                      lp == ls ~ "2", lp == la ~ "3", lp == lm ~ "4",
+                                                      lp == lt ~ "T",
+                                                      TRUE ~ 'other'))
+#Making "other" label NA
+
+nfhs5_preg$outcome <- ifelse(nfhs5_preg$outcome == 'other', NA, nfhs5_preg$outcome)
+
+#making outcome year and month from cmc. Depending on most recent outcome, using cmc date to match. Using trunc so only whole numbers are given
+
+#DHS gives calculations for year and month from CMC:
+#  Year = ( ( CMC - 1 )/12 ) + 1900           
+#Month = CMC - ( ( Year - 1900 ) * 12 )
+nfhs5_preg <- nfhs5_preg %>% mutate(year_event1 = case_when(outcome == 1 ~ trunc((lb_cmc-1)/12 + 1900),
+                                                      outcome == 2 ~ trunc((ls_cmc-1)/12 + 1900), 
+                                                      outcome == 3 ~ trunc((la_cmc-1)/12 + 1900), 
+                                                      outcome == 4 ~ trunc((lm_cmc-1)/12 + 1900),
+                                                      outcome ==  "T" ~ trunc((lt_cmc-1)/12 + 1900),
+                                                      TRUE ~ NA_real_))
+
+nfhs5_preg <- nfhs5_preg %>% mutate(month_event1 = case_when(outcome == 1 ~ lb_cmc - ((year_event1 - 1900)*12),
+                                                      outcome == 2 ~ ls_cmc - ((year_event1 - 1900)*12), 
+                                                      outcome == 3 ~ la_cmc - ((year_event1 - 1900)*12), 
+                                                      outcome == 4 ~ lm_cmc - ((year_event1 - 1900)*12),
+                                                      outcome ==  "T" ~ lt_cmc - ((year_event1 - 1900)*12),
+                                                      TRUE ~ NA_real_))
+  
+
+#making stillbirths out of two short months into miscarriages. Keeping stillbirths where pregnant at start of calendar.
+#first have to make NAs into 0s so they can be used in logic
+
+nfhs5_preg$truesb <- ifelse(is.na(nfhs5_preg$true_stillbirth), 0, nfhs5_preg$true_stillbirth)
+
+#making true miscarriages (pregnancy < 7 months) that have most recent outcome defined as 
+
+nfhs5_preg$outcome <- ifelse(nfhs5_preg$truesb == "M" & nfhs5_preg$outcome == 2, 4, nfhs5_preg$outcome)
+
+  
+#Aug 14th, now need to find timing between events and not just live births.
+
+#Using stringr package in tidyverse for this so can use stringr::extract_all
+#Looking for all instances of Birth, Stillbirth, miscarriage, abortion, etc.
+
+nfhs5_preg$allevent <- str_locate_all(nfhs5_preg$scal_1, c("B|M|S|A|T"))
+
+#separating out the variables we need
+nfhs5_preg <- nfhs5_preg %>% select(c(caseid, v017, v018, v019, scal_1, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm,
+                                      lm_cmc, ls, ls_cmc, lb, lb_cmc, lp, outcome, year_event1, month_event1, truesb, allevent))
+
+
+nfhs5_preg <- nfhs5_preg %>% mutate(events = str_locate_all(nfhs5_preg$scal_1, c("B|M|S|A|T"))) %>%
+          unnest(events) %>% group_by(caseid) %>% mutate(event = paste0('event', row_number())) %>%
+          spread(event, events)
+
+#this removes participants without any outcomes (except for 4). Since we are limiting to pregnancies only in this dataset that is OK.
+
+#there is one participant who reports having a miscarriage every single month of the calendar except for one when she reports a pregnancy.
+# leaving as is, while unlikely technically possible. 
+
+#creating interval in pregnancies variable. 
+
+nfhs5_preg$interval_preg <- nfhs5_preg$event2 - nfhs5_preg$event1
+  
+
+#keeping only variables needed for merge
+nfhs5_preg <- nfhs5_preg %>% select(c(caseid, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
+
+
+#keeping only variables that can match across 
+
+#August 15 have already kept only variables for merge.
+
+#nfhs4_preg <- nfhs4_preg %>% rename(calendar = vcal_7)
+#nfhs5_preg <- nfhs5_preg %>% rename(calendar = scal_1)
+
+#nfhs4_preg <- nfhs4_preg %>% relocate(prev_stillbirth, .after = vcal_len)
+
+nfhs4_preg$survey <- c("nfhs4")
+nfhs5_preg$survey <- c("nfhs5")
+
+nfhs_preg <- rbind(nfhs4_preg, nfhs5_preg)
+
+#write.csv(nfhs_preg, "nfhs_preg.csv")
+
+nfhs_preg <- read.csv("nfhs_preg.csv")
+
+#reading in dlhs_preg directory. Done in DLHS doc so in correct directory.
+dlhs_preg <- read.csv("dlhs_preg.csv")
+
+#now matching with dlhs
+names(dlhs_preg)
+
+#finding time between LIVE births only for dlhs
+#putting in CMC to calculate difference in dates. Now using cmc code below.
+
+# CMC(month,year)=12(year−1900)+month 
+
+#dlhs_preg$cmc_year1 <- 12*(dlhs_preg$year_event1 - 1900)
+#dlhs_preg$cmc1 <- dlhs_preg$cmc_year1 + dlhs_preg$month_event1
+
+#dlhs_preg$cmc_year2 <- 12*(dlhs_preg$year_event2 - 1900)
+#dlhs_preg$cmc2 <- dlhs_preg$cmc_year2 + dlhs_preg$month_event2
+
+#dlhs_preg$cmc_year3 <- 12*(dlhs_preg$year_event3 - 1900)
+#dlhs_preg$cmc3 <- dlhs_preg$cmc_year3 + dlhs_preg$month_event3
+
+#dlhs_preg$cmc_year4 <- 12*(dlhs_preg$year_event4 - 1900)
+#dlhs_preg$cmc4 <- dlhs_preg$cmc_year4 + dlhs_preg$month_event4
+
+#dlhs_preg$cmc_year5 <- 12*(dlhs_preg$year_event5 - 1900)
+#dlhs_preg$cmc5 <- dlhs_preg$cmc_year5 + dlhs_preg$month_event5
+
+#dlhs_preg$cmc_year6 <- 12*(dlhs_preg$year_event6 - 1900)
+#dlhs_preg$cmc6 <- dlhs_preg$cmc_year6 + dlhs_preg$month_event6
+
+#live birth is 1 in outcome
+
+length(which(dlhs_preg$outcome1 > 1)) #15496 non-live birth outcomes for most recent pregnancy
+
+dlhs_preg <- dlhs_preg %>% select(c(id_person, outcome1, outcome2, outcome3, outcome4, outcome5, outcome6, month_event1,
+                                    month_event2, month_event3, month_event4, month_event5, month_event6,
+                                    year_event1, year_event2, year_event3, year_event4, year_event5, year_event6, survey))
+library(lubridate)
+#installing package for cmc conversion
+#devtools::install_github("mrc-ide/naomi")
+library("naomi")
+
+dlhs_preg$month_event1 <- str_pad(dlhs_preg$month_event1, 2, "left", "0")
+dlhs_preg$month_event2 <- str_pad(dlhs_preg$month_event2, 2, "left", "0")
+dlhs_preg$month_event3 <- str_pad(dlhs_preg$month_event3, 2, "left", "0")
+dlhs_preg$month_event4 <- str_pad(dlhs_preg$month_event4, 2, "left", "0")
+dlhs_preg$month_event5 <- str_pad(dlhs_preg$month_event5, 2, "left", "0")
+dlhs_preg$month_event6 <- str_pad(dlhs_preg$month_event6, 2, "left", "0")
+
+dlhs_preg$date1 <- ifelse(dlhs_preg$year_event1>0, paste(dlhs_preg$year_event1, dlhs_preg$month_event1,"01", sep = "-"), NA)
+dlhs_preg$date2 <- ifelse(dlhs_preg$year_event2>0, paste(dlhs_preg$year_event2, dlhs_preg$month_event2,"01",sep = "-"), NA)
+dlhs_preg$date3 <- ifelse(dlhs_preg$year_event3>0, paste(dlhs_preg$year_event3, dlhs_preg$month_event3,"01", sep = "-"), NA)
+dlhs_preg$date4 <- ifelse(dlhs_preg$year_event4>0, paste(dlhs_preg$year_event4, dlhs_preg$month_event4,"01", sep = "-"), NA)
+dlhs_preg$date5 <- ifelse(dlhs_preg$year_event5>0, paste(dlhs_preg$year_event5, dlhs_preg$month_event5,"01", sep = "-"), NA)
+dlhs_preg$date6 <- ifelse(dlhs_preg$year_event6>0, paste(dlhs_preg$year_event6, dlhs_preg$month_event6,"01", sep = "-"), NA)
+
+dlhs_preg$date1 <- as.Date(dlhs_preg$date1, format = "%Y-%m-%d")
+dlhs_preg$date2 <- as.Date(dlhs_preg$date2, format = "%Y-%m-%d") 
+dlhs_preg$date3 <- as.Date(dlhs_preg$date3, format = "%Y-%m-%d")
+dlhs_preg$date4 <- as.Date(dlhs_preg$date4, format = "%Y-%m-%d")
+dlhs_preg$date5 <- as.Date(dlhs_preg$date5, format = "%Y-%m-%d")
+dlhs_preg$date6 <- as.Date(dlhs_preg$date6, format = "%Y-%m-%d")
+
+#making into CMC
+dlhs_preg$cmc1 <- cmc_date(dlhs_preg$date1)
+dlhs_preg$cmc2 <- cmc_date(dlhs_preg$date2)
+dlhs_preg$cmc3 <- cmc_date(dlhs_preg$date3)
+dlhs_preg$cmc4 <- cmc_date(dlhs_preg$date4)
+dlhs_preg$cmc5 <- cmc_date(dlhs_preg$date5)
+dlhs_preg$cmc6 <- cmc_date(dlhs_preg$date6)
+
+
+
+#keeping only pregnancies with at least one outcome. There are two instances of outcome1 (supposed to be most recent) being empty but there being an outcome2
+
+dlhs_preg <- dlhs_preg %>% filter(outcome1 > 0 | outcome2 > 0 & is.na(outcome1)) #worked. Still two nas.
+
+dlhs_preg <- dlhs_preg %>% select(-c(month_event1, month_event2, month_event3, month_event4, month_event5, month_event6,
+                                     year_event1, year_event2, year_event3, year_event4, year_event5, year_event6))
+
+dlhs_preg <- dlhs_preg %>% rename(caseid = id_person)
+
+dlhs_preg$outcome <- ifelse(is.na(dlhs_preg$outcome1), dlhs_preg$outcome2, dlhs_preg$outcome1) #worked
+
+
+#While ordering is supposed to be most recent outcome we have ~1000 cases where that is not the case. Finding most recent outcome.
+
+dlhs_preg$lp_cmc <- pmax(dlhs_preg$cmc1, dlhs_preg$cmc2, dlhs_preg$cmc3, dlhs_preg$cmc3, dlhs_preg$cmc4, dlhs_preg$cmc5, dlhs_preg$cmc6, na.rm = TRUE)
+
+#now need to find interval between most recent birth and second most recent birth
+#Looking at all pregnancies. 883 cases where cmc2 > cmc 1 and 3 cases where cmc3 > cmc1, 14 cases where cmc4 > cmc1 & 3 cases where cmc5 > cmc1.
+#Accounting for twins -- 573 cases when cmc1 == cmc2 & cmc1 > cmc3, 6 cases of twins (cmc1 == cmc2) & cmc3 > cmc1
+
+#cloning cmcs variable and removing max value across cmcs. Finding new max using pmax to get second highest value (aka second most recent pregnancy)
+
+dlhs_preg$clone1 <- dlhs_preg$cmc1
+dlhs_preg$clone2 <- dlhs_preg$cmc2
+dlhs_preg$clone3 <- dlhs_preg$cmc3
+dlhs_preg$clone4 <- dlhs_preg$cmc4
+dlhs_preg$clone5 <- dlhs_preg$cmc5
+
+dlhs_preg$clone1 <- ifelse(dlhs_preg$clone1 == dlhs_preg$lp_cmc, NA, dlhs_preg$clone1)
+dlhs_preg$clone2 <- ifelse(dlhs_preg$clone2 == dlhs_preg$lp_cmc, NA, dlhs_preg$clone2)
+dlhs_preg$clone3 <- ifelse(dlhs_preg$clone3 == dlhs_preg$lp_cmc, NA, dlhs_preg$clone3)
+dlhs_preg$clone4 <- ifelse(dlhs_preg$clone4 == dlhs_preg$lp_cmc, NA, dlhs_preg$clone4)
+dlhs_preg$clone5 <- ifelse(dlhs_preg$clone5 == dlhs_preg$lp_cmc, NA, dlhs_preg$clone5)
+
+dlhs_preg$max2 <- pmax(dlhs_preg$clone1, dlhs_preg$clone2, dlhs_preg$clone3, dlhs_preg$clone4, dlhs_preg$clone5, na.rm = TRUE)
+
+#calculating interval
+dlhs_preg$interval_preg <- dlhs_preg$lp_cmc - dlhs_preg$max2
+
+#dropping clone variables
+dlhs_preg <- dlhs_preg %>% select(-c(clone1, clone2, clone3, clone4, clone5))
+
+#putting NFHS year and month into date format
+table(nfhs_preg$month_event1)
+
+nfhs_preg$month_event1 <- str_pad(nfhs_preg$month_event1, 2, "left", "0")
+
+nfhs_preg$date1 <- ifelse(nfhs_preg$year_event1>0, paste(nfhs_preg$year_event1, nfhs_preg$month_event1,"01", sep = "-"), NA)
+
+nfhs_preg$date1 <- as.Date(nfhs_preg$date1, format = "%Y-%m-%d")
+
+#dropping separate month and date variables
+nfhs_preg <- nfhs_preg %>% select(-c(month_event1, year_event1))
+
+#need dlhs_preg previous stillbirth variable
+dlhs_preg <- dlhs_preg %>% mutate(prev_stillbirth = case_when(outcome2 > 1 ~ 1,
+                                                              outcome3 > 1 ~ 1,
+                                                              outcome4 > 1 ~ 1,
+                                                              outcome5 > 1 ~ 1,
+                                                              outcome6 > 1 ~ 1,
+                                                              TRUE ~ 0))
+
+#keeping only variables to match nfhs_preg
+#first renaming nfhs_preg date variable
+nfhs_preg <- nfhs_preg %>% rename(date_outcome = date1)
+
+#making dlhs lp_cmc into date to match nfhs
+
+dlhs_preg <- dlhs_preg %>% mutate(date_outcome = case_when(lp_cmc == cmc1 ~ date1,
+                                                           lp_cmc == cmc2 ~ date2,
+                                                           lp_cmc == cmc3 ~ date3,
+                                                           lp_cmc == cmc4 ~ date4,
+                                                           lp_cmc == cmc5 ~ date5,
+                                                           lp_cmc == cmc6 ~ date6,
+                                                           TRUE ~ NA_real_))
+
+dlhs_preg <- dlhs_preg %>% select(c(caseid, outcome, interval_preg, prev_stillbirth, survey, date_outcome))
+
+
+#dlhs_preg <- dlhs_preg %>% rename(interval_births = interval)
+
+#making nfhs_preg outcome as numeric instead of character
+nfhs_preg$outcome <- ifelse(nfhs_preg$outcome == "T", 6, nfhs_preg$outcome)
+nfhs_preg$outcome <- as.numeric(nfhs_preg$outcome)
+
+#making dlhs caseid as character
+dlhs_preg$caseid <- as.character(dlhs_preg$caseid)
+
+dlhs_nfhs_preg <- rbind(dlhs_preg, nfhs_preg)
+
+#writing as csv
+#write.csv(dlhs_nfhs_preg, "dlhs_nfhs_preg.csv")
+
+dlhs_nfhs_preg <- read.csv("dlhs_nfhs_preg-Caroline’s Mac mini.csv")
+
+
+```
+
+
+
+```{r}
+
+#nfhs5 contraceptive coding is different than in nfhs4 and DLHS. Will fix once all combined, for now coding is as follows
+# 0 = not using; 1 = pill; 2 = iud; 3 = injections; 4 = diaphragm; 5 = male condom/nirodh; 6 = female sterilization; 7 = male sterilization;
+# 8 = periodic abstinence; 9 = withdrawal; 10 = other traditional; (skipped 11-12) 13 = lactational amenorrhea; 14 = female condom; 
+# 15 = foam/jelly; 16 = emergency contraception; 17 = other modern method; 19 = standard days method
+
+```
+
+```{r}
+names(dlhs)
+
+names(nfhs5)
+
+#removing births in last year, duration of current pregnancy, current pregnancy wanted
+nfhs5 <- nfhs5 %>% select(-c("v209"))
+                             #, "v214", "v225"))
+
+nfhs5 <- nfhs5 %>% dplyr::rename(births_last5 = v208) 
+                          #pregnant = v213)
+
+#dropping contraceptive calendar variables now that all outcomes have been calculated
+nfhs5 <- nfhs5 %>% select(-c("v018", "v019"))
+                              #"scol_1", "scol_2", "scol_3",
+                             #"scal_1", "scal_2", "scal_3"))
+
+
+
+#nfhs5 <- nfhs5 %>% dplyr::rename(num_induc_abort = abortion, 
+#                          num_spont_abort = miscarriage, 
+#                          num_still_births = stillbirth
+#                          )
+
+#adding in survey variable
+nfhs5$survey <- c("NFHS5")
+
+#matching health insurance location
+nfhs5 <- nfhs5 %>% relocate(cghs, .after = rsby)
+nfhs5 <- nfhs5 %>% relocate(reimburse, .after = cghs)
+
+#nfhs5 contraceptive coding is different than in nfhs4 and DLHS. Will fix once all combined, for now coding is as follows
+# 0 = not using; 1 = pill; 2 = iud; 3 = injections; 4 = diaphragm; 5 = male condom/nirodh; 6 = female sterilization; 7 = male sterilization;
+# 8 = periodic abstinence; 9 = withdrawal; 10 = other traditional; (skipped 11-12) 13 = lactational amenorrhea; 14 = female condom; 
+# 15 = foam/jelly; 16 = emergency contraception; 17 = other modern method; 19 = standard days method
+
+
+#looking at three surveys so far
+names(dlhs)
+names(nfhs4)
+names(nfhs5)
+
+#matching NFHS-4 and NFHS-5
+
+#dropping wealth index variables from NFHS-4
+nfhs4 <- nfhs4 %>% select(-c("w_index", "wi_factor", "s190s", "s190u", "s191u", "s190us", "s190r", "s191r", "s190rs"))
+
+nfhs5 <- nfhs5 %>% select(-c("w_index", "wi_factor"))
+
+#dropping X variable r created
+#nfhs4 <- nfhs4 %>% select(-c("X"))
+#nfhs5 <- nfhs5 %>% select(-c("X"))
+
+#moving variables in NFHS-5 to match NFHS-4
+names(nfhs4)
+names(nfhs5)
+
+nfhs4 <- nfhs4 %>% relocate(wt, .after = district)
+nfhs4 <- nfhs4 %>% relocate(shis, .after = cghs)
+nfhs5 <- nfhs5 %>% relocate(shis, .after = cghs)
+
+#dropping other such pregnancies variable (v234)
+#nfhs4 <- nfhs4 %>% relocate(v234, .after = terminations)
+#nfhs5 <- nfhs5 %>% relocate(v234, .after = terminations)
+
+nfhs4 <- nfhs4 %>% select(-c("sslumc", "sslumo"))
+#nfhs5 <- nfhs5 %>% select(-c("v190", "v191"))
+
+### COMBINING NFHS-4 AND NFHS-5
+nfhs <- bind_rows(nfhs4, nfhs5)
+
+#write.csv(nfhs, "nfhs.csv")
+
+```
+
+
+```{r}
+nfhs <- read.csv("nfhs.csv")
+
+
+#combining DLHS and NFHS
+names(dlhs)
+names(nfhs)
+
+#dropping dlhs district and household state weight
+dlhs <- dlhs %>% select(-c("dhhwt", "dewwt", "shhwt"))
+
+#renaming state women's weight to match nfhs
+
+dlhs <- dlhs %>% rename(wt = sewwt)
+
+#moving it to match
+dlhs <- dlhs %>% relocate(wt, .after = district)
+
+#dropping total terminations variable since NFHS doesn't have that
+dlhs <- dlhs %>% select(-c("tot_still_births", "tot_spont_abort", "tot_induc_abort"))
+
+#dropping nfhs births last 5 since not in dlhs and can calculate from children birth dates
+nfhs <- nfhs %>% select(-c("births_last5"))
+
+#moving NFHS childrens month and date of births to after tot_live_births to  match DLHS
+#nfhs <- nfhs %>% relocate(month1, .after = tot_live_births)
+#nfhs <- nfhs %>% relocate(month2, .after = month1)
+#nfhs <- nfhs %>% relocate(month3, .after = month2)
+#nfhs <- nfhs %>% relocate(month4, .after = month3)
+#nfhs <- nfhs %>% relocate(month5, .after = month4)
+#nfhs <- nfhs %>% relocate(month6, .after = month5)
+#nfhs <- nfhs %>% relocate(year1, .after = month6)
+#nfhs <- nfhs %>% relocate(year2, .after = year1)
+#nfhs <- nfhs %>% relocate(year3, .after = year2)
+#nfhs <- nfhs %>% relocate(year4, .after = year3)
+#nfhs <- nfhs %>% relocate(year5, .after = year4)
+#nfhs <- nfhs %>% relocate(year6, .after = year5)
+
+#moving dlhs pregnant to match
+#dlhs <- dlhs %>% relocate(pregnant, .after = year6)
+
+#dropping DLHS *EVER USED* method variables, only interested in current method
+dlhs <- dlhs %>% select(-c("fem_ster", "vasectomy", "iud", "bcp", "emerg_contracept", "inject", "condom_nirodh", "female_condom",
+                           "female_condom", "rhythm", "withdrawal", "other_method"))
+
+#dropping NFHS "X" variable which r introduced
+#nfhs <- nfhs %>% select(-c("X"))
+#dropping wanted last child
+nfhs <- nfhs %>% select(-c("v367"))
+#dropping nfhs "other such pregnancies" about terminations as it does not give counts
+#nfhs <- nfhs %>% select(-c("v234"))
+#dropping ever terminated in nfhs
+#nfhs <- nfhs %>% select(-c("ever_terminated"))
+#dropping miscarriage abortion stillbirth variable
+#nfhs <- nfhs %>% select(-c("miscarriage_abortion_stillbirth"))
+
+#moving all insurance 
+
+#July 7 2022. nfhs -- moving shis into cghs to be government scheme for now. May redo later
+table(nfhs$shis)
+table(nfhs$cghs)
+
+length(which(nfhs$cghs == 1 & nfhs$shis == 1)) #some already have both
+
+nfhs$cghsshis <- ifelse(nfhs$shis == 1, 1, 0)
+nfhs$cghsshis <- ifelse(nfhs$cghs == 1, 1, nfhs$cghsshis) #checked mathematically and logic holds
+
+#dropping cghs and shis variables
+nfhs <- nfhs %>% select(-c("cghs", "shis"))
+
+#renaming dlhs
+dlhs <- dlhs %>% rename(cghsshis = CGHS)
+
+#putting dlhs mediclaim into other_private (decided after team meeting Aug 2022)
+# (originally coded as 1 = yes 2 = no) making new other_insurance variable to match nfhs
+table(dlhs$other_priv)
+dlhs$other_insurance <- ifelse(dlhs$other_priv == 1, 1, 0)
+
+table(dlhs$mediclaim)
+length(which(dlhs$other_priv == 1 & dlhs$mediclaim == 1))
+
+dlhs$other_insurance <- ifelse(dlhs$mediclaim == 1, 1, dlhs$other_insurance)
+
+table(dlhs$other_insurance) #matched mathematically, dropping dlhs$other and dlhs$mediclaim
+
+#dropping old other_priv variable and mediclaim
+
+dlhs <- dlhs %>% select(-c("other_priv", "mediclaim"))
+
+dlhs <- dlhs %>% rename(other_private = other_insurance, other_insurance = other)      
+      
+#moving to before other_insurance to match nfhs
+dlhs <- dlhs %>% relocate(other_private, .before = other_insurance)
+
+#putting NFHS$other employer into other_insurance
+table(nfhs$other_employer)
+table(nfhs$other_insurance)
+
+length(which(nfhs$other_employer == 1 & nfhs$other_insurance == 1))
+
+nfhs$other_insurance <- ifelse(nfhs$other_employer == 1, 1, nfhs$other_insurance)
+
+#removing other_employer variable
+nfhs <- nfhs %>% select(-c("other_employer"))
+
+#removing dlhs received_anc variable for now. Can recalculate if needed
+dlhs <- dlhs %>% select(-c("received_anc"))
+
+#renaming nfhs current_method to type_method
+nfhs <- nfhs %>% rename(type_method = current_method)
+
+#moving nfhs type_method to after using_method
+nfhs <- nfhs %>% relocate(type_method, .after = using_method)
+
+#moving family planning in future after type of method
+nfhs <- nfhs %>% relocate(fp_future, .after = type_method)
+
+#dropping dlhs jsy variable
+dlhs <- dlhs %>% select(-c("jsy"))
+
+#making terminations variable in dlhs and making NA. Need it in NFHS for now
+#dlhs$terminations <- c(NA)
+#moving to before births
+#dlhs <- dlhs %>% relocate(terminations, .before = birth)
+
+#renaming NFHS variables to match dlhs
+#nfhs <- nfhs %>% rename(abortion = num_induc_abort, miscarriage = num_spont_abort, 
+ #                       stillbirth = num_still_births)
+
+#move nfhs cghsshis to after rsby
+nfhs <- nfhs %>% relocate(cghsshis, .after = rsby)
+
+#making dlhs columns lowercase
+names(dlhs) <- tolower(names(dlhs))
+
+#nfhs <- nfhs %>% select(-c(X))
+
+
+
+#removing dlhs terminations
+dlhs <- dlhs %>% select(-c(terminations))
+#dropping dlhs pregnant
+dlhs <- dlhs %>% select(-c(pregnant))
+#dropping index_alive variable
+dlhs <- dlhs %>% select(-c(index_alive))
+
+#check
+names(dlhs)
+names(nfhs)
+
+#moving dlhs using method/type method/fp future to after miscarriage/abortion/stillbirth
+#first moving miscarriage/abortion/stillbirth
+dlhs <- dlhs %>% relocate(miscarriage_abortion_stillbirth, .after = other_terminations)
+dlhs <- dlhs %>% relocate(month_last_termination_occurred, .after = year_last_terminated)
+nfhs <- nfhs %>% relocate(type_delivery, .before = place_delivery)
+
+dlhs <- dlhs %>% relocate(using_method, .after = miscarriage_abortion_stillbirth)
+dlhs <- dlhs %>% relocate(type_method, .after = using_method)
+dlhs <- dlhs %>% relocate(fp_future, .after = type_method)
+
+nfhs <- nfhs %>% rename(month_last_termination_occurred = months_last_termination_occurred)
+
+#making dlhs caseid a character
+dlhs$caseid <- as.character(dlhs$caseid)
+
+#moving PSU to correct spot 
+nfhs <- nfhs %>% relocate(psu, .after = wt)
+
+#combining nfhs and dlhs
+dlhs_nfhs <- bind_rows(dlhs, nfhs)
+
+write.csv(dlhs_nfhs, "dlhsnfhs.csv")
+
+dlhsnfhs <- read.csv("dlhsnfhs.csv")
+
+```
+
+
+```{r}
+
+dlhsnfhs <- read.csv("dlhsnfhs.csv")
+
+#split outcomes one pregnancies vs. women's for access to + family planning 
+
+#Creating datasets to match AHS women's pregnancy schedule vs. pregnancy
+
+#not going to work. Best option is to use most recent pregnancy that ended in a non-live birth. 
+
+```
+
+
+
+```{r}
+
+######## ARCHIVE ################
+
+
+#July 26 2022
+#contraceptive string code for pregnancies dataset run in STATA using public DHS  code. Stata code saved in .do file
+#reading in trial pregnancy data. 
+#nfhs4_preg <- read.csv("fert_stata_calendar.csv")
+
+#Not usiung this as of August 2. See R code below
+
+#making 0s nas
+nfhs4_preg$la <- ifelse(nfhs4_preg$la == 0, NA, nfhs4_preg$la)
+nfhs4_preg$lb <- ifelse(nfhs4_preg$lb == 0, NA, nfhs4_preg$lb)
+nfhs4_preg$lm <- ifelse(nfhs4_preg$lm == 0, NA, nfhs4_preg$lm)
+nfhs4_preg$ls <- ifelse(nfhs4_preg$ls == 0, NA, nfhs4_preg$ls)
+nfhs4_preg$lt <- ifelse(nfhs4_preg$lt == 0, NA, nfhs4_preg$lt)
+
+#making numeric
+nfhs4_preg$la <- as.numeric(nfhs4_preg$la)
+nfhs4_preg$lb <- as.numeric(nfhs4_preg$lb)
+nfhs4_preg$lm <- as.numeric(nfhs4_preg$lm)
+nfhs4_preg$ls <- as.numeric(nfhs4_preg$ls)
+nfhs4_preg$lt <- as.numeric(nfhs4_preg$lt)
+
+
+length(which(nfhs4_preg$lb > nfhs4_preg$la))
+
+#last pregnancy variable -- minimum value of all outcomes.
+#Reason for minimum value: This is from contraceptive calendar which counts each month from month of interview backward. If we had reversed the string code we would be counting forwards.
+nfhs4_preg$lp <- pmin(nfhs4_preg$la, nfhs4_preg$lb, nfhs4_preg$lm, nfhs4_preg$ls, nfhs4_preg$lt, na.rm = TRUE)
+nfhs4_preg$lp <- as.numeric(nfhs4_preg$lp)
+
+
+#making variable match DLHS coding so that birth is 1, stillbirth is 2, etc.
+nfhs4_preg <- nfhs4_preg %>% mutate(outcome = case_when(lp == lb ~ "1",
+                                                      lp == ls ~ "2", lp == la ~ "3", lp == lm ~ "4",
+                                                      lp == lt ~ "T",
+                                                      TRUE ~ 'other'))
+#Making "other" label NA
+
+nfhs4_preg$outcome <- ifelse(nfhs4_preg$outcome == 'other', NA, nfhs4_preg$outcome)
+
+#making outcome year and month from cmc. Depending on most recent outcome, using cmc date to match. Using trunc so only whole numbers are given
+
+#DHS gives calculations for year and month from CMC:
+#  Year = ( ( CMC - 1 )/12 ) + 1900           
+#Month = CMC - ( ( Year - 1900 ) * 12 )
+nfhs4_preg <- nfhs4_preg %>% mutate(year_event1 = case_when(outcome == 1 ~ trunc((cmc_lb-1)/12 + 1900),
+                                                      outcome == 2 ~ trunc((cmc_ls-1)/12 + 1900), 
+                                                      outcome == 3 ~ trunc((cmc_la-1)/12 + 1900), 
+                                                      outcome == 4 ~ trunc((cmc_lm-1)/12 + 1900),
+                                                      outcome ==  "T" ~ trunc((cmc_lt-1)/12 + 1900),
+                                                      TRUE ~ NA_real_))
+
+nfhs4_preg <- nfhs4_preg %>% mutate(month_event1 = case_when(outcome == 1 ~ cmc_lb - ((year_event1 - 1900)*12),
+                                                      outcome == 2 ~ cmc_ls - ((year_event1 - 1900)*12), 
+                                                      outcome == 3 ~ cmc_la - ((year_event1 - 1900)*12), 
+                                                      outcome == 4 ~ cmc_lm - ((year_event1 - 1900)*12),
+                                                      outcome ==  "T" ~ cmc_lt - ((year_event1 - 1900)*12),
+                                                      TRUE ~ NA_real_))
+  
+
+# need amount of time between *live births* only...will use b3 variables from full women's dataset to merge
+#adding in fertility variables. Keeping only date of births for second, third, fourth, and fifth most recent births so we have second birth after quads/trips/twins/etc. 
+
+births <-  nfhs4 %>% select(caseid, b3_02, b3_03, b3_04, b3_05)
+
+nfhs4pregnancies <- left_join(
+  nfhs4_preg,
+  births,
+  by = c("caseid")
+)
+
+#looking at twins and triplets. If b3_01 is the same as b3_02 it means twins (same birth date), if same as b3_03 signifies triplets.
+length(which(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_02)) #4,596 twins (2,298 sets of twins)
+
+length(which(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_02 && nfhs4pregnancies$b3_03 == nfhs4pregnancies$b3_01)) #57 triplets -- b1 b2 b3 all match. expanding to b4.
+
+length(which(nfhs4pregnancies$b3_04 == nfhs4pregnancies$b3_01)) #one set of quadruplets. Adding in fifth most recent birth
+
+length(which(nfhs4pregnancies$b3_05 == nfhs4pregnancies$b3_01)) #no quintuplets
+
+#creating second birth variable to indicate second birth (i.e. not twin, triplet, or quad)
+
+
+#nfhs4pregnancies$secondbirth <- (ifelse(nfhs4pregnancies$b3_01 != nfhs4pregnancies$b3_02, nfhs4pregnancies$b3_02,NA))
+#nfhs4pregnancies$secondbirth <- (ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_02 &
+                                          #nfhs4pregnancies$b3_01 != nfhs4pregnancies$b3_03, nfhs4pregnancies$b3_03, nfhs4pregnancies$secondbirth))
+#nfhs4pregnancies$secondbirth <- (ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_03, nfhs4pregnancies$b3_04, nfhs4pregnancies$secondbirth))
+#nfhs4pregnancies$secondbirth <- (ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_04, nfhs4pregnancies$b3_05, nfhs4pregnancies$secondbirth))
+
+#nfhs4pregnancies$timebwbirths <- nfhs4pregnancies$secondbirth - nfhs4pregnancies$b3_01
+
+nfhs4pregnancies$twins <- ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_02, 1, 0)
+nfhs4pregnancies$quad <- ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_04, 1, 0)
+nfhs4pregnancies$trip <- ifelse(nfhs4pregnancies$b3_01 == nfhs4pregnancies$b3_03, 1, 0)
+
+# Not treating b3_01 != b3_03 correctly with NAs to create twins but not triplets, so instead will create hierarchy
+nfhs4pregnancies <- nfhs4pregnancies %>% mutate(mult = case_when(quad == 1 ~ 3,
+                                                                 trip == 1 ~ 2,
+                                                                 twins == 1 ~ 1,
+                                                                 TRUE ~ NA_real_))
+
+#this worked -- need to start with first condition, i.e. any quads always quads
+
+
+nfhs4pregnancies <- nfhs4pregnancies %>% mutate(birth2 = case_when(mult == 3 ~ b3_05,
+                                           mult == 2 ~ b3_04,
+                                           mult == 1 ~ b3_03,
+                                           TRUE ~ b3_02))
+
+#calculating difference in months between second birth and b3_01 (most recent birth)
+nfhs4pregnancies$timebwbirths <- nfhs4pregnancies$b3_01 - nfhs4pregnancies$birth2
+
+check <- subset(nfhs4pregnancies, v208 > 0)
+check <- check %>% select(outcome, b3_01, b3_02, b3_03, b3_04, b3_05, mult, birth2, timebwbirths)
+
+
+# DHS has in acommpanying recode book notes about the birth intervals that are quite short (i.e. less than 8 months). Keeping in and we will decide hwo to proceed with them once we reach analysis.
+
+#Limiting outcomes + time between births to births in the last five years (v208 > 0)
+
+nfhs4pregnancies <- subset(nfhs4pregnancies, v208 > 0)
+
+nfhs4 <- read.csv("nfhs4_fertincluded.csv")
+
+#keeping only births within last 5 years to match contraceptive calendar (Jan 2011)
+table(nfhs4$b2_17) #1986
+table(nfhs4$b2_16) #1988
+table(nfhs4$b2_15) #1985-1993
+table(nfhs4$b2_14) #1980 - 1995
+table(nfhs4$b2_13) #1978 - 2001
+table(nfhs4$b2_12) #1977 - 2002
+table(nfhs4$b2_11) #1976 - 2003
+table(nfhs4$b2_10) #1974 - 2004
+table(nfhs4$b2_09) #1975 - 2005
+table(nfhs4$b2_08) #1970 - 2007
+table(nfhs4$b2_07) #1971 - 2009
+table(nfhs4$b2_06) #KEEP
+
+#can dropping corresponding month columns (b1_07 - b1_17) to these DOB
+
+nfhs4 <- nfhs4 %>% select(-c("b1_07", "b1_08", "b1_09", "b1_10", "b1_11", "b1_12", "b1_13", 
+                             "b1_14", "b1_15", "b1_16", "b1_17", 
+                             "b2_07", "b2_08", "b2_09", "b2_10", "b2_11", "b2_12", "b2_13", 
+                             "b2_14", "b2_15", "b2_16", "b2_17"))
+
+
+#dropping birth information before 2011 and renaming to match dlhs
+nfhs4$year1 <- ifelse(nfhs4$b2_01 > 2010, nfhs4$b2_01, NA)
+nfhs4$year2 <- ifelse(nfhs4$b2_02 > 2010, nfhs4$b2_02, NA)
+nfhs4$year3 <- ifelse(nfhs4$b2_03 > 2010, nfhs4$b2_03, NA)
+nfhs4$year4 <- ifelse(nfhs4$b2_04 > 2010, nfhs4$b2_04, NA)
+nfhs4$year5 <- ifelse(nfhs4$b2_05 > 2010, nfhs4$b2_05, NA)
+nfhs4$year6 <- ifelse(nfhs4$b2_06 > 2010, nfhs4$b2_06, NA)
+
+#now making new month variables. Making NA anyone born before time period.
+nfhs4$month1 <- ifelse(is.na(nfhs4$year1), NA, nfhs4$b1_01)
+nfhs4$month2 <- ifelse(is.na(nfhs4$year2), NA, nfhs4$b1_02)
+nfhs4$month3 <- ifelse(is.na(nfhs4$year3), NA, nfhs4$b1_03)
+nfhs4$month4 <- ifelse(is.na(nfhs4$year4), NA, nfhs4$b1_04)
+nfhs4$month5 <- ifelse(is.na(nfhs4$year5), NA, nfhs4$b1_05)
+nfhs4$month6 <- ifelse(is.na(nfhs4$year6), NA, nfhs4$b1_06)
+
+#July 26 2022
+#contraceptive string code for pregnancies dataset run in STATA using public DHS  code. Stata code saved in .do file
+#reading in trial pregnancy data. 
+nfhs5_preg <- read.csv("fert_stata_calendar_nfhs5.csv")
+
+#making 0s nas
+nfhs5_preg$la <- ifelse(nfhs5_preg$la == 0, NA, nfhs5_preg$la)
+nfhs5_preg$lb <- ifelse(nfhs5_preg$lb == 0, NA, nfhs5_preg$lb)
+nfhs5_preg$lm <- ifelse(nfhs5_preg$lm == 0, NA, nfhs5_preg$lm)
+nfhs5_preg$ls <- ifelse(nfhs5_preg$ls == 0, NA, nfhs5_preg$ls)
+nfhs5_preg$lt <- ifelse(nfhs5_preg$lt == 0, NA, nfhs5_preg$lt)
+
+#making numeric
+nfhs5_preg$la <- as.numeric(nfhs5_preg$la)
+nfhs5_preg$lb <- as.numeric(nfhs5_preg$lb)
+nfhs5_preg$lm <- as.numeric(nfhs5_preg$lm)
+nfhs5_preg$ls <- as.numeric(nfhs5_preg$ls)
+nfhs5_preg$lt <- as.numeric(nfhs5_preg$lt)
+
+#making most recent event outcome based on most recent
+length(which(nfhs5_preg$lb > nfhs5_preg$la))
+
+nfhs5_preg$lp <- pmin(nfhs5_preg$la, nfhs5_preg$lb, nfhs5_preg$lm, nfhs5_preg$ls, nfhs5_preg$lt, na.rm = TRUE)
+nfhs5_preg$lp <- as.numeric(nfhs5_preg$lp)
+
+nfhs5_preg$lp <- as.numeric(nfhs5_preg$lp)
+
+nfhs5_preg <- nfhs5_preg %>% mutate(outcome = case_when(lp == lb ~ "1",
+                                                      lp == ls ~ "2", lp == la ~ "3", lp == lm ~ "4",
+                                                      lp == lt ~ "T",
+                                                      #is.na(lp) ~ NA_real_,
+                                                      TRUE ~ 'other'))
+
+nfhs5_preg$outcome <- ifelse(nfhs5_preg$outcome == 'other', NA, nfhs5_preg$outcome)
+
+#making outcome year and month from cmc. Depending on most recent outcome, using cmc date to match. Using trunc so only whole numbers are given
+
+#DHS gives calculations for year and month from CMC:
+#  Year = ( ( CMC - 1 )/12 ) + 1900           
+#Month = CMC - ( ( Year - 1900 ) * 12 )
+nfhs5_preg <- nfhs5_preg %>% mutate(year_event1 = case_when(outcome == 1 ~ trunc((cmc_lb-1)/12 + 1900),
+                                                      outcome == 2 ~ trunc((cmc_ls-1)/12 + 1900), 
+                                                      outcome == 3 ~ trunc((cmc_la-1)/12 + 1900), 
+                                                      outcome == 4 ~ trunc((cmc_lm-1)/12 + 1900),
+                                                      outcome ==  "T" ~ trunc((cmc_lt-1)/12 + 1900),
+                                                      TRUE ~ NA_real_))
+
+nfhs5_preg <- nfhs5_preg %>% mutate(month_event1 = case_when(outcome == 1 ~ cmc_lb - ((year_event1 - 1900)*12),
+                                                      outcome == 2 ~ cmc_ls - ((year_event1 - 1900)*12), 
+                                                      outcome == 3 ~ cmc_la - ((year_event1 - 1900)*12), 
+                                                      outcome == 4 ~ cmc_lm - ((year_event1 - 1900)*12),
+                                                      outcome ==  "T" ~ cmc_lt - ((year_event1 - 1900)*12),
+                                                      TRUE ~ NA_real_))
+  
+
+# need amount of time between pregnancies...will use b3 variables from full women's dataset to merge
+#adding in fertility variables. Keeping only date of births for second and third most recent births
+births <-  nfhs5 %>% select(caseid, b3_02, b3_03, b3_04, b3_05)
+
+table(births$b3_02)
+births <- births %>% mutate_if(is.integer,as.numeric)
+
+#stata exported file has leading 0s in caseid so can't do merge. Using "trim" to cut
+nfhs5_preg$caseid <- trim(nfhs5_preg$caseid)
+
+nfhs5pregnancies <- left_join(
+  nfhs5_preg,
+  births,
+  by = c("caseid" = "caseid")
+)
+
+
+#looking at twins and triplets. If b3_01 is the same as b3_02 it means twins (same birth date), if same as b3_03 signifies triplets.
+length(which(nfhs5pregnancies$b3_01 == nfhs5pregnancies$b3_02)) #4,843 twins 
+
+length(which(nfhs5pregnancies$b3_01 == nfhs5pregnancies$b3_02 && nfhs5pregnancies$b3_03 == nfhs5pregnancies$b3_01)) #43
+
+length(which(nfhs5pregnancies$b3_04 == nfhs5pregnancies$b3_01)) #3 sets of quads
+
+
+#creating second birth variable to indicate second birth (i.e. not twin, triplet, or quad)
+
+nfhs5pregnancies$twins <- ifelse(nfhs5pregnancies$b3_01 == nfhs5pregnancies$b3_02, 1, 0)
+nfhs5pregnancies$quad <- ifelse(nfhs5pregnancies$b3_01 == nfhs5pregnancies$b3_04, 1, 0)
+nfhs5pregnancies$trip <- ifelse(nfhs5pregnancies$b3_01 == nfhs5pregnancies$b3_03, 1, 0)
+
+# Not treating b3_01 != b3_03 correctly with NAs to create twins but not triplets, so instead will create hierarchy
+nfhs5pregnancies <- nfhs5pregnancies %>% mutate(mult = case_when(quad == 1 ~ 3,
+                                                                 trip == 1 ~ 2,
+                                                                 twins == 1 ~ 1,
+                                                                 TRUE ~ NA_real_))
+
+#this worked -- need to start with first condition, i.e. any quads always quads
+
+
+nfhs5pregnancies <- nfhs5pregnancies %>% mutate(birth2 = case_when(mult == 3 ~ b3_05,
+                                           mult == 2 ~ b3_04,
+                                           mult == 1 ~ b3_03,
+                                           TRUE ~ b3_02))
+
+
+#calculating difference in months between second birth and b3_01 (most recent birth)
+nfhs5pregnancies$timebwbirths <- nfhs5pregnancies$b3_01 - nfhs5pregnancies$birth2
+
+#keeping only pregnancies in the last five years
+nfhs5pregnancies <- subset(nfhs5pregnancies, v208 > 0)
+
+check <- nfhs5pregnancies %>% select(b3_01, b3_02, b3_03, b3_04, b3_05, secondbirth, timebwbirths, twins, trip, quad)
+
+
+#matching nfhs4 and nfhs5 pregnancies
+names(nfhs4pregnancies)
+names(nfhs5pregnancies)
+names(dlhs_preg)
+
+
+#old interval for live birth only code
+# need amount of time between *live births* only...will use b3 variables from full women's dataset to merge
+#adding in fertility variables. Keeping only date of births for second, third, fourth, and fifth most recent births so we have second birth after quads/trips/twins/etc. 
+
+births4 <-  nfhs4 %>% select(caseid, v208, b3_01, b3_02, b3_03, b3_04, b3_05)
+
+nfhs4_preg <- left_join(
+  nfhs4_preg,
+  births4,
+  by = c("caseid")
+)
+
+#looking at twins and triplets. If b3_01 is the same as b3_02 it means twins (same birth date), if same as b3_03 signifies triplets.
+length(which(nfhs4_preg$b3_01 == nfhs4_preg$b3_02)) #4,596 twins (2,298 sets of twins)
+
+length(which(nfhs4_preg$b3_01 == nfhs4_preg$b3_02 & nfhs4_preg$b3_03 == nfhs4_preg$b3_01)) #38 triplets -- b1 b2 b3 all match. expanding to b4.
+
+length(which(nfhs4_preg$b3_04 == nfhs4_preg$b3_01)) #one set of quadruplets. Adding in fifth most recent birth
+
+length(which(nfhs4_preg$b3_05 == nfhs4_preg$b3_01)) #no quintuplets
+
+#creating second birth variable to indicate second birth (i.e. not twin, triplet, or quad)
+
+
+nfhs4_preg$twins <- ifelse(nfhs4_preg$b3_01 == nfhs4_preg$b3_02, 1, 0)
+nfhs4_preg$quad <- ifelse(nfhs4_preg$b3_01 == nfhs4_preg$b3_04, 1, 0)
+nfhs4_preg$trip <- ifelse(nfhs4_preg$b3_01 == nfhs4_preg$b3_03, 1, 0)
+
+# Not treating b3_01 != b3_03 correctly with NAs to create twins but not triplets, so instead will create hierarchy
+nfhs4_preg <- nfhs4_preg %>% mutate(mult = case_when(quad == 1 ~ 3,
+                                                                 trip == 1 ~ 2,
+                                                                 twins == 1 ~ 1,
+                                                                 TRUE ~ NA_real_))
+
+#this worked -- need to start with first condition, i.e. any quads always quads
+
+
+nfhs4_preg <- nfhs4_preg %>% mutate(birth2 = case_when(mult == 3 ~ b3_05,
+                                           mult == 2 ~ b3_04,
+                                           mult == 1 ~ b3_03,
+                                           TRUE ~ b3_02))
+
+#calculating difference in months between second birth and b3_01 (most recent birth)
+nfhs4_preg$interval_births <- nfhs4_preg$b3_01 - nfhs4_preg$birth2
+
+
+#making fertility dataframe of just births/abortions/miscarriage/stillbirth
+fert5 <- fertcal5 %>% select(c("caseid", "abortion", "miscarriage", "stillbirth", "terminations" ,"birth"))
+
+#adding in fertility variables
+nfhs5 <- left_join(
+  nfhs5,
+  fert5,
+  by = c("caseid")
+)
+
+#writing new file to include fertility calendar
+#write.csv(nfhs5, "nfhs5_fertincluded.csv")
+
+####code below run on cluster
+
+fertcal5 <- fertcal5 %>% 
+  mutate(cal = str_extract_all(scal_1, "")) %>% 
+  unnest(cal) %>%  # seperates the different months for each id
+  group_by(caseid) %>%   # 
+  mutate(month = paste0('month', row_number())) %>% # make columns names by month
+  spread(month, cal) # shift the data from long to wide
+
+
+#### end code run on cluster
+
+##now reading in fertility calendar 
+
+nfhs5_preg <- read.csv("fertcalendar5.csv")
+
+nfhs5_preg <- nfhs5_preg %>% rename(terminations = terminatioms)
+
+####code below run on cluster
+
+fertcal4 <- fertcal4 %>% 
+  mutate(cal = str_extract_all(trim_cal7, "")) %>% 
+  unnest(cal) %>%  # separates the different months for each id
+  group_by(caseid) %>%   # 
+  mutate(month = paste0('month', row_number())) %>% # make columns names by month
+  spread(cal, month) # shift the data from long to wide
+
+#trying a different way
+fertcal4 <- fertcal4 %>% 
+  separate(col = vcal_7, into = paste0("cal", 75:1), sep = "",fill = "left")
+
+
+#calculating number of abortions per person from calendar
+#ccal %>% group_by(caseid) %>% summarise(across(4:78), )
+
+fertcal4 <- fertcal4 %>%
+  mutate(abortion = rowSums(across(starts_with("month")) == "A", na.rm = TRUE)) %>%
+  mutate(miscarriage = rowSums(across(starts_with("month")) == "M", na.rm = TRUE)) %>%
+  mutate(stillbirth = rowSums(across(starts_with("month")) == "S", na.rm = TRUE)) %>%
+  mutate(birth = rowSums(across(starts_with("month")) == "B", na.rm = TRUE))
+
+
+#### end code run on cluster
+
+##now reading in fertility calendar 
+
+fertcal4 <- read.csv("fertcalendar4.csv")
+
+#making fertility dataframe of just births/abortions/miscarriage/stillbirth
+fert4 <- fertcal4 %>% select(c("caseid", "abortion", "miscarriage", "stillbirth", "terminations", "birth"))
+
+#adding in fertility variables
+nfhs4 <- left_join(
+  nfhs4,
+  fert4,
+  by = c("caseid")
+)
+
+#writing new file to include fertility calendar
+#write.csv(nfhs4, "nfhs4_fertincluded.csv")
+
+########## Note -- fertility took all variables from contraceptive calendar, not just last 5 years. To match to dlhs3 and dlhs4 will probably have to limit to last 4 years. Best bet is to probably calculate the number of months of fertility data we have for each person and then weight the number of abortions/stillbirths/miscarriages by each time period. See what AHS time period is...
+
+```
+

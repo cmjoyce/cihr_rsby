@@ -18,7 +18,7 @@ dlhs3 <- fread("dlhs3_numeric.csv", select = c(1:5, 7, 11:16, 20, 24:27, 28:30,
 
 # Renaming ----------------------------------------------------------------
 
-dlhs3 <- rename(dlhs3, district = dist, rural_urban = htype, religion = hv115, caste = hv116a,
+dlhs3 <- rename(dlhs3, rural_urban = htype, religion = hv115, caste = hv116a,
                 caste_group = hv116b, source_water = hv117, water_treat = hv118, 
                 toilet = hv120, type_house = hv124, bpl_card = hv134,
                 health_ins = hv135, date = vdate, month = vmonth, year = vyear,
@@ -51,6 +51,16 @@ dlhs3$lineno <- as.numeric(dlhs3$lineno)
 dlhs3$hh_id <- paste(dlhs3$state,dlhs3$district,dlhs3$psu,dlhs3$hhno, sep = "")
 
 dlhs3$id_person <- paste(dlhs3$state, dlhs3$district,dlhs3$psu, dlhs3$hhno, dlhs3$lineno, sep = "")
+
+
+# fixing DLHS-3 district variable -----------------------------------------
+
+#DLHS-3 combined state and district in variable, with state first number and district last two. Keeping just last two.
+
+dlhs3$district <- str_sub(dlhs3$dist,start= -2)
+
+#dropping old district variable
+dlhs3 <- dlhs3 %>% select(-c(dist))
 
 #checking hh and personal IDs are unique
 #dlhs3 <- dlhs3 %>% group_by(hh_id)
@@ -243,7 +253,7 @@ dlhs3 <- dlhs3 %>% select(-c(v139_1, v139_2, v139_3, v139_4, v139_5, v139_6, v14
                              nonlive1, nonlive2, nonlive3, nonlive4, 
                              nonlive5, nonlive6))
 
-#DLHS 3 now matches NFHS termination varaibles
+#DLHS 3 now matches NFHS termination variables
 
 # DLHS-4 Load -------------------------------------------------------------
 
@@ -550,18 +560,24 @@ table(dlhs4$state)
 #Telangana added in 2014, it is number 36 with all other states the same
 
 table(dlhs3$district)
+#Moving dlhs3 district to after state
+dlhs3 <- dlhs3 %>% relocate(district, .after = state)
 
+########### Sept 19 2022 no longer using original dlhs3 district variable #########
 #need to make separate state_district variable in dlhs4 to match dlh3 district
-dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
+#dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
 
-dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
-dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
+#dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
+#dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
 
 #removing old district variable and replacing with new one
-dlhs4 <- select(dlhs4, -c("district"))
-dlhs4 <- rename(dlhs4, district = state_dist)
+#dlhs4 <- select(dlhs4, -c("district"))
+#dlhs4 <- rename(dlhs4, district = state_dist)
 
-dlhs4 <- dlhs4 %>% relocate(district, .after = state)
+#dlhs4 <- dlhs4 %>% relocate(district, .after = state)
+###################################################################
+
+
 
 table(dlhs4$psu)
 table(dlhs3$psu)
@@ -804,7 +820,7 @@ dlhs <- dlhs %>% relocate(id_person, .before = state)
 
 
 
-write.csv(dlhs, "dlhs.csv")
+#write.csv(dlhs, "dlhs.csv")
 
 #next steps adding in NFHS/AHS/Policy variables. Add in district enrollment into RSBY last 
 

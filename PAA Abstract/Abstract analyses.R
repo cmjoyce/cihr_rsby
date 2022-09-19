@@ -1,7 +1,7 @@
 
 # PAA abstract start ------------------------------------------------------
 library(tidyverse)
-setwd("./PAA Abstract")
+setwd(".././PAA Abstract")
 
 df <- read.csv("dlhsnfhs.csv")
 
@@ -54,7 +54,7 @@ df$state_new <- ifelse(df$survey == "DLHS4" & df$state_new == 36, 28, df$state_n
 #Removing all values in new to repopulate.
 df$state_new <- ifelse(df$survey == "NFHS4",is.na(df$state_new), df$state_new)
 
-#making jammu and kashmir 1 (14 in nfhs4)
+#Harmonizing state coding
 df <- df %>% mutate(state_try = case_when(survey == "NFHS4" & state == 14 ~ 1,
                                           survey == "NFHS4" & state == 13 ~ 2,
                                           survey == "NFHS4" & state == 28 ~ 3,
@@ -90,6 +90,7 @@ df <- df %>% mutate(state_try = case_when(survey == "NFHS4" & state == 14 ~ 1,
                                           survey == "NFHS4" & state == 31 ~ 33,
                                           survey == "NFHS4" & state == 27 ~ 34,
                                           survey == "NFHS4" & state == 1 ~ 35,
+                                          survey == "NFHS4" & state == 36 ~ 28, #telangana responses and making them andhra pradesh
                                           TRUE ~ state_new))
 
 df$newstate <- df$state_try
@@ -98,14 +99,17 @@ df <- df %>% select(-c(state_try, state_new))
 
 #Now matching  NFHS-5. 
 
-df$new_state <- ifelse(df$survey == "NFHS5" & df$state == 37, 14, df$newstate) #putting all of ladakh into jammu and kashmir
+df$new_state <- ifelse(df$survey == "NFHS5" & df$state == 37, 1, df$newstate) #putting all of ladakh into jammu and kashmir
 
 #Putting telangana into andhra pradesh
 df$new_state <- ifelse(df$survey == "NFHS5" & df$state == 36, 28, df$new_state)
 
-#will make daman and diu empty for now and add 1 to any state to match. Will then combine all daman and diu and dadra and nagar haveli
+#putting all dadra & nagar haveli responses into daman & diu 
+df$new_state <- ifelse(df$new_state == 26, 25, df$new_state)
 
-df$new_state <- ifelse(df$survey == "NFHS5" & df$new_state > 25, (df$new_state+1), df$new_state)
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+df$new_state <- ifelse(df$new_state > 25, (df$new_state-1), df$new_state)
 
 #states now match across surveys. Dropping newstate and state
 df <- df %>% select(-c(newstate, state))

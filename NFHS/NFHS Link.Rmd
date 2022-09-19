@@ -1215,6 +1215,90 @@ dlhsnfhs <- read.csv("dlhsnfhs.csv")
 
 ```
 
+```{r}
+
+#Harmonizing state coding
+
+#changing state variable. This will go back to DLHS-3 state. Putting Telangana back into Andhra Pradesh as it was not formed until 2014. 
+dlhsnfhs$state_new <- dlhsnfhs$state #Making new state variable that is clone of original state.
+
+
+#taking DLHS-4 telangana responses and making them andhra pradesh
+dlhsnfhs$state_new <- ifelse(dlhsnfhs$survey == "DLHS4" & dlhsnfhs$state_new == 36, 28, dlhsnfhs$state_new)
+
+#DLHS3 and 4 are now matched from that one change. Moving onto NFHS.
+
+#NFHS-4 has no matching values with DLHS3 and 4 for state. Easier to start from fresh. 
+
+
+#Removing all values in new to repopulate.
+dlhsnfhs$state_new <- ifelse(dlhsnfhs$survey == "NFHS4",is.na(dlhsnfhs$state_new), dlhsnfhs$state_new)
+
+#Harmonizing state coding
+dlhsnfhs <- dlhsnfhs %>% mutate(state_try = case_when(survey == "NFHS4" & state == 14 ~ 1,
+                                          survey == "NFHS4" & state == 13 ~ 2,
+                                          survey == "NFHS4" & state == 28 ~ 3,
+                                          survey == "NFHS4" & state == 6 ~ 4,
+                                          survey == "NFHS4" & state == 34 ~ 5,
+                                          survey == "NFHS4" & state == 12 ~ 6,
+                                          survey == "NFHS4" & state == 25 ~ 7,
+                                          survey == "NFHS4" & state == 29 ~ 8,
+                                          survey == "NFHS4" & state == 33 ~ 9,
+                                          survey == "NFHS4" & state == 5 ~ 10,
+                                          survey == "NFHS4" & state == 30 ~ 11, 
+                                          survey == "NFHS4" & state == 3 ~ 12,
+                                          survey == "NFHS4" & state == 24 ~ 13,
+                                          survey == "NFHS4" & state == 21 ~ 14,
+                                          survey == "NFHS4" & state == 23 ~ 15, 
+                                          survey == "NFHS4" & state == 32 ~ 16,
+                                          survey == "NFHS4" & state == 22 ~ 17,
+                                          survey == "NFHS4" & state == 4 ~ 18,
+                                          survey == "NFHS4" & state == 35 ~ 19,
+                                          survey == "NFHS4" & state == 15 ~ 20,
+                                          survey == "NFHS4" & state == 26 ~ 21,
+                                          survey == "NFHS4" & state == 7 ~ 22,
+                                          survey == "NFHS4" & state == 19 ~ 23,
+                                          survey == "NFHS4" & state == 11 ~ 24,
+                                          survey == "NFHS4" & state == 9 ~ 25,
+                                          survey == "NFHS4" & state == 8 ~ 26,
+                                          survey == "NFHS4" & state == 20 ~ 27,
+                                          survey == "NFHS4" & state == 2 ~ 28,
+                                          survey == "NFHS4" & state == 16 ~ 29,
+                                          survey == "NFHS4" & state == 10 ~ 30,
+                                          survey == "NFHS4" & state == 18 ~ 31,
+                                          survey == "NFHS4" & state == 17 ~ 32,
+                                          survey == "NFHS4" & state == 31 ~ 33,
+                                          survey == "NFHS4" & state == 27 ~ 34,
+                                          survey == "NFHS4" & state == 1 ~ 35,
+                                          survey == "NFHS4" & state == 36 ~ 28, #telangana responses and making them andhra pradesh
+                                          TRUE ~ state_new))
+
+dlhsnfhs$newstate <- dlhsnfhs$state_try
+dlhsnfhs <- dlhsnfhs %>% select(-c(state_try, state_new))
+#NFHS-4 now matches DLHS
+
+#Now matching  NFHS-5. 
+
+dlhsnfhs$new_state <- ifelse(dlhsnfhs$survey == "NFHS5" & dlhsnfhs$state == 37, 1, dlhsnfhs$newstate) #putting all of ladakh into jammu and kashmir
+
+#Putting telangana into andhra pradesh
+dlhsnfhs$new_state <- ifelse(dlhsnfhs$survey == "NFHS5" & dlhsnfhs$state == 36, 28, dlhsnfhs$new_state)
+
+#putting all dadra & nagar haveli responses into daman & diu 
+dlhsnfhs$new_state <- ifelse(dlhsnfhs$new_state == 26, 25, dlhsnfhs$new_state)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+dlhsnfhs$new_state <- ifelse(dlhsnfhs$new_state > 25, (dlhsnfhs$new_state-1), dlhsnfhs$new_state)
+
+#states now match across surveys. Dropping newstate and state
+dlhsnfhs <- dlhsnfhs %>% select(-c(newstate, state))
+
+#renaming new_state to state
+dlhsnfhs$state <- dlhsnfhs$new_state
+dlhsnfhs <- dlhsnfhs %>% select(-c(new_state))
+
+```
 
 
 ```{r}

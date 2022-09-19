@@ -50,6 +50,7 @@ wps$prev_stillbirth <- ifelse(wps$out_come_of_preg == 2, 1, 0)
 wps <- wps %>% mutate(recent_birth = top_n(1, yob) ~ 1,
                       TRUE ~ 0)
 
+### Sept 19 above most recent birth code does not work. Will come back to after full women's dataset created.
 
 #for women, combine all rounds so we measure all 5 years of women's birth history
 names(women)
@@ -68,23 +69,23 @@ ahs <- ahs %>% add_count(caseid)
 table(ahs$n)
 check <- subset(ahs, n > 3)
 
-#making health insurance variables
-ahs$esis <- ifelse(ahs$healthscheme_1 == 1, 1, 0)
-ahs$rsby <- ifelse(ahs$healthscheme_1 == 2, 1, 0)
-ahs$othergov <- ifelse(ahs$healthscheme_1 == 3, 1, 0)
-ahs$reimburse <- ifelse(ahs$healthscheme_1 == 4, 1, 0)
-ahs$chip <- ifelse(ahs$healthscheme_1 == 5, 1, 0)
-ahs$mediclaim <- ifelse(ahs$healthscheme_1 == 6, 1, 0)
-ahs$other_insurance <- ifelse(ahs$healthscheme_1 == 7, 1, 0)
+#dropping 96 obs that have more than 3 rounds
+ahs <- ahs %>% filter(n < 4)
 
-length(which(ahs$healthscheme_1 != 2 & ahs$healthscheme_2 == 2)) #1317 individuals who report RSBY as health scheme 2
+#making health insurance variables.
 
-#looking at individuals who report RSBY as their second health insurance scheme
-rsby2 <- ahs %>% filter(healthscheme_1 !=2 & healthscheme_2 == 2)
-#768 report ESIS as their first and RSBY as their second
+#note 2045 observations where healthscheme_1 == healthscheme_2
 
+ahs$esis <- ifelse(ahs$healthscheme_1 == 1 | ahs$healthscheme_2 == 1, 1, 0)
+ahs$rsby <- ifelse(ahs$healthscheme_1 == 2 | ahs$healthscheme_2 == 2, 1, 0)
+ahs$othergov <- ifelse(ahs$healthscheme_1 == 3 | ahs$healthscheme_2 == 3, 1, 0)
+ahs$reimburse <- ifelse(ahs$healthscheme_1 == 4| ahs$healthscheme_2 == 4, 1, 0)
+ahs$chip <- ifelse(ahs$healthscheme_1 == 5| ahs$healthscheme_2 == 5, 1, 0)
+ahs$mediclaim <- ifelse(ahs$healthscheme_1 == 6 | ahs$healthscheme_2 == 6, 1, 0)
+ahs$other_insurance <- ifelse(ahs$healthscheme_1 == 7 | ahs$healthscheme_2 == 7, 1, 0)
 
 names(dlhsnfhs)
+names(ahs)
 
 #making round id for linking
 ahs <- ahs %>% mutate(roundid = paste0(state, district, stratum_code, psu, house_no, house_hold_no, identifcation_code, round))

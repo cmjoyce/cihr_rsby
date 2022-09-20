@@ -1,7 +1,7 @@
 
 # PAA abstract start ------------------------------------------------------
 library(tidyverse)
-setwd(".././PAA Abstract")
+setwd("./PAA Abstract")
 
 df <- read.csv("dlhsnfhs.csv")
 
@@ -118,6 +118,9 @@ df <- df %>% select(-c(newstate, state))
 df$state <- df$new_state
 df <- df %>% select(-c(new_state))
 
+#making factor
+df$state <- as.factor(df$state)
+
 # now looking at scheduled caste and tribe. These are coded differently in all surveys.
 table(df$caste_group)
 
@@ -222,6 +225,7 @@ df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
 #complex model run on cluster. Code below copied over
 
 library(survey)
+library(broom)
 
 #complex survey design when combining dlhs and nfhs?
 #dropping 166 DLSH4 observations that do not have weights. making new dataset.
@@ -230,40 +234,31 @@ design <- svydesign(ids = df$psu, weights = df$weight, nest = TRUE, data = df)
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 
-#complexglm_log <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design, 
-                         #family = quasibinomial(),
-                         #data = df)
 
-#complexglm_rate <- svyglm(any_nonbirth ~ state + primary + urban + scheduled_group + age, design = design,
-                          #data = df)
+complexglm_rate_m <- svyglm(miscarriage ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+                          data = df)
 
 
-#complexglm_log_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design, 
-                             #family = quasibinomial(),
-                            # data = df)
+complexglm_rate_a <- svyglm(abortion ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+                              data = df)
 
-#complexglm_rate_msb <- svyglm(miscarriage_sb ~ state + primary + urban + scheduled_group + age, design = design,
-#                              data = df)
-
-#complexglm_log_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design, 
-#                               family = quasibinomial(),
-#                               data = df)
-
-#complexglm_rate_abort <- svyglm(abortion ~ state + primary + urban + scheduled_group + age, design = design,
-#                                data = df)
-
-#summary(complexglm_rate)
-#summary(complexglm_log)
-#print(summary(complexglm_rate))
-#summary(complexglm_rate_msb)
-#summary(complexglm_log_msb)
-#summary(complexglm_rate_abort)
-#summary(complexglm_log_abort)
+complexglm_rate_s <- svyglm(stillbirth ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+                                data = df)
 
 
-#print(summary(complexglm_log))
+summary(complexglm_rate_m)
+summary(complexglm_rate_a)
+summary(complexglm_rate_s)
+
+
+
 
 library(stargazer)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+
+tab_model(complexglm_rate_s, transform = NULL)
 
 #rates_any <- complexglm_rate$coefficients*100
 
@@ -274,6 +269,23 @@ library(stargazer)
 #confint(complexglm_rate)*100
 #confint(complexglm_rate_msb)*100
 #confint(complexglm_rate_abort)*100
+
+#Putting into RD scale by multiplying esitmates and confidence intervals by 100. This becomes table2 
+
+ts <- tidy(complexglm_rate_s, conf.int = TRUE)
+ts$estimate <- ts$estimate*100
+ts$conf.low <- ts$conf.low*100
+ts$conf.high <- ts$conf.high*100
+
+tm <- tidy(complexglm_rate_m, conf.int = TRUE)
+tm$estimate <- tm$estimate*100
+tm$conf.low <- tm$conf.low*100
+tm$conf.high <- tm$conf.high*100
+
+ta <- tidy(complexglm_rate_a, conf.int = TRUE)
+ta$estimate <- ta$estimate*100
+ta$conf.low <- ta$conf.low*100
+ta$conf.high <- ta$conf.high*100
 
 ## One way of getting regression tables 
 #stargazer(complexglm_rate, complexglm_rate_msb, complexglm_rate_abort,
@@ -305,9 +317,17 @@ df %>% select(age, urban_rural, years_school, bpl, scheduled_group, tot_live_bir
     bpl ~ "Holds BPL Card",
     scheduled_group ~ "Scheduled Caste or Tribe",
     tot_live_births ~ "Total Live Births"),
-  missing_text =  "Missing") %>% modify_header(label = "**Variable**") # %>%  as_gt() %>%
-  #gt::tab_options(table.font.names = "Times New Roman")
-    
+  missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman")
+
+#filter out NAs
+ggplot(data=df, aes(x=survey, fill=as.factor(miscarriage_abortion_stillbirth))) + 
+  geom_bar(position="dodge") +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+
+# OR Tables ---------------------------------------------------------------
+
+
 ## Second way to get regression tables 
 tbl_regression(complexglm_log, exponentiate = TRUE) %>% modify_header(label = "**Variable**") %>% modify_column_hide(columns = p.value)%>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
@@ -316,16 +336,15 @@ theme_gtsummary_journal(journal = "jama")
 theme_gtsummary_compact()
 
 t1 <- svyglm(miscarriage ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
-         family = quasibinomial(),
+         #family = quasibinomial(),
          data = df) %>%
-  tbl_regression(exponentiate = TRUE,
+  tbl_regression(#exponentiate = TRUE,
+                include = -c(state, age),
                  label = list(
-                   state ~ "State",
                    bpl ~ "Below the Povery Line",
                    primary ~ "Completed Primary School",
                    urban ~ "Lives Urban Locale",
-                   scheduled_group ~ "Scheduled Caste or Tribe",
-                   age ~ "Age")) %>% modify_header(label = "") %>% modify_column_hide(columns = p.value) 
+                   scheduled_group ~ "Scheduled Caste or Tribe")) %>% modify_header(label = "") %>% modify_column_hide(columns = p.value) 
 
 t2 <- svyglm(abortion ~ state + bpl + primary + urban + scheduled_group + age, design = design, 
              family = quasibinomial(),

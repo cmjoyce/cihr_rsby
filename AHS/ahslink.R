@@ -5,7 +5,7 @@ setwd(".././AHS")
 library(haven)
 library(tidyverse)
 
-#wps <- read_dta("WPS.dta")
+
 women <- read_dta("women.dta", col_select = c(1:31, 46:49, 54:55, 85:104, 122:155))
 
 wps <- read_dta("wps.dta", col_select = c(1:49, 59:62, 93, 126:127, 218:219, 249:264, 286:319))
@@ -47,7 +47,7 @@ wps <- wps %>% group_by(caseid)
 wps$prev_stillbirth <- ifelse(wps$out_come_of_preg == 2, 1, 0)
 
 #making most recent birth designation
-wps <- wps %>% mutate(recent_birth = top_n(1, yob) ~ 1,
+#wps <- wps %>% mutate(recent_birth = top_n(1, yob) ~ 1,
                       TRUE ~ 0)
 
 ### Sept 19 above most recent birth code does not work. Will come back to after full women's dataset created.

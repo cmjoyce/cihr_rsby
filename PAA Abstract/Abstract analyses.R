@@ -168,7 +168,7 @@ df <- df %>% mutate(nonbirth = case_when(survey == "DLHS3" & miscarriage_abortio
 
 
 #removing old miscarriage, aboriton, stillbirth variable
-#df <- df %>% select(-c(miscarriage_abortion_stillbirth))
+df <- df %>% select(-c(miscarriage_abortion_stillbirth))
 
 #making any non live birth outcome variable
 df$any_nonbirth <- ifelse(df$nonbirth > 0, 1, 0) 
@@ -320,10 +320,46 @@ df %>% select(age, urban_rural, years_school, bpl, scheduled_group, tot_live_bir
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
 
-#filter out NAs
-ggplot(data=df, aes(x=survey, fill=as.factor(miscarriage_abortion_stillbirth))) + 
-  geom_bar(position="dodge") +
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+#filter out NAs for plot so not showing NAs for miscarriage/abortion/stillbirth
+df_plot <- df %>% drop_na(nonbirth)
+
+#making factor for labeling
+df_plot$Outcome <- factor(df_plot$nonbirth, 
+                         levels = c(1, 2, 3),
+                         labels = c("Miscarriage", "Abortion", "Stillbirth"))
+
+
+
+
+library(cowplot)
+
+#counts
+g <- ggplot(data = df_plot, mapping = aes(x = survey, fill = nonbirth_plot))
+g+geom_bar(position = "dodge") +  
+  theme(axis.text.x=element_text(angle=45, hjust=1)) + 
+  theme_cowplot()
+
+#percentages of total
+library(ggsci)
+library(RColorBrewer)
+
+df_plot %>%
+  count(survey = factor(survey), Outcome)  %>%
+  group_by(survey) %>%
+  mutate(n = prop.table(n) * 100) %>%
+  ggplot(aes(survey, n, fill = Outcome)) +
+  geom_col(position = 'dodge', na.rm = TRUE) + 
+  ylim(0,100) +
+#  scale_fill_discrete(na.translate=FALSE) +
+  labs(x = "Survey",
+       y = "Percentage of all non-live births") +
+  scale_fill_brewer(palette = "Paired") +
+#  theme_minimal() +
+  theme_cowplot()
+
+
+
+
 
 # OR Tables ---------------------------------------------------------------
 

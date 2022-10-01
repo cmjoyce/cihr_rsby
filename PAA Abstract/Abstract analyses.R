@@ -238,12 +238,82 @@ design <- svydesign(ids = df$psu, weights = df$weight, nest = TRUE, data = df)
 complexglm_rate_m <- svyglm(miscarriage ~ bpl + primary + urban + scheduled_group + age + state, design = design,
                           data = df)
 
+complexglm_rate_m_bpl <- svyglm(miscarriage ~ bpl + age + state, design = design,
+                            data = df)
+
+tidy_mbpl <- tidy(complexglm_rate_m_bpl, conf.int = T)
+
+complexglm_rate_m_prim <- svyglm(miscarriage ~ primary + age + state, design = design,
+                            data = df)
+
+tidy_mprim <- tidy(complexglm_rate_m_prim, conf.int = T)
+
+complexglm_rate_m_urb <- svyglm(miscarriage ~  urban + age + state, design = design,
+                            data = df)
+
+tidy_murb <- tidy(complexglm_rate_m_urb, conf.int = T)
+
+complexglm_rate_m_sch <- svyglm(miscarriage ~ scheduled_group + age + state, design = design,
+                            data = df)
+
+tidy_msch <- tidy(complexglm_rate_m_sch, conf.int = T)
+
+
+#library(margins)
+#devtools::install_github("tzoltak/margins")
+#complexglm_rate_m_log <- svyglm(miscarriage ~ age + state, design = design,
+#                            family = quasibinomial(), data = df)
+
 
 complexglm_rate_a <- svyglm(abortion ~ bpl + primary + urban + scheduled_group + age + state, design = design,
                               data = df)
 
+complexglm_rate_a_bpl <- svyglm(abortion ~ bpl+ age + state, design = design,
+                            data = df)
+
+tidy_abpl <- tidy(complexglm_rate_a_bpl, conf.int = TRUE)
+
+complexglm_rate_a_prim <- svyglm(abortion ~ primary + age + state, design = design,
+                            data = df)
+
+tidy_aprim <- tidy(complexglm_rate_a_prim, conf.int = T)
+
+complexglm_rate_a_urb <- svyglm(abortion ~ urban  + age + state, design = design,
+                            data = df)
+
+tidy_aurb <- tidy(complexglm_rate_a_urb, conf.int = T)
+
+complexglm_rate_a_sch <- svyglm(abortion ~ scheduled_group + age + state, design = design,
+                            data = df)
+
+tidy_asch <- tidy(complexglm_rate_a_sch, conf.int = T)
+
 complexglm_rate_s <- svyglm(stillbirth ~ bpl + primary + urban + scheduled_group + age + state, design = design,
                                 data = df)
+
+complexglm_rate_s_bpl <- svyglm(stillbirth ~ bpl + age + state, design = design,
+                            data = df)
+
+tidy_sbpl <- tidy(complexglm_rate_s_bpl, conf.int = TRUE)
+
+complexglm_rate_s_prim <- svyglm(stillbirth ~ primary + age + state, design = design,
+                            data = df)
+
+tidy_sprim <- tidy(complexglm_rate_s_prim, conf.int = TRUE)
+
+complexglm_rate_s_urb <- svyglm(stillbirth ~ urban + age + state, design = design,
+                            data = df)
+
+tidy_surb <- tidy(complexglm_rate_s_urb, conf.int = TRUE)
+
+complexglm_rate_s_sch <- svyglm(stillbirth ~ scheduled_group + age + state, design = design,
+                            data = df)
+
+tidy_ssch <- tidy(complexglm_rate_s_sch, conf.int = TRUE)
+
+
+
+
 
 
 summary(complexglm_rate_m)
@@ -277,15 +347,64 @@ ts$estimate <- ts$estimate*100
 ts$conf.low <- ts$conf.low*100
 ts$conf.high <- ts$conf.high*100
 
+tidy_sbpl$estimate <- tidy_sbpl$estimate*100
+tidy_sbpl$conf.low <- tidy_sbpl$conf.low*100
+tidy_sbpl$conf.high <- tidy_sbpl$conf.high*100
+
+tidy_sprim$estimate <- tidy_sprim$estimate*100
+tidy_sprim$conf.low <- tidy_sprim$conf.low*100
+tidy_sprim$conf.high <- tidy_sprim$conf.high*100
+
+tidy_surb$estimate <- tidy_surb$estimate*100
+tidy_surb$conf.low <- tidy_surb$conf.low*100
+tidy_surb$conf.high <- tidy_surb$conf.high*100
+
+tidy_ssch$estimate <- tidy_ssch$estimate*100
+tidy_ssch$conf.low <- tidy_ssch$conf.low*100
+tidy_ssch$conf.high <- tidy_ssch$conf.high*100
+
+
 tm <- tidy(complexglm_rate_m, conf.int = TRUE)
 tm$estimate <- tm$estimate*100
 tm$conf.low <- tm$conf.low*100
 tm$conf.high <- tm$conf.high*100
 
+tidy_mbpl$estimate <- tidy_mbpl$estimate*100
+tidy_mbpl$conf.low <- tidy_mbpl$conf.low*100
+tidy_mbpl$conf.high <- tidy_mbpl$conf.high*100
+
+tidy_mprim$estimate <- tidy_mprim$estimate*100
+tidy_mprim$conf.low <- tidy_mprim$conf.low*100
+tidy_mprim$conf.high <- tidy_mprim$conf.high*100
+
+tidy_murb$estimate <- tidy_murb$estimate*100
+tidy_murb$conf.low <- tidy_murb$conf.low*100
+tidy_murb$conf.high <- tidy_murb$conf.high*100
+
+tidy_msch$estimate <- tidy_msch$estimate*100
+tidy_msch$conf.low <- tidy_msch$conf.low*100
+tidy_msch$conf.high <- tidy_msch$conf.high*100
+
 ta <- tidy(complexglm_rate_a, conf.int = TRUE)
 ta$estimate <- ta$estimate*100
 ta$conf.low <- ta$conf.low*100
 ta$conf.high <- ta$conf.high*100
+
+tidy_abpl$estimate <- tidy_abpl$estimate*100
+tidy_abpl$conf.low <- tidy_abpl$conf.low*100
+tidy_abpl$conf.high <- tidy_abpl$conf.high*100
+
+tidy_aprim$estimate <- tidy_aprim$estimate*100
+tidy_aprim$conf.low <- tidy_aprim$conf.low*100
+tidy_aprim$conf.high <- tidy_aprim$conf.high*100
+
+tidy_aurb$estimate <- tidy_aurb$estimate*100
+tidy_aurb$conf.low <- tidy_aurb$conf.low*100
+tidy_aurb$conf.high <- tidy_aurb$conf.high*100
+
+tidy_asch$estimate <- tidy_asch$estimate*100
+tidy_asch$conf.low <- tidy_asch$conf.low*100
+tidy_asch$conf.high <- tidy_asch$conf.high*100
 
 ## One way of getting regression tables 
 #stargazer(complexglm_rate, complexglm_rate_msb, complexglm_rate_abort,
@@ -352,13 +471,26 @@ df_plot %>%
   ylim(0,100) +
 #  scale_fill_discrete(na.translate=FALSE) +
   labs(x = "Survey",
-       y = "Percentage of all non-live births") +
+       y = "Percentage of all pregnancy terminations") +
   scale_fill_brewer(palette = "Paired") +
 #  theme_minimal() +
   theme_cowplot()
 
 
+# SEPTEMBER 30 PLOT WITH YEAR ON X-AXIS
+d <- df_plot %>%
+  count(years = year_last_terminated, Outcome)  %>%
+  group_by(years) %>%
+  mutate(n = prop.table(n) * 100) %>%
+  ggplot(aes(years, n, fill = Outcome)) +
+  geom_col(position = 'dodge', na.rm = TRUE) + 
+  ylim(0,100) +
+  #  scale_fill_discrete(na.translate=FALSE) +
+  labs(x = "Year", y = "Percentage of all pregnancy terminations") +
+  scale_fill_brewer(palette = "Paired") +
+  theme_cowplot(10)
 
+d + scale_x_continuous(breaks=seq(2004,2021,1))
 
 
 # OR Tables ---------------------------------------------------------------

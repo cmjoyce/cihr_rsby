@@ -41,17 +41,10 @@ dlhs3 <- rename(dlhs3, rural_urban = htype, religion = hv115, caste = hv116a,
 # Making numbers ----------------------------------------------------------
 
 dlhs3$state <- as.numeric(dlhs3$state)
-dlhs3$district <- as.numeric(dlhs3$district)
+#dlhs3$district <- as.numeric(dlhs3$district)
 dlhs3$psu <- as.numeric(dlhs3$psu)
 dlhs3$hhno <- as.numeric(dlhs3$hhno)
 dlhs3$lineno <- as.numeric(dlhs3$lineno)
-
-# Creating ID variable ----------------------------------------------------
-
-dlhs3$hh_id <- paste(dlhs3$state,dlhs3$district,dlhs3$psu,dlhs3$hhno, sep = "")
-
-dlhs3$id_person <- paste(dlhs3$state, dlhs3$district,dlhs3$psu, dlhs3$hhno, dlhs3$lineno, sep = "")
-
 
 # fixing DLHS-3 district variable -----------------------------------------
 
@@ -60,7 +53,16 @@ dlhs3$id_person <- paste(dlhs3$state, dlhs3$district,dlhs3$psu, dlhs3$hhno, dlhs
 dlhs3$district <- str_sub(dlhs3$dist,start= -2)
 
 #dropping old district variable
-dlhs3 <- dlhs3 %>% select(-c(dist))
+#dlhs3 <- dlhs3 %>% select(-c(dist))
+
+
+# Creating ID variable ----------------------------------------------------
+
+dlhs3$hh_id <- paste(dlhs3$state,dlhs3$dist,dlhs3$psu,dlhs3$hhno, sep = "")
+
+dlhs3$id_person <- paste(dlhs3$state, dlhs3$dist,dlhs3$psu, dlhs3$hhno, dlhs3$lineno, sep = "")
+
+
 
 #checking hh and personal IDs are unique
 #dlhs3 <- dlhs3 %>% group_by(hh_id)
@@ -73,22 +75,27 @@ dlhs3 <- dlhs3 %>% select(-c(dist))
 
 #comparing to hh variable
 df3hh <- fread("DLHS3-HH.csv", select = c(1:8, 734:740))
-df3hh$hh_id <- paste(df3hh$state,df3hh$dist,df3hh$psu,df3hh$hhno)
-df3hh <- df3hh %>% group_by(hh_id) %>% add_count(hh_id)
 
-#keeping only health insurance variables
-dlhs3hh <- df3hh[c(9:16)]
+#fixing district variable
+df3hh$district <- str_sub(df3hh$dist,start= -2)
+#dropping old district variable
+#df3hh <- df3hh %>% select(-c(dist))
+
+df3hh$hh_id <- paste(df3hh$state,df3hh$dist,df3hh$psu,df3hh$hhno, sep = "")
+#df3hh <- df3hh %>% group_by(hh_id) %>% add_count(hh_id)
+
+#keeping only health insurance variables + linking variables
+dlhs3hh <- df3hh %>% select(c(state, dist, psu, hhno, hh_id, hv136a, hv136b, hv136c, hv136d, hv136e, hv136f, hv136g))
 
 #left join matching on hhid
 
 dlhs3 <- left_join(
   dlhs3,
   dlhs3hh,
-  by = c("hh_id"),
-  copy = FALSE,
-  suffix = c(".x", ".y"),
-  keep = FALSE
+  by = c("hh_id", "state", "dist", "psu", "hhno")
+  
 )
+
 
 
 # July 20th 2022 redoing fertility to match NFHS --------------------------
@@ -486,7 +493,7 @@ dlhs3 <- select(dlhs3, -c("hhno", "lineno"))
 names(dlhs3)
 names(dlhs4)
 
-
+dlhs3 <- select(dlhs3, -c(dist))
 
 # examining variables -----------------------------------------------------
 #moving dlhs3 and dlhs4 variables to match 
@@ -809,6 +816,8 @@ dlhs4$jsy <- as.numeric(dlhs4$jsy)
 dlhs4$pp_checkup <- as.numeric(dlhs4$pp_checkup)
 dlhs4$index_alive <- as.numeric(dlhs4$index_alive)
 
+dlhs3$district <- as.numeric(dlhs3$district)
+
 #merging into one dataframe
 dlhs <- bind_rows(dlhs3, dlhs4)
 
@@ -923,6 +932,7 @@ dlhs4_preg <- dlhs4_preg %>% mutate_if(is.character, as.numeric)
 
 dlhs3_preg$survey <- c("dlhs3")
 dlhs4_preg$survey <- c("dlhs4")
+
 
 
 #merging

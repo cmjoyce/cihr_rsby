@@ -55,12 +55,16 @@ dlhs3$district <- str_sub(dlhs3$dist,start= -2)
 #dropping old district variable
 #dlhs3 <- dlhs3 %>% select(-c(dist))
 
+#adding leading 0s to psu to remove duplicates from accidental same numbers (i.e. psu 31 andd hh 195 getting same id as psu 3 and hh 1195)
+dlhs3$psu <- str_pad(dlhs3$psu, 2, "left", "0")
+
+
 
 # Creating ID variable ----------------------------------------------------
 
 dlhs3$hh_id <- paste(dlhs3$state,dlhs3$dist,dlhs3$psu,dlhs3$hhno, sep = "")
 
-dlhs3$id_person <- paste(dlhs3$state, dlhs3$dist,dlhs3$psu, dlhs3$hhno, dlhs3$lineno, sep = "")
+dlhs3$id_person <- paste(dlhs3$state, dlhs3$dist,dlhs3$psu, dlhs3$hhno, dlhs3$lineno, dlhs3$vsremq, sep = "")
 
 
 
@@ -71,6 +75,12 @@ dlhs3$id_person <- paste(dlhs3$state, dlhs3$dist,dlhs3$psu, dlhs3$hhno, dlhs3$li
 #dlhs3 <- dlhs3 %>% group_by(id_person)
 #dlhs3 <- dlhs3 %>% add_count(id_person)
 
+#table(dlhs3$n)
+
+#dlhs3 <- dlhs3 %>% select(-c(n))
+
+#no duplicates using ever married woman's serial number in id_person
+
 #dupes <- subset(dlhs3, nn >1)
 
 #comparing to hh variable
@@ -80,6 +90,8 @@ df3hh <- fread("DLHS3-HH.csv", select = c(1:8, 734:740))
 df3hh$district <- str_sub(df3hh$dist,start= -2)
 #dropping old district variable
 #df3hh <- df3hh %>% select(-c(dist))
+#adding leading 0 to psu
+df3hh$psu <- str_pad(df3hh$psu, 2, "left", "0")
 
 df3hh$hh_id <- paste(df3hh$state,df3hh$dist,df3hh$psu,df3hh$hhno, sep = "")
 #df3hh <- df3hh %>% group_by(hh_id) %>% add_count(hh_id)
@@ -295,9 +307,11 @@ dlhs4 <- rename(dlhs4, district = dist, date = qsinterviewdate, month = qsinterv
 #renaming prim_key and primekey_new to match hhi_id and id_person
 dlhs4 <- rename(dlhs4, hh_id = prim_key, id_person = primekey_new)
 
-
-
-
+#dlhs4 <- dlhs4 %>% group_by(id_person)
+#dlhs4 <- dlhs4 %>% add_count(id_person)
+#table(dlhs4$n)
+#dlhs4 <- dlhs4 %>% select(-c(n))
+#all unique
 
 
 # July 20th 2022 redoing terminations calculations ------------------------
@@ -817,6 +831,7 @@ dlhs4$pp_checkup <- as.numeric(dlhs4$pp_checkup)
 dlhs4$index_alive <- as.numeric(dlhs4$index_alive)
 
 dlhs3$district <- as.numeric(dlhs3$district)
+dlhs3$psu <- as.numeric(dlhs3$psu)
 
 #merging into one dataframe
 dlhs <- bind_rows(dlhs3, dlhs4)
@@ -852,7 +867,7 @@ dlhs <- dlhs %>% relocate(tot_live_births, .after = age_first_birth)
 #matching across dlhs3 and dlhs4
 # making dlhs3 pregnancy dataset ------------------------------------------
 
-dlhs3_preg <- fread("dlhs3_numeric.csv", select = c(1:5, 86:145))
+dlhs3_preg <- fread("dlhs3_numeric.csv", select = c(1:5, 26, 86:145))
 
 # making dlhs4 pregnancies dataset ----------------------------------------
 dlhs4_preg <- fread("DLHS-4 Women.csv", select = c(1:5, 186:291))
@@ -909,16 +924,24 @@ dlhs4_preg <- dlhs4_preg %>% rename(outcome = starts_with("q141"),
                                     mother_age_event = starts_with("q146"),
                                     alive = starts_with("q152"))
 
+#adding leading 0 to psu
+dlhs3_preg$psu <- str_pad(dlhs3_preg$psu, 2, "left", "0")
+
 #making id variable
-dlhs3_preg$id_person <- paste(dlhs3_preg$state, dlhs3_preg$district,dlhs3_preg$psu, dlhs3_preg$hhno, dlhs3_preg$lineno, sep = "")
+dlhs3_preg$id_person <- paste(dlhs3_preg$state, dlhs3_preg$dist,dlhs3_preg$psu, dlhs3_preg$hhno, dlhs3_preg$lineno, dlhs3_preg$vsremq,sep = "")
 #dropping variables used to make id
-dlhs3_preg <- dlhs3_preg %>% select(-c(state, dist, psu, hhno, lineno))
+#dlhs3_preg <- dlhs3_preg %>% select(-c(state, dist, psu, hhno, lineno))
+dlhs3_preg <- dlhs3_preg %>% select(-c(hhno, lineno))
+dlhs3_preg$dist <- str_sub(dlhs3_preg$dist,start= -2)
+dlhs3_preg$dist <- as.numeric(dlhs3_preg$dist)
 
 #same for dlhs4, but variable already exists 
 dlhs4_preg <- rename(dlhs4_preg, id_person = primekey_new)
 
 #dropping variables not needed anymore
-dlhs4_preg <- dlhs4_preg %>% select(-c(state, dist, psu, prim_key))
+#dlhs4_preg <- dlhs4_preg %>% select(-c(state, dist, psu, prim_key))
+dlhs4_preg <- dlhs4_preg %>% select(-c(prim_key))
+
 
 #moving dlhs3 id_person to first spot
 dlhs3_preg <- dlhs3_preg %>% relocate(id_person, .before = outcome1)
@@ -930,6 +953,9 @@ dlhs3_preg <- dlhs3_preg %>% mutate_if(is.integer,as.numeric)
 dlhs4_preg <- dlhs4_preg %>% mutate_if(is.integer, as.numeric)
 dlhs4_preg <- dlhs4_preg %>% mutate_if(is.character, as.numeric)
 
+dlhs3_preg <- dlhs3_preg %>% select(-c(vsremq))
+dlhs3_preg$psu <- as.numeric(dlhs3_preg$psu)
+
 dlhs3_preg$survey <- c("dlhs3")
 dlhs4_preg$survey <- c("dlhs4")
 
@@ -939,7 +965,7 @@ dlhs4_preg$survey <- c("dlhs4")
 dlhs_preg <- rbind(dlhs3_preg, dlhs4_preg)
 
 #saving
-#write.csv(dlhs_preg, "dlhs_preg.csv")
+write.csv(dlhs_preg, "dlhs_preg.csv")
 
 dlhs_preg <- read.csv("dlhs_preg.csv")
 

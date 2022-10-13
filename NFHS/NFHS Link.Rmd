@@ -203,7 +203,7 @@ range(nchar(nfhs4$rev_cal7)) #between 61 and 75 months for each participant
 table(nchar(nfhs4$rev_cal7))
 
 #making separate contraceptive calendar dataset
-fertcal4 <- subset(nfhs4, select = c("caseid", "v017", "v018", "v019", "vcal_7", "trim_cal7", "rev_cal7"))
+fertcal4 <- subset(nfhs4, select = c("caseid", "state", "district", "psu", "v017", "v018", "v019", "vcal_7", "trim_cal7", "rev_cal7"))
 write.csv(fertcal4, "fertcal4.csv")
 
 
@@ -279,7 +279,7 @@ nfhs4_preg$true_stillbirth <- ifelse(nfhs4_preg$calstart_sb == 1 & nfhs4_preg$tr
 
 
 #separating out the variables we need
-nfhs4_preg <- nfhs4_preg %>% select(c(caseid, v017, v018, v019, vcal_7, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm, lm_cmc, ls, ls_cmc, lb, lb_cmc, true_stillbirth))
+nfhs4_preg <- nfhs4_preg %>% select(c(caseid, state, district, psu, v017, v018, v019, vcal_7, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm, lm_cmc, ls, ls_cmc, lb, lb_cmc, true_stillbirth))
 
 #last pregnancy variable -- minimum value of all outcomes.
 #Reason for minimum value: This is from contraceptive calendar which counts each month from month of interview backward. If we had reversed the string code we would be counting forwards.
@@ -343,7 +343,7 @@ nfhs4_preg$interval_preg <- nfhs4_preg$event2 - nfhs4_preg$event1
   
 
 #keeping only variables needed for merge
-nfhs4_preg <- nfhs4_preg %>% select(c(caseid, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
+nfhs4_preg <- nfhs4_preg %>% select(c(caseid, state, district, psu, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
 
 
 ```
@@ -606,7 +606,7 @@ table(nchar(nfhs5$trim_cal))
 
 
 #making separate contraceptive calendar dataset (need to do this with original nfhs5 dataset before changed)
-nfhs5_preg <- subset(nfhs5, select = c("caseid", "v017", "v018", "v019","scal_1"))
+nfhs5_preg <- subset(nfhs5, select = c("caseid", "state", "district", "psu",  "v017", "v018", "v019","scal_1"))
 
 
 #looking at previous stillbirth. This will be represented by at least 7 months of pregnancy followed by termination, since type of termination was only asked for the most recent one. In the calendar string, each letter represents a month, therefore if there are 6Ps and then a T that counts as 7 months of pregnancy. 
@@ -728,7 +728,7 @@ nfhs5_preg$outcome <- ifelse(nfhs5_preg$truesb == "M" & nfhs5_preg$outcome == 2,
 nfhs5_preg$allevent <- str_locate_all(nfhs5_preg$scal_1, c("B|M|S|A|T"))
 
 #separating out the variables we need
-nfhs5_preg <- nfhs5_preg %>% select(c(caseid, v017, v018, v019, scal_1, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm,
+nfhs5_preg <- nfhs5_preg %>% select(c(caseid, state, district, psu, v017, v018, v019, scal_1, prev_stillbirth, vcal_len, lt, lt_cmc, la, la_cmc, lm,
                                       lm_cmc, ls, ls_cmc, lb, lb_cmc, lp, outcome, year_event1, month_event1, truesb, allevent))
 
 
@@ -747,7 +747,7 @@ nfhs5_preg$interval_preg <- nfhs5_preg$event2 - nfhs5_preg$event1
   
 
 #keeping only variables needed for merge
-nfhs5_preg <- nfhs5_preg %>% select(c(caseid, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
+nfhs5_preg <- nfhs5_preg %>% select(c(caseid, state, district, psu, prev_stillbirth, outcome, year_event1, month_event1, interval_preg))
 
 
 #keeping only variables that can match across 
@@ -773,6 +773,8 @@ dlhs_preg <- read.csv("dlhs_preg.csv")
 
 #now matching with dlhs
 names(dlhs_preg)
+
+dlhs_preg <- dlhs_preg %>% rename(district = dist)
 
 #finding time between LIVE births only for dlhs
 #putting in CMC to calculate difference in dates. Now using cmc code below.
@@ -801,7 +803,7 @@ names(dlhs_preg)
 
 length(which(dlhs_preg$outcome1 > 1)) #15496 non-live birth outcomes for most recent pregnancy
 
-dlhs_preg <- dlhs_preg %>% select(c(id_person, outcome1, outcome2, outcome3, outcome4, outcome5, outcome6, month_event1,
+dlhs_preg <- dlhs_preg %>% select(c(id_person, state, district, psu,  outcome1, outcome2, outcome3, outcome4, outcome5, outcome6, month_event1,
                                     month_event2, month_event3, month_event4, month_event5, month_event6,
                                     year_event1, year_event2, year_event3, year_event4, year_event5, year_event6, survey))
 library(lubridate)
@@ -895,11 +897,11 @@ nfhs_preg$date1 <- as.Date(nfhs_preg$date1, format = "%Y-%m-%d")
 nfhs_preg <- nfhs_preg %>% select(-c(month_event1, year_event1))
 
 #need dlhs_preg previous stillbirth variable
-dlhs_preg <- dlhs_preg %>% mutate(prev_stillbirth = case_when(outcome2 > 1 ~ 1,
-                                                              outcome3 > 1 ~ 1,
-                                                              outcome4 > 1 ~ 1,
-                                                              outcome5 > 1 ~ 1,
-                                                              outcome6 > 1 ~ 1,
+dlhs_preg <- dlhs_preg %>% mutate(prev_stillbirth = case_when(outcome2 == 2 ~ 1,
+                                                              outcome3 == 2 ~ 1,
+                                                              outcome4 == 2 ~ 1,
+                                                              outcome5 == 2 ~ 1,
+                                                              outcome6 == 2 ~ 1,
                                                               TRUE ~ 0))
 
 #keeping only variables to match nfhs_preg
@@ -916,7 +918,7 @@ dlhs_preg <- dlhs_preg %>% mutate(date_outcome = case_when(lp_cmc == cmc1 ~ date
                                                            lp_cmc == cmc6 ~ date6,
                                                            TRUE ~ NA_real_))
 
-dlhs_preg <- dlhs_preg %>% select(c(caseid, outcome, interval_preg, prev_stillbirth, survey, date_outcome))
+dlhs_preg <- dlhs_preg %>% select(c(caseid, state, district, psu, outcome, interval_preg, prev_stillbirth, survey, date_outcome))
 
 
 #dlhs_preg <- dlhs_preg %>% rename(interval_births = interval)
@@ -928,12 +930,15 @@ nfhs_preg$outcome <- as.numeric(nfhs_preg$outcome)
 #making dlhs caseid as character
 dlhs_preg$caseid <- as.character(dlhs_preg$caseid)
 
+#moving nfhs prev still birth after interval_preg
+nfhs_preg <- nfhs_preg %>% relocate(prev_stillbirth, .after = interval_preg)
+
 dlhs_nfhs_preg <- rbind(dlhs_preg, nfhs_preg)
 
 #writing as csv
-#write.csv(dlhs_nfhs_preg, "dlhs_nfhs_preg.csv")
+write.csv(dlhs_nfhs_preg, "dlhs_nfhs_preg.csv")
 
-dlhs_nfhs_preg <- read.csv("dlhs_nfhs_preg-Caroline’s Mac mini.csv")
+#dlhs_nfhs_preg <- read.csv("dlhs_nfhs_preg.csv")
 
 
 ```
@@ -1193,10 +1198,16 @@ dlhs$caseid <- as.character(dlhs$caseid)
 #moving PSU to correct spot 
 nfhs <- nfhs %>% relocate(psu, .after = wt)
 
+#moving date variable in NFHS
+nfhs <- nfhs %>% relocate(date, .after = psu)
+nfhs <- nfhs %>% relocate(month, .after = date)
+nfhs <- nfhs %>% relocate(year, .after = month)
+nfhs <- nfhs %>% relocate(age, .after = year)
+
 #combining nfhs and dlhs
 dlhs_nfhs <- bind_rows(dlhs, nfhs)
 
-write.csv(dlhs_nfhs, "dlhsnfhs.csv")
+#write.csv(dlhs_nfhs, "dlhsnfhs.csv")
 
 dlhsnfhs <- read.csv("dlhsnfhs.csv")
 
@@ -1297,6 +1308,160 @@ dlhsnfhs <- dlhsnfhs %>% select(-c(newstate, state))
 #renaming new_state to state
 dlhsnfhs$state <- dlhsnfhs$new_state
 dlhsnfhs <- dlhsnfhs %>% select(-c(new_state))
+
+
+##### Now doing the same for dlhs_nfhs_preg
+
+#changing state variable. This will go back to DLHS-3 state. Putting Telangana back into Andhra Pradesh as it was not formed until 2014. 
+dlhs_nfhs_preg$state_new <- dlhs_nfhs_preg$state #Making new state variable that is clone of original state.
+
+
+#taking DLHS-4 telangana responses and making them andhra pradesh
+dlhs_nfhs_preg$state_new <- ifelse(dlhs_nfhs_preg$survey == "dlhs4" & dlhs_nfhs_preg$state_new == 36, 28, dlhs_nfhs_preg$state_new)
+
+#DLHS3 and 4 are now matched from that one change. Moving onto NFHS.
+
+#NFHS-4 has no matching values with DLHS3 and 4 for state. Easier to start from fresh. 
+
+
+#Removing all values in new to repopulate.
+dlhs_nfhs_preg$state_new <- ifelse(dlhs_nfhs_preg$survey == "nfhs4",is.na(dlhs_nfhs_preg$state_new), dlhs_nfhs_preg$state_new)
+
+#Harmonizing state coding
+dlhs_nfhs_preg <- dlhs_nfhs_preg %>% mutate(state_try = case_when(survey == "nfhs4" & state == 14 ~ 1,
+                                          survey == "nfhs4" & state == 13 ~ 2,
+                                          survey == "nfhs4" & state == 28 ~ 3,
+                                          survey == "nfhs4" & state == 6 ~ 4,
+                                          survey == "nfhs4" & state == 34 ~ 5,
+                                          survey == "nfhs4" & state == 12 ~ 6,
+                                          survey == "nfhs4" & state == 25 ~ 7,
+                                          survey == "nfhs4" & state == 29 ~ 8,
+                                          survey == "nfhs4" & state == 33 ~ 9,
+                                          survey == "nfhs4" & state == 5 ~ 10,
+                                          survey == "nfhs4" & state == 30 ~ 11, 
+                                          survey == "nfhs4" & state == 3 ~ 12,
+                                          survey == "nfhs4" & state == 24 ~ 13,
+                                          survey == "nfhs4" & state == 21 ~ 14,
+                                          survey == "nfhs4" & state == 23 ~ 15, 
+                                          survey == "nfhs4" & state == 32 ~ 16,
+                                          survey == "nfhs4" & state == 22 ~ 17,
+                                          survey == "nfhs4" & state == 4 ~ 18,
+                                          survey == "nfhs4" & state == 35 ~ 19,
+                                          survey == "nfhs4" & state == 15 ~ 20,
+                                          survey == "nfhs4" & state == 26 ~ 21,
+                                          survey == "nfhs4" & state == 7 ~ 22,
+                                          survey == "nfhs4" & state == 19 ~ 23,
+                                          survey == "nfhs4" & state == 11 ~ 24,
+                                          survey == "nfhs4" & state == 9 ~ 25,
+                                          survey == "nfhs4" & state == 8 ~ 26,
+                                          survey == "nfhs4" & state == 20 ~ 27,
+                                          survey == "nfhs4" & state == 2 ~ 28,
+                                          survey == "nfhs4" & state == 16 ~ 29,
+                                          survey == "nfhs4" & state == 10 ~ 30,
+                                          survey == "nfhs4" & state == 18 ~ 31,
+                                          survey == "nfhs4" & state == 17 ~ 32,
+                                          survey == "nfhs4" & state == 31 ~ 33,
+                                          survey == "nfhs4" & state == 27 ~ 34,
+                                          survey == "nfhs4" & state == 1 ~ 35,
+                                          survey == "nfhs4" & state == 36 ~ 28, #telangana responses and making them andhra pradesh
+                                          TRUE ~ state_new))
+
+dlhs_nfhs_preg$newstate <- dlhs_nfhs_preg$state_try
+dlhs_nfhs_preg <- dlhs_nfhs_preg %>% select(-c(state_try, state_new))
+#NFHS-4 now matches DLHS
+
+#Now matching  NFHS-5. 
+
+dlhs_nfhs_preg$new_state <- ifelse(dlhs_nfhs_preg$survey == "nfhs5" & dlhs_nfhs_preg$state == 37, 1, dlhs_nfhs_preg$newstate) #putting all of ladakh into jammu and kashmir
+
+#Putting telangana into andhra pradesh
+dlhs_nfhs_preg$new_state <- ifelse(dlhs_nfhs_preg$survey == "nfhs5" & dlhs_nfhs_preg$state == 36, 28, dlhs_nfhs_preg$new_state)
+
+#putting all dadra & nagar haveli responses into daman & diu 
+dlhs_nfhs_preg$new_state <- ifelse(dlhs_nfhs_preg$new_state == 26, 25, dlhs_nfhs_preg$new_state)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+dlhs_nfhs_preg$new_state <- ifelse(dlhs_nfhs_preg$new_state > 25, (dlhs_nfhs_preg$new_state-1), dlhs_nfhs_preg$new_state)
+
+#states now match across surveys. Dropping newstate and state
+dlhs_nfhs_preg <- dlhs_nfhs_preg %>% select(-c(newstate, state))
+
+#renaming new_state to state
+dlhs_nfhs_preg$state <- dlhs_nfhs_preg$new_state
+dlhs_nfhs_preg <- dlhs_nfhs_preg %>% select(-c(new_state))
+
+
+
+############################3
+
+
+
+
+
+#giving mother's / household variables to pregnancies
+dlhs_nfhs_preg <- dlhs_nfhs_preg %>% select(-c(X))
+dlhsnfhs <- dlhsnfhs %>% select(-c(X))
+
+dlhsnfhs$survey <- tolower(dlhsnfhs$survey)
+
+#### MERGE NOT WORKING. LIKELY NEED MORE LINKING VARIABLES ###
+
+dlhsnfhs_preg_mothercov <- left_join(
+  dlhs_nfhs_preg,
+  dlhsnfhs,
+  by = c("caseid", "district", "psu", "state", "survey"),
+  keep = FALSE
+)
+
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% group_by(caseid)
+
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% add_count(caseid)
+
+check <- dlhsnfhs_preg_mothercov %>% filter(n > 1)
+
+dlhs_preg <- dlhs_preg %>% group_by(id_person)
+dlhs_preg <- dlhs_preg %>% add_count(id_person)
+
+dlhscheck <- dlhs_preg %>% filter(n >1)
+
+write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
+
+#harmonizing miscarriage/abortion/stillbirth across dlhs and nfhs
+
+
+table(dlhsnfhs_preg_mothercov$miscarriage_abortion_stillbirth)
+
+#In DLHS the coding is as follows: 2  still birth 3   induced abortion 4 spontaneous abortion
+#will re-code to match NFHS: 1 miscarriage 2 abortion 3 stillbirth
+
+#making the one DLHS4 response of "0" NA
+
+dlhsnfhs_preg_mothercov$miscarriage_abortion_stillbirth <- ifelse(dlhsnfhs_preg_mothercov$miscarriage_abortion_stillbirth == 0, NA, dlhsnfhs_preg_mothercov$miscarriage_abortion_stillbirth)
+
+#initializing variable as empty set. 
+dlhsnfhs_preg_mothercov$nonbirth <- NA
+
+#creating new variable all using same scale
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% mutate(nonbirth = case_when(survey == "DLHS3" & miscarriage_abortion_stillbirth == 4 ~ 1,
+                                         survey == "DLHS3" & miscarriage_abortion_stillbirth == 3 ~ 2,
+                                         survey == "DLHS3" & miscarriage_abortion_stillbirth == 2 ~ 3,
+                                         survey == "DLHS4" & miscarriage_abortion_stillbirth == 4 ~ 1,
+                                         survey == "DLHS4" & miscarriage_abortion_stillbirth == 3 ~ 2,
+                                         survey == "DLHS4" & miscarriage_abortion_stillbirth == 2 ~ 3,
+                                         survey == "NFHS4" & miscarriage_abortion_stillbirth == 1 ~ 1,
+                                         survey == "NFHS4" & miscarriage_abortion_stillbirth == 2 ~ 2,
+                                         survey == "NFHS4" & miscarriage_abortion_stillbirth == 3 ~ 3,
+                                         survey == "NFHS5" & miscarriage_abortion_stillbirth == 1 ~ 1,
+                                         survey == "NFHS5" & miscarriage_abortion_stillbirth == 2 ~ 2,
+                                         survey == "NFHS5" & miscarriage_abortion_stillbirth == 3 ~ 3,
+                                         TRUE ~ NA_real_))
+
+
+
+#removing old miscarriage, aboriton, stillbirth variable
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(miscarriage_abortion_stillbirth))
+
 
 ```
 

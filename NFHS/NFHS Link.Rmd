@@ -936,9 +936,9 @@ nfhs_preg <- nfhs_preg %>% relocate(prev_stillbirth, .after = interval_preg)
 dlhs_nfhs_preg <- rbind(dlhs_preg, nfhs_preg)
 
 #writing as csv
-write.csv(dlhs_nfhs_preg, "dlhs_nfhs_preg.csv")
+#write.csv(dlhs_nfhs_preg, "dlhs_nfhs_preg.csv")
 
-#dlhs_nfhs_preg <- read.csv("dlhs_nfhs_preg.csv")
+dlhs_nfhs_preg <- read.csv("dlhs_nfhs_preg.csv")
 
 
 ```
@@ -1405,7 +1405,6 @@ dlhsnfhs <- dlhsnfhs %>% select(-c(X))
 
 dlhsnfhs$survey <- tolower(dlhsnfhs$survey)
 
-#### MERGE NOT WORKING. LIKELY NEED MORE LINKING VARIABLES ###
 
 dlhsnfhs_preg_mothercov <- left_join(
   dlhs_nfhs_preg,
@@ -1425,7 +1424,9 @@ dlhs_preg <- dlhs_preg %>% add_count(id_person)
 
 dlhscheck <- dlhs_preg %>% filter(n >1)
 
-write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
+#write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
+
+dlhsnfhspreg <- read.csv("dlhsnfhs_preg_w_mom_cov.csv")
 
 #harmonizing miscarriage/abortion/stillbirth across dlhs and nfhs
 

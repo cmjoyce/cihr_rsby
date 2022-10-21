@@ -226,7 +226,7 @@ wps_full$recent_mab_year <- ifelse(wps_full$out_come_of_preg == 4, wps_full$year
 # if an
 
 #wps_full <- wps_full %>% group_by(caseid) %>% mutate(last_even_flag = case_when(outcome_year == max(outcome_year ) ~ 1,
-                                                                                TRUE ~ 0))
+#                                                                                TRUE ~ 0))
 
 # In NFHS and DLHS we have most recent birth outcome (outcome), and then, if there was at least 1 termination before the most recent outcome what that was.
 # leaving for now because we are not including how many pregnancies there were between most recent pregnancy and outcome
@@ -366,6 +366,8 @@ ahs_preg_match$other_insurance <- ifelse(ahs_preg_match$healthscheme_1 == 7 | ah
 
 ahs_preg_match <- ahs_preg_match %>% select(-c(healthscheme_1, healthscheme_2))
 
+#write.csv(ahs_preg_match, "ahs_preg_match.csv")
+
 names(dlhsnfhs_preg_mothercov)
 names(ahs_preg_match)
 
@@ -374,7 +376,122 @@ dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(ever_terminated
                                                                  fp_future, bpl, health_ins, other_terminations, miscarriage_abortion_stillbirth))
 
 
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(using_method))
 
+ahs_preg_match <- ahs_preg_match %>% rename(outcome = out_come_of_preg, age_first_birth = age_at_first_conception, )
+
+names(dlhsnfhs_preg_mothercov)
+names(ahs_preg_match)
+
+#renaming 
+ahs_preg_match <- ahs_preg_match %>% rename(interval_preg = previous_current_diff,
+                                            rural_urban = rural,
+                                            prev_stillbirth = previous_sb,
+                                            caste_group = social_group_code,
+                                            source_water = drinking_water_source,
+                                            toilet = toilet_used,
+                                            tot_live_births = born_alive_total,
+                                            month_received_anc = no_of_months_first_anc,
+                                            num_anc_visits = no_of_anc,
+                                            type_delivery = kind_of_birth,
+                                            place_delivery = where_del_took_place,
+                                            conducted_delivery = who_conducted_del_at_home,
+                                            pp_checkup = check_up_with_48_hours_of_del,
+                                            type_method = fp_method_used
+                                            )
+
+#Harmonizing schooling variables. Highest qualification does not give number of years of school,
+#so we are using a binary >= primary school variable (1 == yes Primary, 2 == no primary)
+
+table(dlhsnfhs_preg_mothercov$years_school)
+
+#making 98 and 99 NAs
+dlhsnfhs_preg_mothercov$years_school <- ifelse(dlhsnfhs_preg_mothercov$years_school > 97, 
+                                               NA, dlhsnfhs_preg_mothercov$years_school)
+
+#separating into at least primary (grade 8) and less than primary.
+#could later seperate into lower primary or higher, lower primary is class 1-IV
+length(which(dlhsnfhs_preg_mothercov$years_school > dlhsnfhs_preg_mothercov$age)) #42 women who have more years of school than their age. Must be error.
+#making into NA
+
+dlhsnfhs_preg_mothercov$years_school <- 
+  ifelse(dlhsnfhs_preg_mothercov$years_school > dlhsnfhs_preg_mothercov$age, NA, 
+         dlhsnfhs_preg_mothercov$years_school)
+
+dlhsnfhs_preg_mothercov$primary <- ifelse(dlhsnfhs_preg_mothercov$years_school >= 8, 1, 0)
+table(dlhsnfhs_preg_mothercov$primary)
+
+#in AHS >= is completed at least a primary education
+table(ahs_preg_match$highest_qualification)
+ahs_preg_match$primary <- ifelse(ahs_preg_match$highest_qualification > 2, 1, 0)
+
+#dropping old schooling variables
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(years_school))
+ahs_preg_match <- ahs_preg_match %>% select(-c(highest_qualification))
+
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(nonbirth))
+
+#making mediclaim other private
+ahs_preg_match <- ahs_preg_match %>% rename(other_private = mediclaim)
+#making other gov cghsshis
+ahs_preg_match <- ahs_preg_match %>% rename(cghsshis = othergov)
+
+#dropping asset score
+ahs_preg_match <- ahs_preg_match %>% select(-c(as))
+
+#dropping original district variable in ahs and renaming nfhs4_match variable as district
+ahs_preg_match <- ahs_preg_match %>% select(-c(district))
+ahs_preg_match <- ahs_preg_match %>% rename(district = nfhs4_census2011_district_id)
+ahs_preg_match <- ahs_preg_match %>% relocate(district, .after = state)
+
+#dropping index mob and yob as the date is in outcome
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(index_mob, index_yob))
+
+#renaming ahs to match on abortion month. Need to fix NFHS 4 and 5 ...this was asked for all terminations,
+#but for DLHS and AHS it was asked for just induced abortions. Will come back to this.
+ahs_preg_match <- ahs_preg_match %>% rename(month_last_termination_occurred = abortion_month)
+
+#fixing dlhsnfhs date of outcome to just be year like in ahs
+table(dlhsnfhs_preg_mothercov$date_outcome)
+
+dlhsnfhs_preg_mothercov$year_outcome <- gsub("-.*", "", dlhsnfhs_preg_mothercov$date_outcome)
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(date_outcome))
+
+names(dlhsnfhs_preg_mothercov)
+names(ahs_preg_match)
+
+#making ahs outcome year. Live birth == 1, Still birth == 1, if either we want year of birth
+# induced and spontaneous abortion are 3 and 4, if either we want year of abortion
+ahs_preg_match <- ahs_preg_match %>% mutate(outcome_year = 
+                                              case_when(outcome < 3 ~ yob,
+                                                        outcome > 2 ~ year_of_abortion,
+                                                        TRUE ~ NA_real_))
+
+#dropping old variables
+ahs_preg_match <- ahs_preg_match %>% select(-c(yob, year_of_abortion))
+
+#dropping date and month of interview in dlhsnfhspreg
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(date, month))
+
+#moving ahs interval preg after outcome
+ahs_preg_match <- ahs_preg_match %>% relocate(interval_preg, .after = outcome)
+
+#renaming year
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(year_of_intr = year)
+
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(outcome_year = year_outcome)
+
+#making ahs state numeric
+ahs_preg_match$state <- as.numeric(ahs_preg_match$state)
+ahs_preg_match$psu <- as.numeric(ahs_preg_match$psu)
+
+dlhsnfhs_preg_mothercov$outcome_year <- as.numeric(dlhsnfhs_preg_mothercov$outcome_year)
+
+df <- bind_rows(dlhsnfhs_preg_mothercov, ahs_preg_match)
+
+#write.csv(df, "full_combined_preg.csv")
+
+df <- read.csv("full_combined_preg.csv")
 
 # fixing district to match NFHS -------------------------------------------
 

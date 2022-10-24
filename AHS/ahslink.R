@@ -421,7 +421,7 @@ dlhsnfhs_preg_mothercov$years_school <-
 dlhsnfhs_preg_mothercov$primary <- ifelse(dlhsnfhs_preg_mothercov$years_school >= 8, 1, 0)
 table(dlhsnfhs_preg_mothercov$primary)
 
-#in AHS >= is completed at least a primary education
+#in AHS >= 3 is completed at least a primary education
 table(ahs_preg_match$highest_qualification)
 ahs_preg_match$primary <- ifelse(ahs_preg_match$highest_qualification > 2, 1, 0)
 
@@ -492,6 +492,125 @@ df <- bind_rows(dlhsnfhs_preg_mothercov, ahs_preg_match)
 #write.csv(df, "full_combined_preg.csv")
 
 df <- read.csv("full_combined_preg.csv")
+
+
+# Harmonizing all variables -----------------------------------------------
+
+# Using combined codebook for harmonization. Excluding district harmonization for now.
+
+df$survey <- toupper(df$survey)
+
+# outcome of pregnancy
+# 6 is T for termination. Making NAs.
+
+df$outcome <- ifelse(df$outcome == 6, NA, df$outcome)
+
+#previous stillbirth is matched.
+table(df$prev_stillbirth)
+
+#rural urban
+table(df$rural_urban)
+
+# correcting rural / urban coding. In DLHS 1 is rural and 2 is urban, in NFHS it is the opposite.
+
+table(df$rural_urban, df$survey)
+
+#there are no NAs so we can use code below to swap. Changing to 0 = rural and 1 = urban. Using casewhen to 
+# change all rural codes by survey to 0, and making the rest 1s as they must be urbans.
+
+df <- df %>% mutate(urban = case_when(survey == "DLHS3" & rural_urban == 1 ~ 0,
+                                      survey == "DLHS4" & rural_urban == 1 ~ 0,
+                                      survey == "NFHS4" & rural_urban == 2 ~ 0,
+                                      survey == "NFHS5" & rural_urban == 2 ~ 0,
+                                      survey == "AHS" & rural_urban == 1 ~ 0,
+                                      TRUE ~ 1))
+
+#dropping old rural_urban variable
+df <- df %>% select(-c(rural_urban))
+#renaming
+df <- df %>% rename(rural_urban = urban)
+
+#religion. 1 - 6 matches. Need to make dlhs and nfhs 7, 8, and 96 into one variable 7 "other religion" to match ahs
+# make 9 in dlhs and nfhs into 8 to match AHS "no religion"
+
+df$relig_merge <- df$religion
+
+df$relig_merge <- ifelse(df$survey != "AHS" & df$religion == 8, 7, df$relig_merge)
+
+df$relig_merge <- ifelse(df$survey != "AHS" & df$religion == 96, 7, df$relig_merge)
+
+df$relig_merge <- ifelse(df$survey != "AHS" & df$religion == 9, 8, df$relig_merge)
+
+#making three responses ((1) 21 and (2) 99) into NAs
+
+df$relig_merge <- ifelse(df$relig_merge > 8, NA, df$relig_merge)
+
+#removing old religion variable
+df <- df %>% select(-c(religion))
+#renaming relig_merge to be new religion
+df <- df %>% rename(religion = relig_merge)
+
+#scheduled caste/tribe. in all surveys 1 is scheduled caste and 2 is scheduled tribe. 
+#making don't know (8) in NFHS into NA 
+
+df$caste_group <- ifelse(df$caste_group == 8, NA, df$caste_group)
+
+#making anything not 1, 2, or NA into 0 (not in a scheduled caste or tribe)
+df$caste_group <- ifelse(df$caste_group > 2, 0, df$caste_group)
+
+#education was fixed in first merge
+
+#source of water. Matching on AHS coding.
+
+#   1   piped-water-into-dwelling-yardplot
+#2   public-tap-stand-pipe
+#3   hand-pump
+#4   tubewell-or-borehole
+#5   protected-dugwell
+#6   unprotected-dug-well
+#7 tanker/truck/cart
+#8 surface water
+#9 other source
+
+#Starting with DLHS (both) that mostly matches. Making current 7 into other (96)
+df$water <- df$source_water
+
+df$water <- ifelse(df$survey == "DLHS3" & df$water == 7, 96, df$water)
+df$water <- ifelse(df$survey == "DLHS4" & df$water == 7, 96, df$water)
+
+# now making 10 (tanker/truck) and 11 (cart) in DLHS surveys into 7 (tanker/truck/cart)
+
+df$water <- ifelse(df$survey == "DLHS3" & df$water == 10 |df$survey == "DLHS3" & df$water == 11, 7, df$water)
+df$water <- ifelse(df$survey == "DLHS4" & df$water == 10 |df$survey == "DLHS4" & df$water == 11, 7, df$water)
+
+#now doing the same with current number 8 (unprotected spring) -- making it other 
+df$water <- ifelse(df$survey == "DLHS3" & df$water == 8, 96, df$water)
+df$water <- ifelse(df$survey == "DLHS4" & df$water == 8, 96, df$water)
+
+#making surface water (12) match 8
+df$water <- ifelse(df$survey == "DLHS3" & df$water == 12, 8, df$water)
+df$water <- ifelse(df$survey == "DLHS4" & df$water == 12, 8, df$water)
+
+#making DLHS anything over 8 into "other" group of 9
+df$water <- ifelse(df$survey == "DLHS3" & df$water > 8, 9, df$water)
+df$water <- ifelse(df$survey == "DLHS4" & df$water > 8, 9, df$water)
+
+#now matching NFHS into AHS and DLHS
+
+#making NFHS 11 and 12 into 1
+df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 11 ~ 1,
+                                         survey == "NFHS4" & water == 12 ~ 1,
+                                         survey == "NFHS5" & water == 11 ~ 1,
+                                         survey == "NFHS5" & water == 12 ~ 1,
+                                         TRUE ~ water))
+
+#NFHS4 13 and NFHS5 14 becomes 2
+
+df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 13 ~ 2,
+                                         survey == "NFHS5" & water == 14 ~ 2,
+                                         TRUE ~ waternew))
+
+# remove option 3 from DLHS and AHS -- not asked and move on from there. 
 
 # fixing district to match NFHS -------------------------------------------
 

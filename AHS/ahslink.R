@@ -612,6 +612,207 @@ df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 13 ~ 2,
 
 # remove option 3 from DLHS and AHS -- not asked and move on from there. 
 
+df$waternew <- ifelse(df$waternew == 3, 9, df$waternew)
+
+
+# Remove surface water (8) from DLHS and AHS and make 9 (other) as well. also not asked.
+
+df$waternew <- ifelse(df$waternew == 8, 9, df$waternew)
+
+
+# In NFHS 21 becomes 4, 31 becomes 5, 32 becomes 6, 61-62 becomes 7
+df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 21 ~ 4,
+                                         survey == "NFHS5" & water == 21 ~ 4,
+                                         survey == "NFHS4" & water == 31 ~ 5,
+                                         survey == "NFHS5" & water == 31 ~ 5,
+                                         survey == "NFHS4" & water == 32 ~ 6,
+                                         survey == "NFHS5" & water == 32 ~ 6,
+                                         survey == "NFHS4" & water == 61 ~ 7,
+                                         survey == "NFHS5" & water == 61 ~ 7,
+                                         survey == "NFHS4" & water == 62 ~ 7,
+                                         survey == "NFHS5" & water == 62 ~ 7,
+                                         TRUE ~ waternew))
+
+#Making NFHS 97 (not a dejure resident) into NA
+
+df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 97 ~ NA_real_,
+                                         survey == "NFHS5" & water == 97 ~ NA_real_,
+                                         TRUE ~ waternew))
+
+
+#Making NFHS options 13 (NFHS5 only), 41, 42, 43, 51, 71, 72, 92, 96 into other (9)
+
+#tried doing > 7 ~ 9 but made everything under 7 into 0s. Leaving as long now to fix this.
+
+df <- df %>% mutate(watertry = case_when(survey == "NFHS5" & water == 13 ~ 9,
+                                         survey == "NFHS4" & water == 41 ~ 9,
+                                         survey == "NFHS5" & water == 41 ~ 9,
+                                         survey == "NFHS4" & water == 42 ~ 9,
+                                         survey == "NFHS5" & water == 42 ~ 9,
+                                         survey == "NFHS4" & water == 43 ~ 9,
+                                         survey == "NFHS5" & water == 43 ~ 9,
+                                         survey == "NFHS4" & water == 51 ~ 9,
+                                         survey == "NFHS5" & water == 51 ~ 9,
+                                         survey == "NFHS4" & water == 71 ~ 9,
+                                         survey == "NFHS5" & water == 71 ~ 9,
+                                         survey == "NFHS4" & water == 72 ~ 9,
+                                         survey == "NFHS5" & water == 72 ~ 9,
+                                         survey == "NFHS5" & water == 92 ~ 9,
+                                         survey == "NFHS4" & water == 96 ~ 9,
+                                         survey == "NFHS5" & water == 96 ~ 9,
+                                         TRUE ~ waternew))
+
+# Now making 4 into 3 and 9 into 8 to make it consecutive.
+df$watertry <- ifelse(df$watertry == 4, 3, df$watertry)
+df$watertry <- ifelse(df$watertry == 9, 8, df$watertry)
+
+# now making anything over 3 n-1 
+df$watertry <- ifelse(df$watertry > 3, (df$watertry) -1, df$watertry)
+
+#getting rid of old / other water variables and renaming watertry into water_source
+df <- df %>% select(-c(waternew, water, source_water))
+
+df <- df %>% rename(water_source = watertry)
+
+# now doing type of toilet. Following this coding:
+#0 OPEN DEFECATION/NO FACILITY/OPEN SPACE OR FIELD
+#1 pour/flush latrine: connected to piped sewer system 
+#2 pour/flush latrine: connected to septic tank 
+#3 pour/flush latrine: connected to pit latrine 
+#4 pour/flush latrine: connected to something else 
+#5 pit latrine: ventilated improved pit 
+#6 pit latrine: with slab 
+#7 pit latrine: open or without slab 
+#8 service latrine /dry toilet
+#9 OTHER
+
+
+# Starting with DLHS
+
+#making DLHS 3 option 51 into 0
+
+df$toilet_type <- df$toilet
+
+
+df <- df %>% mutate(toiletnew = case_when(survey == "DLHS3" & toilet == 51 ~ 0,
+                                            survey == "DLHS4" & toilet == 51 ~ 0,
+                                            survey == "NFHS4" & toilet == 31 ~ 0,
+                                            survey == "NFHS5" & toilet == 31 ~ 0,
+                                            toilet == 11 ~ 1,
+                                            toilet == 12 ~ 2,
+                                            toilet == 13 ~ 3,
+                                            toilet == 14 ~ 4,
+                                            toilet == 21 ~ 5,
+                                            toilet == 22 ~ 6,
+                                            toilet == 23 ~ 7,
+                                            survey == "DLHS3" & toilet == 41 ~ 8,
+                                            survey == "DLHS4" & toilet == 41 ~ 8,
+                                            survey == "NFHS4" & toilet == 44 ~ 8,
+                                            survey == "NFHS5" & toilet == 44 ~ 8,
+                                            toilet == 97 ~ NA_real_,
+                                            TRUE ~ 9))
+
+#now adding back in AHS values
+
+df$toilet_type <- ifelse(df$survey == "AHS", df$toilet, df$toiletnew)
+
+#removing extraneous toilet variables
+df <- df %>% select(-c(toilet, toiletnew))
+
+
+# type of delivery
+
+table(df$survey, df$type_delivery)
+
+#making 9s into NAs
+df$type_delivery <- ifelse(df$type_delivery == 9, NA, df$type_delivery)
+
+#Making 2s in AHS and DLHS into 1s, all else 0s
+df <- df %>% mutate(delivery = case_when(survey == "DLHS3" & type_delivery == 2 ~ 1,
+                                         survey == "DLHS4" & type_delivery == 2 ~ 1,
+                                         survey == "AHS" & type_delivery == 2 ~ 1,
+                                         TRUE ~ 0))
+
+#now adding in original nfhs values
+df$delivery <- ifelse(df$survey == "NFHS4", df$type_delivery, df$delivery)
+df$delivery <- ifelse(df$survey == "NFHS5", df$type_delivery, df$delivery)
+
+#dropping original type_delivery variable and then renaming delivery 
+df <- df %>% select(-c(type_delivery))
+
+df <- df %>% rename(type_delivery = delivery)
+
+#now making place of delivery into coding 1 == Medical 2 == Non-medical
+
+#will go survey by survey 
+
+table(df$survey, df$place_delivery)
+
+#making "other" (96 and 99) into NAs.
+df$place_delivery <- ifelse(df$place_delivery > 95, NA, df$place_delivery)
+
+#DLHS3 1-10 is medical, > 10 is not medical
+# DLHS4 1-11 is is medical, > 11 is non-medical
+#both NFHS > 13 is medical, <= 13 is non-medical
+# AHS < 12 is medical, 12 is non-medical
+
+
+df <- df %>% mutate(placedelivered = case_when(survey == "DLHS3" & place_delivery < 11 ~ 1,
+                                               survey == "DLHS4" & place_delivery < 12 ~ 1,
+                                               survey == "NFHS4" & place_delivery > 13 ~ 1,
+                                               survey == "NFHS5" & place_delivery > 13 ~ 1,
+                                               survey == "AHS" & place_delivery < 12 ~ 1,
+                                               TRUE ~ 2))
+
+#dropping old place_delivery variable and renaming new one to match
+df <- df %>% select(-c(place_delivery))
+
+df <- df %>% rename(place_delivery = placedelivered)
+
+# Looking at who conducted delivery
+
+# Harmonized coding will be 
+#1 Medical
+#2 Non-medical
+#3 None
+
+table(df$survey, df$conducted_delivery)
+
+# DLHS 1 - 3 medical
+# NFHS 1 is medical
+# AHS 1 - 3 is medical
+
+df <- df %>% mutate(delivered = case_when(survey == "DLHS3" & conducted_delivery < 4 ~ 1,
+                                          survey == "DLHS4" & conducted_delivery < 4 ~ 1,
+                                          survey == "NFHS4" & conducted_delivery == 1 ~ 1,
+                                          survey == "NFHS5" & conducted_delivery == 1 ~ 1,
+                                          survey == "AHS" & conducted_delivery < 4 ~ 1,
+                                          is.na(conducted_delivery) ~ NA_real_,
+                                          TRUE ~ 0))
+
+table(df$delivered)
+
+#removing and renaming
+df <- df %>% select(-c(conducted_delivery))
+df <- df %>% rename(conducted_delivery = delivered)
+
+
+# Postpartum check-up
+
+table(df$survey, df$pp_checkup)
+
+#coding choice for "did you receive a post-partum check-up within 48 hours?" 0 == No 1 == Yes
+
+#Making 9s ("don't know") into NA
+
+df$pp_checkup <- ifelse(df$pp_checkup == 9, NA, df$pp_checkup)
+
+#Making all 2s into 0s. then will match across surveys.
+df$pp_checkup <- ifelse(df$pp_checkup == 2, 0, df$pp_checkup)
+
+write.csv(df, "harmonized_variables.csv")
+
+
 # fixing district to match NFHS -------------------------------------------
 
 

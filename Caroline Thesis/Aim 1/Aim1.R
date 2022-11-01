@@ -4,6 +4,603 @@ setwd("./Caroline Thesis/Aim 1")
 
 df <- read.csv("harmonized_variables.csv")
 
+
+# Making binary pregnancy outcome variables -------------------------------
+
+df$stillbirth
+
+
+# Fixing districts to match -----------------------------------------------
+
+#make DLHS districts into state_district match
+
+range(df$district)
+
+df$district_match <- df$district
+
+# Using ICPSR district match code from STATA
+
+df <- df %>% mutate(district_match = case_when(survey == "NFHS4" & district == 300 ~ 1000,
+                                               survey == "NFHS4" & district == 303 ~ 1000,
+                                               survey == "NFHS4" & district == 319 ~ 1000,
+                                               survey == "NFHS4" & district == 320 ~ 1000,
+                                               survey == "NFHS4" & district == 321 ~ 1000,
+                                               survey == "NFHS4" & district == 322 ~ 1000,
+                                               survey == "NFHS4" & district == 323 ~ 1000,
+                                               survey == "NFHS4" & district == 324 ~ 1000,
+                                               survey == "NFHS4" & district == 306 ~ 1001,
+                                               survey == "NFHS4" & district == 325 ~ 1001,
+                                               survey == "NFHS4" & district == 326 ~ 1001,
+                                               survey == "NFHS4" & district == 239 ~ 1002,
+                                               survey == "NFHS4" & district == 240 ~ 1002,
+                                               survey == "NFHS4" & district == 414 ~ 1003,
+                                               survey == "NFHS4" & district == 415 ~ 1003,
+                                               survey == "NFHS4" & district == 416 ~ 1004,
+                                               survey == "NFHS4" & district == 417 ~ 1004,
+                                               survey == "NFHS4" & district == 358 ~ 1005,
+                                               survey == "NFHS4" & district == 359 ~ 1005,
+                                               survey == "NFHS4" & district == 360 ~ 1006,
+                                               survey == "NFHS4" & district == 361 ~ 1006,
+                                               survey == "NFHS4" & district == 362 ~ 1007,
+                                               survey == "NFHS4" & district == 363 ~ 1007,
+                                               survey == "NFHS4" & district == 364 ~ 1008,
+                                               survey == "NFHS4" & district == 365 ~ 1008,
+                                               survey == "NFHS4" & district == 366 ~ 1009,
+                                               survey == "NFHS4" & district == 367 ~ 1009,
+                                               survey == "NFHS4" & district == 368 ~ 1010,
+                                               survey == "NFHS4" & district == 369 ~ 1010,
+                                               survey == "NFHS4" & district == 458 ~ 1011,
+                                               survey == "NFHS4" & district == 459 ~ 1011,
+                                               survey == "NFHS4" & district == 460 ~ 1012,
+                                               survey == "NFHS4" & district == 461 ~ 1012,
+                                               survey == "NFHS4" & district == 462 ~ 1013,
+                                               survey == "NFHS4" & district == 463 ~ 1013,
+                                               survey == "NFHS4" & district == 464 ~ 1014,
+                                               survey == "NFHS4" & district == 465 ~ 1014,
+                                               survey == "NFHS4" & district == 466 ~ 1015,
+                                               survey == "NFHS4" & district == 467 ~ 1015,
+                                               survey == "NFHS4" & district == 125 ~ 1016,
+                                               survey == "NFHS4" & district == 126 ~ 1016,
+                                               survey == "NFHS4" & district == 130 ~ 1016,
+                                               survey == "NFHS4" & district == 131 ~ 1016,
+                                               survey == "NFHS4" & district == 201 ~ 1017,
+                                               survey == "NFHS4" & district == 202 ~ 1017,
+                                               TRUE ~ NA_real_))
+                                               
+                                               
+#                                               survey == "NFHS5" & district == 300 ~ 1000,
+#                                               survey == "NFHS5" & district == 303 ~ 1000,
+#                                               survey == "NFHS5" & district == 319 ~ 1000,
+#                                               survey == "NFHS5" & district == 320 ~ 1000,
+#                                               survey == "NFHS5" & district == 321 ~ 1000,
+#                                               survey == "NFHS5" & district == 322 ~ 1000,
+#                                               survey == "NFHS5" & district == 323 ~ 1000,
+#                                               survey == "NFHS5" & district == 324 ~ 1000,
+#                                               survey == "NFHS5" & district == 306 ~ 1001,
+#                                               survey == "NFHS5" & district == 325 ~ 1001,
+#                                               survey == "NFHS5" & district == 326 ~ 1001,
+#                                               survey == "NFHS5" & district == 239 ~ 1002,
+#                                               survey == "NFHS5" & district == 240 ~ 1002,
+#                                               survey == "NFHS5" & district == 414 ~ 1003,
+#                                               survey == "NFHS5" & district == 415 ~ 1003,
+#                                               survey == "NFHS5" & district == 416 ~ 1004,
+#                                               survey == "NFHS5" & district == 417 ~ 1004,
+#                                               survey == "NFHS5" & district == 358 ~ 1005,
+#                                               survey == "NFHS5" & district == 359 ~ 1005,
+#                                               survey == "NFHS5" & district == 360 ~ 1006,
+#                                               survey == "NFHS5" & district == 361 ~ 1006,
+#                                               survey == "NFHS5" & district == 362 ~ 1007,
+#                                               survey == "NFHS5" & district == 363 ~ 1007,
+#                                               survey == "NFHS5" & district == 364 ~ 1008,
+#                                               survey == "NFHS5" & district == 365 ~ 1008,
+#                                               survey == "NFHS5" & district == 366 ~ 1009,
+#                                               survey == "NFHS5" & district == 367 ~ 1009,
+#                                               survey == "NFHS5" & district == 368 ~ 1010,
+#                                               survey == "NFHS5" & district == 369 ~ 1010,
+#                                               survey == "NFHS5" & district == 458 ~ 1011,
+#                                               survey == "NFHS5" & district == 459 ~ 1011,
+#                                               survey == "NFHS5" & district == 460 ~ 1012,
+#                                               survey == "NFHS5" & district == 461 ~ 1012,
+#                                               survey == "NFHS5" & district == 462 ~ 1013,
+#                                               survey == "NFHS5" & district == 463 ~ 1013,
+#                                               survey == "NFHS5" & district == 464 ~ 1014,
+#                                               survey == "NFHS5" & district == 465 ~ 1014,
+#                                               survey == "NFHS5" & district == 466 ~ 1015,
+#                                               survey == "NFHS5" & district == 467 ~ 1015,
+#                                               survey == "NFHS5" & district == 125 ~ 1016,
+#                                               survey == "NFHS5" & district == 126 ~ 1016,
+#                                               survey == "NFHS5" & district == 130 ~ 1016,
+#                                               survey == "NFHS5" & district == 131 ~ 1016,
+#                                               survey == "NFHS5" & district == 201 ~ 1017,
+#                                               survey == "NFHS5" & district == 202 ~ 1017,
+#                                               ))
+
+#adding in other ahs district variable. Right now the district variable is the nfhs4_census2011_district_id
+
+#ahs_preg_match was read in from the ahs link file. 
+ahs_preg_match <- ahs_preg_match %>% rename(dist_org = district)
+
+ahs_preg_match <- ahs_preg_match %>% rename(district = nfhs4_census2011_district_id)
+
+ahs_dist_link <- ahs_preg_match %>% select(c(caseid, state, dist_org, district,psu, outcome, yob, wt, survey, prev_stillbirth, survey))
+
+#trying to see if leftjoin will work for just ahs
+dftry <- left_join(
+  df,
+  ahs_preg_match
+)
+
+
+df$sdist <- ifelse(df$survey != "NFHS4" | df$survey != "NFHS5", (str_c(as.character(df$state), as.character(df$district), sep="")), df$district)
+
+#district names that duplicate across multiple states were relabeled as district_state, i.e. aurangabad_bihar and aurangabad_maharashtra
+
+#trimming trailing spaces
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+library(fuzzyjoin)
+
+
+names <- read.csv("district_names.csv")
+
+names$DLHS3 <- str_c(names$DLHS3a, names$DLHS3b, sep=" ")
+names <- names %>% select(-c(DLHS3a, DLHS3b))
+
+names$DLHS4 <- str_to_title(names$DLHS4)
+names$DLHS3 <- str_to_title(names$DLHS3)
+names$NFHS4_AHS <- str_to_title(names$NFHS4_AHS)
+nfhs5$district <- str_to_title(nfhs5$district)
+
+
+
+names$NFHS4_AHS <- trim(names$NFHS4_AHS)
+names$DLHS3 <- trim(names$DLHS3)
+names$DLHS4 <- trim(names$DLHS4)
+names$NFHS5 <- trim(names$NFHS5)
+
+
+
+
+
+#now making separate dataframes so can merge them based on district name
+
+dlhs <- names %>% select(c(DLHS3, DLHS3_id, DLHS4, DLHS4_id))
+nfhsahs <- names %>% select(c(NFHS4_AHS, NFHS_AHS_id))
+nfhs5 <- names %>% select(c(NFHS5, NFHS5_id))
+
+dlhs4 <- dlhs %>% select(c(DLHS4, DLHS4_id))
+dlhs3 <- dlhs %>% select(c(DLHS3, DLHS3_id))
+
+dlhs3 <- dlhs3 %>% rename(district = DLHS3)
+dlhs4 <- dlhs4 %>% rename(district = DLHS4)
+nfhsahs <- nfhsahs %>% rename(district = NFHS4_AHS)
+nfhs5 <- nfhs5 %>% rename(district = NFHS5)
+
+dlhs3 <- dlhs3 %>% filter(!is.na(DLHS3_id))
+dlhs4 <- dlhs4 %>% filter(!is.na(DLHS4_id))
+
+#mutating old districts to new districts
+
+nfhs5 <- nfhs5 %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
+                                              district ==	"Namsai"	~	"Lohit",
+                                              district ==	"Kra Daadi"	~	"Kurung Kumey",
+                                              district ==	"Siang"	~	"East Siang", 
+                                              district ==	"Lower Siang"	~	"West Siang",
+                                              district ==	"Kamle"	~	"Lower Subansiri", 
+                                              district ==	"Pakke-Kesang"	~	"East Kesang", 
+                                              district ==	"Lepa-Rada"	~	"Lower Siang", 
+                                              district ==	"Shi-Yomi"	~	"West Siang", 
+                                              district ==	"Dima Hasao"	~	"North Cacha Hills", 
+                                              district ==	"Biswanath"	~	"Sonitpur", 
+                                              district ==	"Charaideo"	~	"Sivasagar", 
+                                              district ==	"Hojai"	~	"Nagaon", 
+                                              district ==	"South Salmara-Mankachar"	~	"Dhubri", 
+                                              district ==	"West Karbi Anglong"	~	"Karbi Anglong", 
+                                              district ==	"Kamrup Metropolitan District"	~	"East Kamrup", 
+                                              district ==	"Kamrup Rural district"	~	"South Kamrup", 
+                                              district ==	"Majuli"	~	"Jorhat", 
+                                              district ==	"Balod"	~	"Durg", 
+                                              district ==	"Baloda Bazar"	~	"Raipur", 
+                                              district ==	"Balrampur"	~	"Surguja", 
+                                              district ==	"Bemetara"	~	"Durg", 
+                                              district ==	"Gariaband"	~	"Raipur", 
+                                              district ==	"Gaurella-Pendra-Marwahi"	~	"Bilaspur", 
+                                              district ==	"Konagaon"	~	"Bastar", 
+                                              district ==	"Mungeli"	~	"Bilaspur", 
+                                              district ==	"Sukma"	~	"Dantewanda", 
+                                              district ==	"Surajpur"	~	"Surguja", 
+                                              district ==	"Tapi"	~	"Surat", 
+                                              district ==	"Aravalli"	~	"Sabarkantha", 
+                                              district ==	"Botad"	~	"Ahmdeabad", 
+                                              district ==	"Chhota Udaipur"	~	"Vadodara", 
+                                              district ==	"Mahisagar"	~	"Kheda", 
+                                              district ==	"Morbi"	~	"Rajkot", 
+                                              district ==	"Gir Somnath"	~	"Junagadh", 
+                                              district ==	"Charki Dadri"	~	"Bhiwani", 
+                                              district ==	"Khunti"	~	"Ranchi", 
+                                              district ==	"Ramgarh"	~	"Hazaribagh", 
+                                              district ==	"Ramanagara"	~	"Bangalore Rural", 
+                                              district ==	"Chikkaballapura"	~	"Kolar", 
+                                              district ==	"Yadagiri"	~	"Kalaburagi", 
+                                              district ==	"Vijayanagara"	~	"Ballari", 
+                                              district ==	"Palghar"	~	"Thane", 
+                                              district ==	"Jiribam"	~	"Imphal East", 
+                                              district ==	"Kamjong"	~	"Ukhrul", 
+                                              district ==	"Kangpokpi"	~	"Senapati", 
+                                              district ==	"Noney"	~	"Tamenglong", 
+                                              district ==	"Tengnoupal"	~	"Chandel", 
+                                              district ==	"Pherzawl"	~	"Churachanpur", 
+                                              district ==	"Kakching"	~	"Thoubal", 
+                                              district ==	"Eastern West Khasi Hills"	~	"East Garo Hills", 
+                                              district ==	"North Garo Hills"	~	"East Garo Hills", 
+                                              district ==	"South West Garo Hills"	~	"West Garo Hills", 
+                                              district ==	"West Jaintia Hills"	~	"Jaintia Hills", 
+                                              district ==	"East Jaintia Hills"	~	"Jaintia Hills", 
+                                              district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
+                                              district ==	"Pratapgarh"	~	"Chittorgarh", 
+                                              district ==	"Ariyalur"	~	"Perambalur", 
+                                              district ==	"Tiruppur"	~	"Coimbatore",
+                                              district ==	"Komaram Bheem"	~	"Adilabad", 
+                                              district ==	"Mancherial"	~	"Adilabad", 
+                                              district ==	"Nirmal"	~	"Adilabad", 
+                                              district ==	"Kamareddy"	~	"Nizamabad",
+                                              district ==	"Jayashankar Bhupalpally"	~	"Warangal",
+                                              district ==	"Jagital"	~	"Karimnagar",
+                                              district ==	"Peddapalli"	~	"Karimnagar",
+                                              district ==	"Rajanna Sircilla"	~	"Karimnagar",
+                                              district ==	"Jangaon"	~	"Warangal",
+                                              district ==	"Hanumakonda"	~	"Warangal",
+                                              district ==	"Warangal Rural"	~	"Warangal",
+                                              district ==	"Mahabubabad"	~	"Warangal",
+                                              district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
+                                              district ==	"Vikarabad"	~	"Ranga Reddy",
+                                              district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
+                                              district ==	"Nagarkurnool"	~	"Mahabubnagar",
+                                              district ==	"Jogulamba"	~	"Mahabubnagar",
+                                              district ==	"Gomati"	~	"Dhalai",
+                                              district ==	"Khowai"	~	"West Tripura",
+                                              district ==	"Sipahijala"	~	"West Tripura",
+                                              district ==	"Unakoti"	~	"North Tripura",
+                                              district ==	"Paschim Bardhaman"	~	"Bardhaman",
+                                              district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                              district ==	"Jhargram"	~	"Paschim Medinipur",
+                                              district ==	"Kalimpong"	~	"Darjeeling",
+                                              district ==	"Alipurduar"	~	"Jalpaiguri",
+                                              district ==	"North and Middle Andaman"	~	"Andamans",
+                                              district ==	"South Andaman"	~	"Andamans",
+                                              district ==	"Samba"	~	"Jammu district",
+                                              district ==	"Resai"	~	"Udhampur",
+                                              district ==	"Ramban"	~	"Doda",
+                                              district ==	"Kishtwar"	~	"Doda",
+                                              district ==	"Kulgam"	~	"Anantnang",
+                                              district ==	"Shopian"	~	"Pulwama",
+                                              district ==	"Ganderbal"	~	"Srinagar",
+                                              district ==	"Bandipora"	~	"Baramulla",
+                                              district ==	"South East Delhi"	~	"South",
+                                              district ==	"Shahdara"	~	"North East",
+                                              TRUE ~ district))
+
+nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
+                                                district ==	"Namsai"	~	"Lohit",
+                                                district ==	"Kra Daadi"	~	"Kurung Kumey",
+                                                district ==	"Siang"	~	"East Siang", 
+                                                district ==	"Lower Siang"	~	"West Siang",
+                                                district ==	"Kamle"	~	"Lower Subansiri", 
+                                                district ==	"Pakke-Kesang"	~	"East Kesang", 
+                                                district ==	"Lepa-Rada"	~	"Lower Siang", 
+                                                district ==	"Shi-Yomi"	~	"West Siang", 
+                                                district ==	"Dima Hasao"	~	"North Cacha Hills", 
+                                                district ==	"Biswanath"	~	"Sonitpur", 
+                                                district ==	"Charaideo"	~	"Sivasagar", 
+                                                district ==	"Hojai"	~	"Nagaon", 
+                                                district ==	"South Salmara-Mankachar"	~	"Dhubri", 
+                                                district ==	"West Karbi Anglong"	~	"Karbi Anglong", 
+                                                district ==	"Kamrup Metropolitan District"	~	"East Kamrup", 
+                                                district ==	"Kamrup Rural district"	~	"South Kamrup", 
+                                                district ==	"Majuli"	~	"Jorhat", 
+                                                district ==	"Balod"	~	"Durg", 
+                                                district ==	"Baloda Bazar"	~	"Raipur", 
+                                                district ==	"Balrampur"	~	"Surguja", 
+                                                district ==	"Bemetara"	~	"Durg", 
+                                                district ==	"Gariaband"	~	"Raipur", 
+                                                district ==	"Gaurella-Pendra-Marwahi"	~	"Bilaspur", 
+                                                district ==	"Konagaon"	~	"Bastar", 
+                                                district ==	"Mungeli"	~	"Bilaspur", 
+                                                district ==	"Sukma"	~	"Dantewanda", 
+                                                district ==	"Surajpur"	~	"Surguja", 
+                                                district ==	"Tapi"	~	"Surat", 
+                                                district ==	"Aravalli"	~	"Sabarkantha", 
+                                                district ==	"Botad"	~	"Ahmdeabad", 
+                                                district ==	"Chhota Udaipur"	~	"Vadodara", 
+                                                district ==	"Mahisagar"	~	"Kheda", 
+                                                district ==	"Morbi"	~	"Rajkot", 
+                                                district ==	"Gir Somnath"	~	"Junagadh", 
+                                                district ==	"Charki Dadri"	~	"Bhiwani", 
+                                                district ==	"Khunti"	~	"Ranchi", 
+                                                district ==	"Ramgarh"	~	"Hazaribagh", 
+                                                district ==	"Ramanagara"	~	"Bangalore Rural", 
+                                                district ==	"Chikkaballapura"	~	"Kolar", 
+                                                district ==	"Yadagiri"	~	"Kalaburagi", 
+                                                district ==	"Vijayanagara"	~	"Ballari", 
+                                                district ==	"Palghar"	~	"Thane", 
+                                                district ==	"Jiribam"	~	"Imphal East", 
+                                                district ==	"Kamjong"	~	"Ukhrul", 
+                                                district ==	"Kangpokpi"	~	"Senapati", 
+                                                district ==	"Noney"	~	"Tamenglong", 
+                                                district ==	"Tengnoupal"	~	"Chandel", 
+                                                district ==	"Pherzawl"	~	"Churachanpur", 
+                                                district ==	"Kakching"	~	"Thoubal", 
+                                                district ==	"Eastern West Khasi Hills"	~	"East Garo Hills", 
+                                                district ==	"North Garo Hills"	~	"East Garo Hills", 
+                                                district ==	"South West Garo Hills"	~	"West Garo Hills", 
+                                                district ==	"West Jaintia Hills"	~	"Jaintia Hills", 
+                                                district ==	"East Jaintia Hills"	~	"Jaintia Hills", 
+                                                district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
+                                                district ==	"Pratapgarh"	~	"Chittorgarh", 
+                                                district ==	"Ariyalur"	~	"Perambalur", 
+                                                district ==	"Tiruppur"	~	"Coimbatore",
+                                                district ==	"Komaram Bheem"	~	"Adilabad", 
+                                                district ==	"Mancherial"	~	"Adilabad", 
+                                                district ==	"Nirmal"	~	"Adilabad", 
+                                                district ==	"Kamareddy"	~	"Nizamabad",
+                                                district ==	"Jayashankar Bhupalpally"	~	"Warangal",
+                                                district ==	"Jagital"	~	"Karimnagar",
+                                                district ==	"Peddapalli"	~	"Karimnagar",
+                                                district ==	"Rajanna Sircilla"	~	"Karimnagar",
+                                                district ==	"Jangaon"	~	"Warangal",
+                                                district ==	"Hanumakonda"	~	"Warangal",
+                                                district ==	"Warangal Rural"	~	"Warangal",
+                                                district ==	"Mahabubabad"	~	"Warangal",
+                                                district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
+                                                district ==	"Vikarabad"	~	"Ranga Reddy",
+                                                district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
+                                                district ==	"Nagarkurnool"	~	"Mahabubnagar",
+                                                district ==	"Jogulamba"	~	"Mahabubnagar",
+                                                district ==	"Gomati"	~	"Dhalai",
+                                                district ==	"Khowai"	~	"West Tripura",
+                                                district ==	"Sipahijala"	~	"West Tripura",
+                                                district ==	"Unakoti"	~	"North Tripura",
+                                                district ==	"Paschim Bardhaman"	~	"Bardhaman",
+                                                district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                                district ==	"Jhargram"	~	"Paschim Medinipur",
+                                                district ==	"Kalimpong"	~	"Darjeeling",
+                                                district ==	"Alipurduar"	~	"Jalpaiguri",
+                                                district ==	"North and Middle Andaman"	~	"Andamans",
+                                                district ==	"South Andaman"	~	"Andamans",
+                                                district ==	"Samba"	~	"Jammu district",
+                                                district ==	"Resai"	~	"Udhampur",
+                                                district ==	"Ramban"	~	"Doda",
+                                                district ==	"Kishtwar"	~	"Doda",
+                                                district ==	"Kulgam"	~	"Anantnang",
+                                                district ==	"Shopian"	~	"Pulwama",
+                                                district ==	"Ganderbal"	~	"Srinagar",
+                                                district ==	"Bandipora"	~	"Baramulla",
+                                                district ==	"South East Delhi"	~	"South",
+                                                district ==	"Shahdara"	~	"North East",
+                                                TRUE ~ district))
+
+nfhsahs <- nfhsahs %>% filter(!is.na(nfhsahs$NFHS_AHS_id))
+
+dlhs4 <- dlhs4 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
+                                                        district ==	"Namsai"	~	"Lohit",
+                                                        district ==	"Kra Daadi"	~	"Kurung Kumey",
+                                                        district ==	"Siang"	~	"East Siang", 
+                                                        district ==	"Lower Siang"	~	"West Siang",
+                                                        district ==	"Kamle"	~	"Lower Subansiri", 
+                                                        district ==	"Pakke-Kesang"	~	"East Kesang", 
+                                                        district ==	"Lepa-Rada"	~	"Lower Siang", 
+                                                        district ==	"Shi-Yomi"	~	"West Siang", 
+                                                        district ==	"Dima Hasao"	~	"North Cacha Hills", 
+                                                        district ==	"Biswanath"	~	"Sonitpur", 
+                                                        district ==	"Charaideo"	~	"Sivasagar", 
+                                                        district ==	"Hojai"	~	"Nagaon", 
+                                                        district ==	"South Salmara-Mankachar"	~	"Dhubri", 
+                                                        district ==	"West Karbi Anglong"	~	"Karbi Anglong", 
+                                                        district ==	"Kamrup Metropolitan District"	~	"East Kamrup", 
+                                                        district ==	"Kamrup Rural district"	~	"South Kamrup", 
+                                                        district ==	"Majuli"	~	"Jorhat", 
+                                                        district ==	"Balod"	~	"Durg", 
+                                                        district ==	"Baloda Bazar"	~	"Raipur", 
+                                                        district ==	"Balrampur"	~	"Surguja", 
+                                                        district ==	"Bemetara"	~	"Durg", 
+                                                        district ==	"Gariaband"	~	"Raipur", 
+                                                        district ==	"Gaurella-Pendra-Marwahi"	~	"Bilaspur", 
+                                                        district ==	"Konagaon"	~	"Bastar", 
+                                                        district ==	"Mungeli"	~	"Bilaspur", 
+                                                        district ==	"Sukma"	~	"Dantewanda", 
+                                                        district ==	"Surajpur"	~	"Surguja", 
+                                                        district ==	"Tapi"	~	"Surat", 
+                                                        district ==	"Aravalli"	~	"Sabarkantha", 
+                                                        district ==	"Botad"	~	"Ahmdeabad", 
+                                                        district ==	"Chhota Udaipur"	~	"Vadodara", 
+                                                        district ==	"Mahisagar"	~	"Kheda", 
+                                                        district ==	"Morbi"	~	"Rajkot", 
+                                                        district ==	"Gir Somnath"	~	"Junagadh", 
+                                                        district ==	"Charki Dadri"	~	"Bhiwani", 
+                                                        district ==	"Khunti"	~	"Ranchi", 
+                                                        district ==	"Ramgarh"	~	"Hazaribagh", 
+                                                        district ==	"Ramanagara"	~	"Bangalore Rural", 
+                                                        district ==	"Chikkaballapura"	~	"Kolar", 
+                                                        district ==	"Yadagiri"	~	"Kalaburagi", 
+                                                        district ==	"Vijayanagara"	~	"Ballari", 
+                                                        district ==	"Palghar"	~	"Thane", 
+                                                        district ==	"Jiribam"	~	"Imphal East", 
+                                                        district ==	"Kamjong"	~	"Ukhrul", 
+                                                        district ==	"Kangpokpi"	~	"Senapati", 
+                                                        district ==	"Noney"	~	"Tamenglong", 
+                                                        district ==	"Tengnoupal"	~	"Chandel", 
+                                                        district ==	"Pherzawl"	~	"Churachanpur", 
+                                                        district ==	"Kakching"	~	"Thoubal", 
+                                                        district ==	"Eastern West Khasi Hills"	~	"East Garo Hills", 
+                                                        district ==	"North Garo Hills"	~	"East Garo Hills", 
+                                                        district ==	"South West Garo Hills"	~	"West Garo Hills", 
+                                                        district ==	"West Jaintia Hills"	~	"Jaintia Hills", 
+                                                        district ==	"East Jaintia Hills"	~	"Jaintia Hills", 
+                                                        district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
+                                                        district ==	"Pratapgarh"	~	"Chittorgarh", 
+                                                        district ==	"Ariyalur"	~	"Perambalur", 
+                                                        district ==	"Tiruppur"	~	"Coimbatore",
+                                                        district ==	"Komaram Bheem"	~	"Adilabad", 
+                                                        district ==	"Mancherial"	~	"Adilabad", 
+                                                        district ==	"Nirmal"	~	"Adilabad", 
+                                                        district ==	"Kamareddy"	~	"Nizamabad",
+                                                        district ==	"Jayashankar Bhupalpally"	~	"Warangal",
+                                                        district ==	"Jagital"	~	"Karimnagar",
+                                                        district ==	"Peddapalli"	~	"Karimnagar",
+                                                        district ==	"Rajanna Sircilla"	~	"Karimnagar",
+                                                        district ==	"Jangaon"	~	"Warangal",
+                                                        district ==	"Hanumakonda"	~	"Warangal",
+                                                        district ==	"Warangal Rural"	~	"Warangal",
+                                                        district ==	"Mahabubabad"	~	"Warangal",
+                                                        district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
+                                                        district ==	"Vikarabad"	~	"Ranga Reddy",
+                                                        district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
+                                                        district ==	"Nagarkurnool"	~	"Mahabubnagar",
+                                                        district ==	"Jogulamba"	~	"Mahabubnagar",
+                                                        district ==	"Gomati"	~	"Dhalai",
+                                                        district ==	"Khowai"	~	"West Tripura",
+                                                        district ==	"Sipahijala"	~	"West Tripura",
+                                                        district ==	"Unakoti"	~	"North Tripura",
+                                                        district ==	"Paschim Bardhaman"	~	"Bardhaman",
+                                                        district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                                        district ==	"Jhargram"	~	"Paschim Medinipur",
+                                                        district ==	"Kalimpong"	~	"Darjeeling",
+                                                        district ==	"Alipurduar"	~	"Jalpaiguri",
+                                                        district ==	"North and Middle Andaman"	~	"Andamans",
+                                                        district ==	"South Andaman"	~	"Andamans",
+                                                        district ==	"Samba"	~	"Jammu district",
+                                                        district ==	"Resai"	~	"Udhampur",
+                                                        district ==	"Ramban"	~	"Doda",
+                                                        district ==	"Kishtwar"	~	"Doda",
+                                                        district ==	"Kulgam"	~	"Anantnang",
+                                                        district ==	"Shopian"	~	"Pulwama",
+                                                        district ==	"Ganderbal"	~	"Srinagar",
+                                                        district ==	"Bandipora"	~	"Baramulla",
+                                                        district ==	"South East Delhi"	~	"South",
+                                                        district ==	"Shahdara"	~	"North East",
+                                                        TRUE ~ district))
+
+dlhs4 <- dlhs4 %>% filter(!is.na(DLHS4_id))
+
+dlhs3 <- dlhs3 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
+                                               district ==	"Namsai"	~	"Lohit",
+                                               district ==	"Kra Daadi"	~	"Kurung Kumey",
+                                               district ==	"Siang"	~	"East Siang", 
+                                               district ==	"Lower Siang"	~	"West Siang",
+                                               district ==	"Kamle"	~	"Lower Subansiri", 
+                                               district ==	"Pakke-Kesang"	~	"East Kesang", 
+                                               district ==	"Lepa-Rada"	~	"Lower Siang", 
+                                               district ==	"Shi-Yomi"	~	"West Siang", 
+                                               district ==	"Dima Hasao"	~	"North Cacha Hills", 
+                                               district ==	"Biswanath"	~	"Sonitpur", 
+                                               district ==	"Charaideo"	~	"Sivasagar", 
+                                               district ==	"Hojai"	~	"Nagaon", 
+                                               district ==	"South Salmara-Mankachar"	~	"Dhubri", 
+                                               district ==	"West Karbi Anglong"	~	"Karbi Anglong", 
+                                               district ==	"Kamrup Metropolitan District"	~	"East Kamrup", 
+                                               district ==	"Kamrup Rural district"	~	"South Kamrup", 
+                                               district ==	"Majuli"	~	"Jorhat", 
+                                               district ==	"Balod"	~	"Durg", 
+                                               district ==	"Baloda Bazar"	~	"Raipur", 
+                                               district ==	"Balrampur"	~	"Surguja", 
+                                               district ==	"Bemetara"	~	"Durg", 
+                                               district ==	"Gariaband"	~	"Raipur", 
+                                               district ==	"Gaurella-Pendra-Marwahi"	~	"Bilaspur", 
+                                               district ==	"Konagaon"	~	"Bastar", 
+                                               district ==	"Mungeli"	~	"Bilaspur", 
+                                               district ==	"Sukma"	~	"Dantewanda", 
+                                               district ==	"Surajpur"	~	"Surguja", 
+                                               district ==	"Tapi"	~	"Surat", 
+                                               district ==	"Aravalli"	~	"Sabarkantha", 
+                                               district ==	"Botad"	~	"Ahmdeabad", 
+                                               district ==	"Chhota Udaipur"	~	"Vadodara", 
+                                               district ==	"Mahisagar"	~	"Kheda", 
+                                               district ==	"Morbi"	~	"Rajkot", 
+                                               district ==	"Gir Somnath"	~	"Junagadh", 
+                                               district ==	"Charki Dadri"	~	"Bhiwani", 
+                                               district ==	"Khunti"	~	"Ranchi", 
+                                               district ==	"Ramgarh"	~	"Hazaribagh", 
+                                               district ==	"Ramanagara"	~	"Bangalore Rural", 
+                                               district ==	"Chikkaballapura"	~	"Kolar", 
+                                               district ==	"Yadagiri"	~	"Kalaburagi", 
+                                               district ==	"Vijayanagara"	~	"Ballari", 
+                                               district ==	"Palghar"	~	"Thane", 
+                                               district ==	"Jiribam"	~	"Imphal East", 
+                                               district ==	"Kamjong"	~	"Ukhrul", 
+                                               district ==	"Kangpokpi"	~	"Senapati", 
+                                               district ==	"Noney"	~	"Tamenglong", 
+                                               district ==	"Tengnoupal"	~	"Chandel", 
+                                               district ==	"Pherzawl"	~	"Churachanpur", 
+                                               district ==	"Kakching"	~	"Thoubal", 
+                                               district ==	"Eastern West Khasi Hills"	~	"East Garo Hills", 
+                                               district ==	"North Garo Hills"	~	"East Garo Hills", 
+                                               district ==	"South West Garo Hills"	~	"West Garo Hills", 
+                                               district ==	"West Jaintia Hills"	~	"Jaintia Hills", 
+                                               district ==	"East Jaintia Hills"	~	"Jaintia Hills", 
+                                               district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
+                                               district ==	"Pratapgarh"	~	"Chittorgarh", 
+                                               district ==	"Ariyalur"	~	"Perambalur", 
+                                               district ==	"Tiruppur"	~	"Coimbatore",
+                                               district ==	"Komaram Bheem"	~	"Adilabad", 
+                                               district ==	"Mancherial"	~	"Adilabad", 
+                                               district ==	"Nirmal"	~	"Adilabad", 
+                                               district ==	"Kamareddy"	~	"Nizamabad",
+                                               district ==	"Jayashankar Bhupalpally"	~	"Warangal",
+                                               district ==	"Jagital"	~	"Karimnagar",
+                                               district ==	"Peddapalli"	~	"Karimnagar",
+                                               district ==	"Rajanna Sircilla"	~	"Karimnagar",
+                                               district ==	"Jangaon"	~	"Warangal",
+                                               district ==	"Hanumakonda"	~	"Warangal",
+                                               district ==	"Warangal Rural"	~	"Warangal",
+                                               district ==	"Mahabubabad"	~	"Warangal",
+                                               district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
+                                               district ==	"Vikarabad"	~	"Ranga Reddy",
+                                               district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
+                                               district ==	"Nagarkurnool"	~	"Mahabubnagar",
+                                               district ==	"Jogulamba"	~	"Mahabubnagar",
+                                               district ==	"Gomati"	~	"Dhalai",
+                                               district ==	"Khowai"	~	"West Tripura",
+                                               district ==	"Sipahijala"	~	"West Tripura",
+                                               district ==	"Unakoti"	~	"North Tripura",
+                                               district ==	"Paschim Bardhaman"	~	"Bardhaman",
+                                               district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                               district ==	"Jhargram"	~	"Paschim Medinipur",
+                                               district ==	"Kalimpong"	~	"Darjeeling",
+                                               district ==	"Alipurduar"	~	"Jalpaiguri",
+                                               district ==	"North and Middle Andaman"	~	"Andamans",
+                                               district ==	"South Andaman"	~	"Andamans",
+                                               district ==	"Samba"	~	"Jammu district",
+                                               district ==	"Resai"	~	"Udhampur",
+                                               district ==	"Ramban"	~	"Doda",
+                                               district ==	"Kishtwar"	~	"Doda",
+                                               district ==	"Kulgam"	~	"Anantnang",
+                                               district ==	"Shopian"	~	"Pulwama",
+                                               district ==	"Ganderbal"	~	"Srinagar",
+                                               district ==	"Bandipora"	~	"Baramulla",
+                                               district ==	"South East Delhi"	~	"South",
+                                               district ==	"Shahdara"	~	"North East",
+                                               TRUE ~ district))
+
+dlhs3 <- dlhs3 %>% filter(!is.na(DLHS3_id))
+
+
+names <- stringdist_join(nfhsahs, dlhs3,
+                         by='district', #match based on district name
+                         mode='left', #use left join
+                         method = "jw", #use jw distance metric
+                         max_dist=99,
+                         distance_col='dist') %>%
+  group_by(district.x) %>%
+  slice_min(order_by=dist, n=1)
+
+nfhsnames <- stringdist_join(nfhs5, nfhsahs,
+                         by='district', #match based on district name
+                         mode='left', #use left join
+                         method = "jw", #use jw distance metric
+                         max_dist=99,
+                         distance_col='dist') %>%
+  group_by(district.x) %>%
+  slice_min(order_by=dist, n=1)
+
 # analyses ----------------------------------------------------------------
 
 #calculating weights. For NFHS surveys weights must be divided by 1000000
@@ -17,6 +614,25 @@ df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
                                        survey == "DLHS4" ~ wt,
                                        survey == "AHS" ~ wt,
                                        TRUE ~ NA_real_))
+
+
+# calculating jackknife and bootstrap weights in survey ---------------------------------------------------------
+
+library(survey)
+
+##### Run on cluster ######
+
+weightdesign <- svydesign(data = df,ids = ~state, strata =  ~psu, nest = TRUE)
+
+dfboot <- as.svrepdesign(weightdesign, type="bootstrap")
+
+write.csv(dfboot, "dfboot.csv")
+
+dfboot <- read.csv("dfboot.csv")
+
+
+
+
 
 # using new covariates of state, any primary, urban location, and if part of scheduled group
 
@@ -41,7 +657,7 @@ library(broom)
 #complex survey design when combining dlhs and nfhs?
 #dropping 166 DLSH4 observations that do not have weights. making new dataset.
 
-design <- svydesign(ids = df$psu, weights = df$weight, nest = TRUE, data = df)
+design <- svydesign(ids = ~psu, weights = ~weight, nest = TRUE, data = df)
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 

@@ -309,6 +309,7 @@ names(ahs_preg)
 ahs_preg <- ahs_preg %>% select(-c(hhld_id, member_identity, result_of_interview, intvw_yrmo, abort_yrmo, n, stillbirths, prev_stillbirth, stillbirth_year, 
                                    maxyearsb, nn))
 
+
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% relocate(state, .before = district)
 
 ahs_preg$survey <- c("ahs")
@@ -328,6 +329,8 @@ wps_educ <- wps %>% select(c(caseid, state, district, rural, stratum_code, psu, 
 
 ahs_preg$state <- str_pad(ahs_preg$state, 2, "left", "0")
 ahs_preg$district <- str_pad(ahs_preg$district, 2, "left", "0")
+
+
 #stratum code is 0/1/2, leaving as is
 #making psu 3 numbers
 ahs_preg$psu <- str_pad(ahs_preg$psu, 3, "left", "0")
@@ -348,7 +351,7 @@ nrow(distinct(ahs_preg_educ))
 ahs_preg_educ <- distinct(ahs_preg_educ)
 
 
-ahs_preg_match <- ahs_preg_educ %>% select(c(caseid, state, district, psu, out_come_of_preg, previous_sb, survey, year_of_abortion, yob, wt, year_of_intr, age,
+ahs_preg_match <- ahs_preg_educ %>% select(c(caseid, state, district, state_dist, psu, out_come_of_preg, previous_sb, survey, year_of_abortion, yob, wt, year_of_intr, age,
                                   rural, religion, social_group_code, highest_qualification,drinking_water_source, toilet_used, healthscheme_1, 
                                   healthscheme_2, age_at_first_conception,
                                   born_alive_total, no_of_months_first_anc, no_of_anc, kind_of_birth, previous_current_diff, where_del_took_place, who_conducted_del_at_home,
@@ -367,9 +370,14 @@ ahs_preg_match$other_insurance <- ifelse(ahs_preg_match$healthscheme_1 == 7 | ah
 ahs_preg_match <- ahs_preg_match %>% select(-c(healthscheme_1, healthscheme_2))
 
 #write.csv(ahs_preg_match, "ahs_preg_match.csv")
+ahs_preg_match <- read.csv("ahs_preg_match.csv")
 
 names(dlhsnfhs_preg_mothercov)
 names(ahs_preg_match)
+
+#making ahs_preg state_dist variable to match dlhsnfhs
+ahs_preg_match$state_dist <- paste(ahs_preg_match$state, ahs_preg_match$district, sep ="")
+
 
 #dropping dlhsnfhs_preg_mothercov variables not in ahs
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(ever_terminated, month_last_terminated, year_last_terminated, caste,
@@ -462,10 +470,14 @@ names(ahs_preg_match)
 
 #making ahs outcome year. Live birth == 1, Still birth == 1, if either we want year of birth
 # induced and spontaneous abortion are 3 and 4, if either we want year of abortion
-ahs_preg_match <- ahs_preg_match %>% mutate(outcome_year = 
-                                              case_when(outcome < 3 ~ yob,
-                                                        outcome > 2 ~ year_of_abortion,
-                                                        TRUE ~ NA_real_))
+
+#Nov 7 not working. Redoing as ifelse.
+#ahs_preg_match <- ahs_preg_match %>% mutate(outcome_year = case_when(outcome < 3 ~ yob,
+#                                                                     outcome > 2 ~ year_of_abortion,
+#                                                                     TRUE ~ NA_real_))
+
+ahs_preg_match$outcome_year <- ifelse(ahs_preg_match$outcome < 3, ahs_preg_match$yob, NA)
+ahs_preg_match$outcome_year <- ifelse(ahs_preg_match$outcome > 2, ahs_preg_match$year_of_abortion, ahs_preg_match$outcome_year)
 
 #dropping old variables
 ahs_preg_match <- ahs_preg_match %>% select(-c(yob, year_of_abortion))
@@ -485,6 +497,8 @@ dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(outcome_year = yea
 ahs_preg_match$state <- as.numeric(ahs_preg_match$state)
 ahs_preg_match$psu <- as.numeric(ahs_preg_match$psu)
 
+dlhsnfhs_preg_mothercov$outcome_year <- as.numeric(dlhsnfhs_preg_mothercov$outcome_year)
+ahs_preg_match$state_dist <- as.numeric(ahs_preg_match$state_dist)
 dlhsnfhs_preg_mothercov$outcome_year <- as.numeric(dlhsnfhs_preg_mothercov$outcome_year)
 
 df <- bind_rows(dlhsnfhs_preg_mothercov, ahs_preg_match)
@@ -810,14 +824,18 @@ df$pp_checkup <- ifelse(df$pp_checkup == 9, NA, df$pp_checkup)
 #Making all 2s into 0s. then will match across surveys.
 df$pp_checkup <- ifelse(df$pp_checkup == 2, 0, df$pp_checkup)
 
-write.csv(df, "harmonized_variables.csv")
+#write.csv(df, "harmonized_variables.csv")
 
 
 # fixing district to match NFHS -------------------------------------------
 
+#now in Aim1 file
 
 
 
+
+
+# Archive -----------------------------------------------------------------
 
 
 #looking at most recent year of outcome. Will also need to further filter by preg_flag to be most recent pregnancy as for some reaosn 

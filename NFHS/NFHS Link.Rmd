@@ -373,8 +373,6 @@ nfhs4 <- nfhs4 %>% select(-c("v018", "v019"))
 #                          num_spont_abort = miscarriage, 
 #                          num_still_births = stillbirth
 #                          )
-#dropping total pregnancies and multiples variable
-dlhs <- dlhs %>% select(-c("tot_preg", "multiples"))
 
 #adding in survey variable
 nfhs4$survey <- c("NFHS4")
@@ -1045,6 +1043,11 @@ dlhs <- dlhs %>% select(-c("dhhwt", "dewwt", "shhwt"))
 
 dlhs <- dlhs %>% rename(wt = sewwt)
 
+#making nfhs state_district variable to match dlhs. We will not use this. Will use dlhs state_dist for district harmonization as each value is not unique.
+nfhs$state_dist <- paste(nfhs$state, nfhs$district, sep ="")
+
+nfhs <- nfhs %>% relocate(state_dist, .after = wt)
+
 #moving it to match
 dlhs <- dlhs %>% relocate(wt, .after = district)
 
@@ -1203,6 +1206,9 @@ nfhs <- nfhs %>% relocate(date, .after = psu)
 nfhs <- nfhs %>% relocate(month, .after = date)
 nfhs <- nfhs %>% relocate(year, .after = month)
 nfhs <- nfhs %>% relocate(age, .after = year)
+
+dlhs$district <- as.numeric(dlhs$district)
+nfhs$state_dist <- as.numeric(nfhs$state_dist)
 
 #combining nfhs and dlhs
 dlhs_nfhs <- bind_rows(dlhs, nfhs)
@@ -1413,18 +1419,9 @@ dlhsnfhs_preg_mothercov <- left_join(
   keep = FALSE
 )
 
-dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% group_by(caseid)
 
-dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% add_count(caseid)
 
-check <- dlhsnfhs_preg_mothercov %>% filter(n > 1)
-
-dlhs_preg <- dlhs_preg %>% group_by(id_person)
-dlhs_preg <- dlhs_preg %>% add_count(id_person)
-
-dlhscheck <- dlhs_preg %>% filter(n >1)
-
-#write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
+write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
 
 dlhsnfhspreg <- read.csv("dlhsnfhs_preg_w_mom_cov.csv")
 

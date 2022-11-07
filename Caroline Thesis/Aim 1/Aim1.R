@@ -12,132 +12,12 @@ df$stillbirth
 
 # Fixing districts to match -----------------------------------------------
 
-#make DLHS districts into state_district match
-
-range(df$district)
-
-df$district_match <- df$district
-
-# Using ICPSR district match code from STATA
-
-df <- df %>% mutate(district_match = case_when(survey == "NFHS4" & district == 300 ~ 1000,
-                                               survey == "NFHS4" & district == 303 ~ 1000,
-                                               survey == "NFHS4" & district == 319 ~ 1000,
-                                               survey == "NFHS4" & district == 320 ~ 1000,
-                                               survey == "NFHS4" & district == 321 ~ 1000,
-                                               survey == "NFHS4" & district == 322 ~ 1000,
-                                               survey == "NFHS4" & district == 323 ~ 1000,
-                                               survey == "NFHS4" & district == 324 ~ 1000,
-                                               survey == "NFHS4" & district == 306 ~ 1001,
-                                               survey == "NFHS4" & district == 325 ~ 1001,
-                                               survey == "NFHS4" & district == 326 ~ 1001,
-                                               survey == "NFHS4" & district == 239 ~ 1002,
-                                               survey == "NFHS4" & district == 240 ~ 1002,
-                                               survey == "NFHS4" & district == 414 ~ 1003,
-                                               survey == "NFHS4" & district == 415 ~ 1003,
-                                               survey == "NFHS4" & district == 416 ~ 1004,
-                                               survey == "NFHS4" & district == 417 ~ 1004,
-                                               survey == "NFHS4" & district == 358 ~ 1005,
-                                               survey == "NFHS4" & district == 359 ~ 1005,
-                                               survey == "NFHS4" & district == 360 ~ 1006,
-                                               survey == "NFHS4" & district == 361 ~ 1006,
-                                               survey == "NFHS4" & district == 362 ~ 1007,
-                                               survey == "NFHS4" & district == 363 ~ 1007,
-                                               survey == "NFHS4" & district == 364 ~ 1008,
-                                               survey == "NFHS4" & district == 365 ~ 1008,
-                                               survey == "NFHS4" & district == 366 ~ 1009,
-                                               survey == "NFHS4" & district == 367 ~ 1009,
-                                               survey == "NFHS4" & district == 368 ~ 1010,
-                                               survey == "NFHS4" & district == 369 ~ 1010,
-                                               survey == "NFHS4" & district == 458 ~ 1011,
-                                               survey == "NFHS4" & district == 459 ~ 1011,
-                                               survey == "NFHS4" & district == 460 ~ 1012,
-                                               survey == "NFHS4" & district == 461 ~ 1012,
-                                               survey == "NFHS4" & district == 462 ~ 1013,
-                                               survey == "NFHS4" & district == 463 ~ 1013,
-                                               survey == "NFHS4" & district == 464 ~ 1014,
-                                               survey == "NFHS4" & district == 465 ~ 1014,
-                                               survey == "NFHS4" & district == 466 ~ 1015,
-                                               survey == "NFHS4" & district == 467 ~ 1015,
-                                               survey == "NFHS4" & district == 125 ~ 1016,
-                                               survey == "NFHS4" & district == 126 ~ 1016,
-                                               survey == "NFHS4" & district == 130 ~ 1016,
-                                               survey == "NFHS4" & district == 131 ~ 1016,
-                                               survey == "NFHS4" & district == 201 ~ 1017,
-                                               survey == "NFHS4" & district == 202 ~ 1017,
-                                               TRUE ~ NA_real_))
-                                               
-                                               
-#                                               survey == "NFHS5" & district == 300 ~ 1000,
-#                                               survey == "NFHS5" & district == 303 ~ 1000,
-#                                               survey == "NFHS5" & district == 319 ~ 1000,
-#                                               survey == "NFHS5" & district == 320 ~ 1000,
-#                                               survey == "NFHS5" & district == 321 ~ 1000,
-#                                               survey == "NFHS5" & district == 322 ~ 1000,
-#                                               survey == "NFHS5" & district == 323 ~ 1000,
-#                                               survey == "NFHS5" & district == 324 ~ 1000,
-#                                               survey == "NFHS5" & district == 306 ~ 1001,
-#                                               survey == "NFHS5" & district == 325 ~ 1001,
-#                                               survey == "NFHS5" & district == 326 ~ 1001,
-#                                               survey == "NFHS5" & district == 239 ~ 1002,
-#                                               survey == "NFHS5" & district == 240 ~ 1002,
-#                                               survey == "NFHS5" & district == 414 ~ 1003,
-#                                               survey == "NFHS5" & district == 415 ~ 1003,
-#                                               survey == "NFHS5" & district == 416 ~ 1004,
-#                                               survey == "NFHS5" & district == 417 ~ 1004,
-#                                               survey == "NFHS5" & district == 358 ~ 1005,
-#                                               survey == "NFHS5" & district == 359 ~ 1005,
-#                                               survey == "NFHS5" & district == 360 ~ 1006,
-#                                               survey == "NFHS5" & district == 361 ~ 1006,
-#                                               survey == "NFHS5" & district == 362 ~ 1007,
-#                                               survey == "NFHS5" & district == 363 ~ 1007,
-#                                               survey == "NFHS5" & district == 364 ~ 1008,
-#                                               survey == "NFHS5" & district == 365 ~ 1008,
-#                                               survey == "NFHS5" & district == 366 ~ 1009,
-#                                               survey == "NFHS5" & district == 367 ~ 1009,
-#                                               survey == "NFHS5" & district == 368 ~ 1010,
-#                                               survey == "NFHS5" & district == 369 ~ 1010,
-#                                               survey == "NFHS5" & district == 458 ~ 1011,
-#                                               survey == "NFHS5" & district == 459 ~ 1011,
-#                                               survey == "NFHS5" & district == 460 ~ 1012,
-#                                               survey == "NFHS5" & district == 461 ~ 1012,
-#                                               survey == "NFHS5" & district == 462 ~ 1013,
-#                                               survey == "NFHS5" & district == 463 ~ 1013,
-#                                               survey == "NFHS5" & district == 464 ~ 1014,
-#                                               survey == "NFHS5" & district == 465 ~ 1014,
-#                                               survey == "NFHS5" & district == 466 ~ 1015,
-#                                               survey == "NFHS5" & district == 467 ~ 1015,
-#                                               survey == "NFHS5" & district == 125 ~ 1016,
-#                                               survey == "NFHS5" & district == 126 ~ 1016,
-#                                               survey == "NFHS5" & district == 130 ~ 1016,
-#                                               survey == "NFHS5" & district == 131 ~ 1016,
-#                                               survey == "NFHS5" & district == 201 ~ 1017,
-#                                               survey == "NFHS5" & district == 202 ~ 1017,
-#                                               ))
-
-#adding in other ahs district variable. Right now the district variable is the nfhs4_census2011_district_id
-
-#ahs_preg_match was read in from the ahs link file. 
-ahs_preg_match <- ahs_preg_match %>% rename(dist_org = district)
-
-ahs_preg_match <- ahs_preg_match %>% rename(district = nfhs4_census2011_district_id)
-
-ahs_dist_link <- ahs_preg_match %>% select(c(caseid, state, dist_org, district,psu, outcome, yob, wt, survey, prev_stillbirth, survey))
-
-#trying to see if leftjoin will work for just ahs
-dftry <- left_join(
-  df,
-  ahs_preg_match
-)
-
-
-df$sdist <- ifelse(df$survey != "NFHS4" | df$survey != "NFHS5", (str_c(as.character(df$state), as.character(df$district), sep="")), df$district)
 
 #district names that duplicate across multiple states were relabeled as district_state, i.e. aurangabad_bihar and aurangabad_maharashtra
 
 #trimming trailing spaces
-trim <- function (x) gsub("^\\s+|\\s+$", "", x)
-library(fuzzyjoin)
+
+#library(fuzzyjoin)
 
 #Labels taken from STATA and made into new dataframe with their values. 
 # All districts that changed in the study time frame were found on wikipedia. This is saved as district_changes.csv
@@ -150,8 +30,15 @@ library(fuzzyjoin)
 # Districts labeled north/south/east/west repeat between Sikkim and Daman&Diu. For uniqueness, have renamed the Sikkim districts to be district_sikkim, 
 #i.e. north_sikkim
 
+# bilaspur and hamirpur district in himachal pradesh was relabeled as bilaspur_hp and hamirpur district.
 
+#raigarh district in mahaarashtra was renamed as raigarh_mh
+
+# This was done in the file "district_names" to ensure the IDs matched the correct state in district comparison
+
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 names <- read.csv("district_names.csv")
+
 
 names$DLHS3 <- str_c(names$DLHS3a, names$DLHS3b, sep=" ")
 names <- names %>% select(-c(DLHS3a, DLHS3b))
@@ -222,8 +109,8 @@ nfhs5 <- nfhs5 %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                               district ==	"Sukma"	~	"Dantewada", 
                                               district ==	"Surajpur"	~	"Surguja", 
                                               district ==	"Tapi"	~	"Surat", 
-                                              district ==	"Aravali"	~	"Sabarkantha", 
-                                              district ==	"Botad"	~	"Ahmdeabad", 
+                                              district ==	"Aravali"	~	"Sabar Kantha", 
+                                              district ==	"Botad"	~	"Ahmedabad", 
                                               district ==	"Chhota Udaipur"	~	"Vadodara", 
                                               district ==	"Mahisagar"	~	"Kheda", 
                                               district ==	"Morbi"	~	"Rajkot", 
@@ -251,7 +138,7 @@ nfhs5 <- nfhs5 %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                               district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
                                               district ==	"Pratapgarh"	~	"Chittaurgarh",
                                               district ==	"Tiruppur"	~	"Coimbatore",
-                                              district ==	"Komaram Bheem"	~	"Adilabad", 
+                                              district ==	"Komaram Bheem Asifabad"	~	"Adilabad", 
                                               district ==	"Mancherial"	~	"Adilabad", 
                                               district ==	"Nirmal"	~	"Adilabad", 
                                               district ==	"Kamareddy"	~	"Nizamabad",
@@ -264,29 +151,29 @@ nfhs5 <- nfhs5 %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                               district ==	"Warangal Rural"	~	"Warangal",
                                               district ==	"Mahabubabad"	~	"Warangal",
                                               district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
-                                              district ==	"Vikarabad"	~	"Ranga Reddy",
-                                              district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
-                                              district ==	"Nagarkurnool"	~	"Mahabubnagar",
-                                              district ==	"Jogulamba"	~	"Mahabubnagar",
+                                              district ==	"Vikarabad"	~	"Rangareddy",
+                                              district ==	"Medchal-Malkajgiri"	~	"Rangareddy",
+                                              district ==	"Nagarkurnool"	~	"Mahbubnagar",
+                                              district ==	"Jogulamba Gadwal"	~	"Mahbubnagar",
                                               district ==	"Gomati"	~	"Dhalai",
                                               district ==	"Khowai"	~	"West Tripura",
-                                              district ==	"Sipahijala"	~	"West Tripura",
+                                              district ==	"Sepahijala"	~	"West Tripura",
                                               district ==	"Unakoti"	~	"North Tripura",
-                                              district ==	"Paschim Bardhaman"	~	"Bardhaman",
-                                              district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                              district ==	"Paschim Barddhaman"	~	"Barddhaman",
+                                              district ==	"Purba Barddhaman"	~	"Barddhaman",
                                               district ==	"Jhargram"	~	"Paschim Medinipur",
                                               district ==	"Kalimpong"	~	"Darjeeling",
                                               district ==	"Alipurduar"	~	"Jalpaiguri",
                                               district ==	"North And Middle Andaman"	~	"Andamans",
                                               district ==	"South Andaman"	~	"Andamans",
-                                              district ==	"Samba"	~	"Jammu district",
+                                              district ==	"Samba"	~	"Jammu",
                                               district ==	"Reasi"	~	"Udhampur",
                                               district ==	"Ramban"	~	"Doda",
                                               district ==	"Kishtwar"	~	"Doda",
                                               district ==	"Kulgam"	~	"Anantnang",
-                                              district ==	"Shopian"	~	"Pulwama",
+                                              district ==	"Shupiyan"	~	"Pulwama",
                                               district ==	"Ganderbal"	~	"Srinagar",
-                                              district ==	"Bandipora"	~	"Baramulla",
+                                              district ==	"Bandipore"	~	"Baramulla",
                                               district ==	"South East"	~	"South",
                                               district ==	"Shahdara"	~	"North East",
                                               district == "Y.s.r." ~ "Cuddapah",
@@ -307,6 +194,22 @@ nfhs5 <- nfhs5 %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                               district == "Fazilka" ~ "Firozpur",
                                               district == "Pathankot" ~ "Gurdaspur",
                                               district == "Bhadradri Kothagudem" ~ "Khammam",
+                                              district == "Jayashankar Bhupalapally" ~ "Warangal",
+                                              district == "Sangareddy" ~ "Medak",
+                                              district == "Siddipet" ~ "Medak",
+                                              district == "Suryapet" ~ "Nalgonda",
+                                              district == "Wanaparthy" ~ "Mahbubnagar",
+                                              district == "Warangal Urban" ~ "Warangal",
+                                              district == "Amethi" ~ "Sultanpur",
+                                              district == "Hapur" ~ "Ghaziabad",
+                                              district == "Sambhal" ~ "Moradabad",
+                                              district == "Shamli" ~ "Muzaffarnagar",
+                                              district ==	"Jagtial"	~	"Karimnagar",
+                                              district ==	"Jangoan"	~	"Warangal",
+                                              district == "Kanshiram Nagar" ~ "Etah",
+                                              district == "Devbhumi Dwarka" ~ 	"Jamnagar",
+                                              district == "Alirajpur" ~ "Jhabua",
+                                              district == "Singrauli" ~ "Sidhi",
                                               TRUE ~ district))
 
 nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
@@ -338,8 +241,8 @@ nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tira
                                                 district ==	"Sukma"	~	"Dantewada", 
                                                 district ==	"Surajpur"	~	"Surguja", 
                                                 district ==	"Tapi"	~	"Surat", 
-                                                district ==	"Aravali"	~	"Sabarkantha", 
-                                                district ==	"Botad"	~	"Ahmdeabad", 
+                                                district ==	"Aravali"	~	"Sabar Kantha", 
+                                                district ==	"Botad"	~	"Ahmedabad", 
                                                 district ==	"Chhota Udaipur"	~	"Vadodara", 
                                                 district ==	"Mahisagar"	~	"Kheda", 
                                                 district ==	"Morbi"	~	"Rajkot", 
@@ -367,7 +270,7 @@ nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tira
                                                 district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
                                                 district ==	"Pratapgarh"	~	"Chittaurgarh",
                                                 district ==	"Tiruppur"	~	"Coimbatore",
-                                                district ==	"Komaram Bheem"	~	"Adilabad", 
+                                                district ==	"Komaram Bheem Asifabad"	~	"Adilabad", 
                                                 district ==	"Mancherial"	~	"Adilabad", 
                                                 district ==	"Nirmal"	~	"Adilabad", 
                                                 district ==	"Kamareddy"	~	"Nizamabad",
@@ -380,29 +283,29 @@ nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tira
                                                 district ==	"Warangal Rural"	~	"Warangal",
                                                 district ==	"Mahabubabad"	~	"Warangal",
                                                 district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
-                                                district ==	"Vikarabad"	~	"Ranga Reddy",
-                                                district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
-                                                district ==	"Nagarkurnool"	~	"Mahabubnagar",
-                                                district ==	"Jogulamba"	~	"Mahabubnagar",
+                                                district ==	"Vikarabad"	~	"Rangareddy",
+                                                district ==	"Medchal-Malkajgiri"	~	"Rangareddy",
+                                                district ==	"Nagarkurnool"	~	"Mahbubnagar",
+                                                district ==	"Jogulamba Gadwal"	~	"Mahbubnagar",
                                                 district ==	"Gomati"	~	"Dhalai",
                                                 district ==	"Khowai"	~	"West Tripura",
-                                                district ==	"Sipahijala"	~	"West Tripura",
+                                                district ==	"Sepahijala"	~	"West Tripura",
                                                 district ==	"Unakoti"	~	"North Tripura",
-                                                district ==	"Paschim Bardhaman"	~	"Bardhaman",
-                                                district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                                district ==	"Paschim Barddhaman"	~	"Barddhaman",
+                                                district ==	"Purba Barddhaman"	~	"Barddhaman",
                                                 district ==	"Jhargram"	~	"Paschim Medinipur",
                                                 district ==	"Kalimpong"	~	"Darjeeling",
                                                 district ==	"Alipurduar"	~	"Jalpaiguri",
                                                 district ==	"North And Middle Andaman"	~	"Andamans",
                                                 district ==	"South Andaman"	~	"Andamans",
-                                                district ==	"Samba"	~	"Jammu district",
+                                                district ==	"Samba"	~	"Jammu",
                                                 district ==	"Reasi"	~	"Udhampur",
                                                 district ==	"Ramban"	~	"Doda",
                                                 district ==	"Kishtwar"	~	"Doda",
                                                 district ==	"Kulgam"	~	"Anantnang",
-                                                district ==	"Shopian"	~	"Pulwama",
+                                                district ==	"Shupiyan"	~	"Pulwama",
                                                 district ==	"Ganderbal"	~	"Srinagar",
-                                                district ==	"Bandipora"	~	"Baramulla",
+                                                district ==	"Bandipore"	~	"Baramulla",
                                                 district ==	"South East"	~	"South",
                                                 district ==	"Shahdara"	~	"North East",
                                                 district == "Y.s.r." ~ "Cuddapah",
@@ -418,6 +321,9 @@ nfhsahs <- nfhsahs %>% mutate(namefix = case_when(district ==	"Longding"	~	"Tira
                                                 district == "Burhanpur" ~ "East Nimar",
                                                 district == "Shahid Bhagat Singh Nagar" ~	"Nawanshahr",
                                                 district == "Devbhumi Dwarka" ~ 	"Jamnagar",
+                                                district == "Kanshiram Nagar" ~ "Etah",
+                                                district == "Alirajpur" ~ "Jhabua",
+                                                district == "Singrauli" ~ "Sidhi",
                                                 TRUE ~ district))
 
 nfhsahs <- nfhsahs %>% filter(!is.na(nfhsahs$NFHS_AHS_id))
@@ -451,8 +357,8 @@ dlhs4 <- dlhs4 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"Sukma"	~	"Dantewada",
                                                district ==	"Surajpur"	~	"Surguja",
                                                district ==	"Tapi"	~	"Surat",
-                                               district ==	"Aravali"	~	"Sabarkantha",
-                                               district ==	"Botad"	~	"Ahmdeabad",
+                                               district ==	"Aravali"	~	"Sabar Kantha",
+                                               district ==	"Botad"	~	"Ahmedabad",
                                                district ==	"Chhota Udaipur"	~	"Vadodara",
                                                district ==	"Mahisagar"	~	"Kheda",
                                                district ==	"Morbi"	~	"Rajkot",
@@ -480,7 +386,7 @@ dlhs4 <- dlhs4 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"South West Khasi Hills"	~	"West Khasi Hills",
                                                district ==	"Pratapgarh"	~	"Chittaurgarh",
                                                district ==	"Tiruppur"	~	"Coimbatore",
-                                               district ==	"Komaram Bheem"	~	"Adilabad",
+                                               district ==	"Komaram Bheem Asifabad"	~	"Adilabad",
                                                district ==	"Mancherial"	~	"Adilabad",
                                                district ==	"Nirmal"	~	"Adilabad",
                                                district ==	"Kamareddy"	~	"Nizamabad",
@@ -493,29 +399,29 @@ dlhs4 <- dlhs4 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"Warangal Rural"	~	"Warangal",
                                                district ==	"Mahabubabad"	~	"Warangal",
                                                district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
-                                               district ==	"Vikarabad"	~	"Ranga Reddy",
-                                               district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
-                                               district ==	"Nagarkurnool"	~	"Mahabubnagar",
-                                               district ==	"Jogulamba"	~	"Mahabubnagar",
+                                               district ==	"Vikarabad"	~	"Rangareddy",
+                                               district ==	"Medchal-Malkajgiri"	~	"Rangareddy",
+                                               district ==	"Nagarkurnool"	~	"Mahbubnagar",
+                                               district ==	"Jogulamba Gadwal"	~	"Mahbubnagar",
                                                district ==	"Gomati"	~	"Dhalai",
                                                district ==	"Khowai"	~	"West Tripura",
-                                               district ==	"Sipahijala"	~	"West Tripura",
+                                               district ==	"Sepahijala"	~	"West Tripura",
                                                district ==	"Unakoti"	~	"North Tripura",
-                                               district ==	"Paschim Bardhaman"	~	"Bardhaman",
-                                               district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                               district ==	"Paschim Barddhaman"	~	"Barddhaman",
+                                               district ==	"Purba Barddhaman"	~	"Barddhaman",
                                                district ==	"Jhargram"	~	"Paschim Medinipur",
                                                district ==	"Kalimpong"	~	"Darjeeling",
                                                district ==	"Alipurduar"	~	"Jalpaiguri",
                                                district ==	"North And Middle Andaman"	~	"Andamans",
                                                district ==	"South Andaman"	~	"Andamans",
-                                               district ==	"Samba"	~	"Jammu district",
+                                               district ==	"Samba"	~	"Jammu",
                                                district ==	"Reasi"	~	"Udhampur",
                                                district ==	"Ramban"	~	"Doda",
                                                district ==	"Kishtwar"	~	"Doda",
                                                district ==	"Kulgam"	~	"Anantnang",
-                                               district ==	"Shopian"	~	"Pulwama",
+                                               district ==	"Shupiyan"	~	"Pulwama",
                                                district ==	"Ganderbal"	~	"Srinagar",
-                                               district ==	"Bandipora"	~	"Baramulla",
+                                               district ==	"Bandipore"	~	"Baramulla",
                                                district ==	"South East"	~	"South",
                                                district ==	"Shahdara"	~	"North East",
                                                district == "Lahul And Spiti" ~ "Lahul Spiti",
@@ -560,8 +466,8 @@ dlhs3 <- dlhs3 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"Sukma"	~	"Dantewada", 
                                                district ==	"Surajpur"	~	"Surguja", 
                                                district ==	"Tapi"	~	"Surat", 
-                                               district ==	"Aravali"	~	"Sabarkantha", 
-                                               district ==	"Botad"	~	"Ahmdeabad", 
+                                               district ==	"Aravali"	~	"Sabar Kantha", 
+                                               district ==	"Botad"	~	"Ahmedabad", 
                                                district ==	"Chhota Udaipur"	~	"Vadodara", 
                                                district ==	"Mahisagar"	~	"Kheda", 
                                                district ==	"Morbi"	~	"Rajkot", 
@@ -589,7 +495,7 @@ dlhs3 <- dlhs3 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"South West Khasi Hills"	~	"West Khasi Hills", 
                                                district ==	"Pratapgarh"	~	"Chittaurgarh",
                                                district ==	"Tiruppur"	~	"Coimbatore",
-                                               district ==	"Komaram Bheem"	~	"Adilabad", 
+                                               district ==	"Komaram Bheem Asifabad"	~	"Adilabad", 
                                                district ==	"Mancherial"	~	"Adilabad", 
                                                district ==	"Nirmal"	~	"Adilabad", 
                                                district ==	"Kamareddy"	~	"Nizamabad",
@@ -602,29 +508,29 @@ dlhs3 <- dlhs3 %>%  mutate(namefix = case_when(district ==	"Longding"	~	"Tirap",
                                                district ==	"Warangal Rural"	~	"Warangal",
                                                district ==	"Mahabubabad"	~	"Warangal",
                                                district ==	"Yadadri Bhuvanagiri"	~	"Nalgonda",
-                                               district ==	"Vikarabad"	~	"Ranga Reddy",
-                                               district ==	"Medchal-Malkajgiri"	~	"Ranga Reddy",
-                                               district ==	"Nagarkurnool"	~	"Mahabubnagar",
-                                               district ==	"Jogulamba"	~	"Mahabubnagar",
+                                               district ==	"Vikarabad"	~	"Rangareddy",
+                                               district ==	"Medchal-Malkajgiri"	~	"Rangareddy",
+                                               district ==	"Nagarkurnool"	~	"Mahbubnagar",
+                                               district ==	"Jogulamba Gadwal"	~	"Mahbubnagar",
                                                district ==	"Gomati"	~	"Dhalai",
                                                district ==	"Khowai"	~	"West Tripura",
-                                               district ==	"Sipahijala"	~	"West Tripura",
+                                               district ==	"Sepahijala"	~	"West Tripura",
                                                district ==	"Unakoti"	~	"North Tripura",
-                                               district ==	"Paschim Bardhaman"	~	"Bardhaman",
-                                               district ==	"Purba Bardhaman"	~	"Bardhaman",
+                                               district ==	"Paschim Barddhaman"	~	"Barddhaman",
+                                               district ==	"Purba Barddhaman"	~	"Barddhaman",
                                                district ==	"Jhargram"	~	"Paschim Medinipur",
                                                district ==	"Kalimpong"	~	"Darjeeling",
                                                district ==	"Alipurduar"	~	"Jalpaiguri",
                                                district ==	"North And Middle Andaman"	~	"Andamans",
                                                district ==	"South Andaman"	~	"Andamans",
-                                               district ==	"Samba"	~	"Jammu district",
+                                               district ==	"Samba"	~	"Jammu",
                                                district ==	"Reasi"	~	"Udhampur",
                                                district ==	"Ramban"	~	"Doda",
                                                district ==	"Kishtwar"	~	"Doda",
                                                district ==	"Kulgam"	~	"Anantnang",
-                                               district ==	"Shopian"	~	"Pulwama",
+                                               district ==	"Shupiyan"	~	"Pulwama",
                                                district ==	"Ganderbal"	~	"Srinagar",
-                                               district ==	"Bandipora"	~	"Baramulla",
+                                               district ==	"Bandipore"	~	"Baramulla",
                                                district ==	"South East"	~	"South",
                                                district ==	"Shahdara"	~	"North East",
                                                district == "Ashoknagar" ~ "Guna",
@@ -652,36 +558,62 @@ dlhsnfhs4ahs <- full_join(dlhs, nfhsahs, by = "namefix")
 
 dlhsnfhsahs <- full_join(dlhsnfhs4ahs, nfhs5, by = "namefix")
 
-#need to remove duplicate names between states (i.e. bilaspur)
+# HARMONIZED
 
-dlhsnfhs4ahs <- stringdist_join(nfhsahs, dlhs,
-                                by='namefix', #match based on fixed district name
-                                mode='left', #use left join
-                                method = "jw", #use jw distance metric
-                                max_dist=99,
-                                distance_col='dist') %>%
-  group_by(namefix.x) %>%
-  slice_min(order_by=dist, n=1)
+district_harmonized <- dlhsnfhsahs %>% select(-c(n))
+#write.csv(district_harmonized, "districts_harmonized.csv")
 
-#Need to use stringdist_join so options like kamrup metro == kamrup metropolitan
+#creating new id based on name of district
+dlhsnfhsahs <- dlhsnfhsahs %>%                                        # Create ID by group
+  group_by(namefix) %>%
+  mutate(dist_id = cur_group_id())
 
-names <- stringdist_join(nfhsahs, dlhs3,
-                         by='district', #match based on district name
-                         mode='left', #use left join
-                         method = "jw", #use jw distance metric
-                         max_dist=99,
-                         distance_col='dist') %>%
-  group_by(district.x) %>%
-  slice_min(order_by=dist, n=1)
+dlhsnfhsahs$AHS_id <- dlhsnfhsahs$NFHS_AHS_id
+dlhsnfhsahs <- dlhsnfhsahs %>% rename(NFHS4_id = NFHS_AHS_id)
 
-nfhsnames <- stringdist_join(nfhs5, nfhsahs,
-                         by='district', #match based on district name
-                         mode='left', #use left join
-                         method = "jw", #use jw distance metric
-                         max_dist=99,
-                         distance_col='dist') %>%
-  group_by(district.x) %>%
-  slice_min(order_by=dist, n=1)
+district_names <- dlhsnfhsahs %>% select(-c(n, dist_id))
+
+district_names <-  district_names %>%
+  pivot_longer(
+    cols = ends_with("_id"),
+    names_to = "survey",
+    values_to = "id",
+    values_drop_na = TRUE
+  )
+
+district_names <- district_names %>% group_by(namefix) %>%
+  mutate(dist_id = cur_group_id())
+
+df <- df %>% mutate(dist_survey = case_when(survey == "DLHS3" ~ "DLHS3_id",
+                                           survey == "DLHS4" ~ "DLHS4_id",
+                                           survey == "NFHS4" ~ "NFHS4_id",
+                                           survey == "AHS" ~ "AHS_id",
+                                           survey == "NFHS5" ~ "NFHS5_id",
+                                           TRUE ~ survey))
+
+df <- df %>% mutate(id = case_when(survey == "DLHS3" ~ state_dist,
+                                   survey == "DLHS4" ~ state_dist,
+                                   survey == "NFHS4" ~ district,
+                                   survey == "AHS" ~ district,
+                                   survey == "NFHS5" ~ district,
+                                   TRUE ~ NA_real_))
+
+district_names <- district_names %>% ungroup()
+district_names <- district_names %>% select(-c(namefix))
+district_names <- district_names %>% rename(dist_survey = survey)
+
+df_district_merge <- left_join(district_names, df,
+                               by = c("dist_survey", "id"))
+
+#not working. trying by survey.
+
+dlhsnfhsahs <- dlhsnfhsahs %>% ungroup()
+
+dlhs3_district_names <- dlhsnfhsahs %>% select(c(DLHS3_id, dist_id))
+dlhs4_district_names <- dlhsnfhsahs %>% select(c(DLHS4_id, dist_id))
+nfhs4_district_names <- dlhsnfhsahs %>% select(c(NFHS4_id, dist_id))
+ahs_district_names <- dlhsnfhsahs %>% select(c(AHS_id, dist_id))
+nfhs5_district_names <- dlhsnfhsahs %>% select(NFHS5_id, dist_id)
 
 # analyses ----------------------------------------------------------------
 
@@ -1054,3 +986,165 @@ tbl_merge <-
     tab_spanner = c("**Miscarriage**", "**Abortion**", "**Stillbirth**")
   ) 
 
+
+
+
+# Archive -----------------------------------------------------------------
+
+#make DLHS districts into state_district match
+
+range(df$district)
+
+df$district_match <- df$district
+
+# Using ICPSR district match code from STATA
+
+df <- df %>% mutate(district_match = case_when(survey == "NFHS4" & district == 300 ~ 1000,
+                                               survey == "NFHS4" & district == 303 ~ 1000,
+                                               survey == "NFHS4" & district == 319 ~ 1000,
+                                               survey == "NFHS4" & district == 320 ~ 1000,
+                                               survey == "NFHS4" & district == 321 ~ 1000,
+                                               survey == "NFHS4" & district == 322 ~ 1000,
+                                               survey == "NFHS4" & district == 323 ~ 1000,
+                                               survey == "NFHS4" & district == 324 ~ 1000,
+                                               survey == "NFHS4" & district == 306 ~ 1001,
+                                               survey == "NFHS4" & district == 325 ~ 1001,
+                                               survey == "NFHS4" & district == 326 ~ 1001,
+                                               survey == "NFHS4" & district == 239 ~ 1002,
+                                               survey == "NFHS4" & district == 240 ~ 1002,
+                                               survey == "NFHS4" & district == 414 ~ 1003,
+                                               survey == "NFHS4" & district == 415 ~ 1003,
+                                               survey == "NFHS4" & district == 416 ~ 1004,
+                                               survey == "NFHS4" & district == 417 ~ 1004,
+                                               survey == "NFHS4" & district == 358 ~ 1005,
+                                               survey == "NFHS4" & district == 359 ~ 1005,
+                                               survey == "NFHS4" & district == 360 ~ 1006,
+                                               survey == "NFHS4" & district == 361 ~ 1006,
+                                               survey == "NFHS4" & district == 362 ~ 1007,
+                                               survey == "NFHS4" & district == 363 ~ 1007,
+                                               survey == "NFHS4" & district == 364 ~ 1008,
+                                               survey == "NFHS4" & district == 365 ~ 1008,
+                                               survey == "NFHS4" & district == 366 ~ 1009,
+                                               survey == "NFHS4" & district == 367 ~ 1009,
+                                               survey == "NFHS4" & district == 368 ~ 1010,
+                                               survey == "NFHS4" & district == 369 ~ 1010,
+                                               survey == "NFHS4" & district == 458 ~ 1011,
+                                               survey == "NFHS4" & district == 459 ~ 1011,
+                                               survey == "NFHS4" & district == 460 ~ 1012,
+                                               survey == "NFHS4" & district == 461 ~ 1012,
+                                               survey == "NFHS4" & district == 462 ~ 1013,
+                                               survey == "NFHS4" & district == 463 ~ 1013,
+                                               survey == "NFHS4" & district == 464 ~ 1014,
+                                               survey == "NFHS4" & district == 465 ~ 1014,
+                                               survey == "NFHS4" & district == 466 ~ 1015,
+                                               survey == "NFHS4" & district == 467 ~ 1015,
+                                               survey == "NFHS4" & district == 125 ~ 1016,
+                                               survey == "NFHS4" & district == 126 ~ 1016,
+                                               survey == "NFHS4" & district == 130 ~ 1016,
+                                               survey == "NFHS4" & district == 131 ~ 1016,
+                                               survey == "NFHS4" & district == 201 ~ 1017,
+                                               survey == "NFHS4" & district == 202 ~ 1017,
+                                               TRUE ~ NA_real_))
+
+
+#                                               survey == "NFHS5" & district == 300 ~ 1000,
+#                                               survey == "NFHS5" & district == 303 ~ 1000,
+#                                               survey == "NFHS5" & district == 319 ~ 1000,
+#                                               survey == "NFHS5" & district == 320 ~ 1000,
+#                                               survey == "NFHS5" & district == 321 ~ 1000,
+#                                               survey == "NFHS5" & district == 322 ~ 1000,
+#                                               survey == "NFHS5" & district == 323 ~ 1000,
+#                                               survey == "NFHS5" & district == 324 ~ 1000,
+#                                               survey == "NFHS5" & district == 306 ~ 1001,
+#                                               survey == "NFHS5" & district == 325 ~ 1001,
+#                                               survey == "NFHS5" & district == 326 ~ 1001,
+#                                               survey == "NFHS5" & district == 239 ~ 1002,
+#                                               survey == "NFHS5" & district == 240 ~ 1002,
+#                                               survey == "NFHS5" & district == 414 ~ 1003,
+#                                               survey == "NFHS5" & district == 415 ~ 1003,
+#                                               survey == "NFHS5" & district == 416 ~ 1004,
+#                                               survey == "NFHS5" & district == 417 ~ 1004,
+#                                               survey == "NFHS5" & district == 358 ~ 1005,
+#                                               survey == "NFHS5" & district == 359 ~ 1005,
+#                                               survey == "NFHS5" & district == 360 ~ 1006,
+#                                               survey == "NFHS5" & district == 361 ~ 1006,
+#                                               survey == "NFHS5" & district == 362 ~ 1007,
+#                                               survey == "NFHS5" & district == 363 ~ 1007,
+#                                               survey == "NFHS5" & district == 364 ~ 1008,
+#                                               survey == "NFHS5" & district == 365 ~ 1008,
+#                                               survey == "NFHS5" & district == 366 ~ 1009,
+#                                               survey == "NFHS5" & district == 367 ~ 1009,
+#                                               survey == "NFHS5" & district == 368 ~ 1010,
+#                                               survey == "NFHS5" & district == 369 ~ 1010,
+#                                               survey == "NFHS5" & district == 458 ~ 1011,
+#                                               survey == "NFHS5" & district == 459 ~ 1011,
+#                                               survey == "NFHS5" & district == 460 ~ 1012,
+#                                               survey == "NFHS5" & district == 461 ~ 1012,
+#                                               survey == "NFHS5" & district == 462 ~ 1013,
+#                                               survey == "NFHS5" & district == 463 ~ 1013,
+#                                               survey == "NFHS5" & district == 464 ~ 1014,
+#                                               survey == "NFHS5" & district == 465 ~ 1014,
+#                                               survey == "NFHS5" & district == 466 ~ 1015,
+#                                               survey == "NFHS5" & district == 467 ~ 1015,
+#                                               survey == "NFHS5" & district == 125 ~ 1016,
+#                                               survey == "NFHS5" & district == 126 ~ 1016,
+#                                               survey == "NFHS5" & district == 130 ~ 1016,
+#                                               survey == "NFHS5" & district == 131 ~ 1016,
+#                                               survey == "NFHS5" & district == 201 ~ 1017,
+#                                               survey == "NFHS5" & district == 202 ~ 1017,
+#                                               ))
+
+#adding in other ahs district variable. Right now the district variable is the nfhs4_census2011_district_id
+
+#ahs_preg_match was read in from the ahs link file. 
+ahs_preg_match <- ahs_preg_match %>% rename(dist_org = district)
+
+ahs_preg_match <- ahs_preg_match %>% rename(district = nfhs4_census2011_district_id)
+
+ahs_dist_link <- ahs_preg_match %>% select(c(caseid, state, dist_org, district,psu, outcome, yob, wt, survey, prev_stillbirth, survey))
+
+#trying to see if leftjoin will work for just ahs
+dftry <- left_join(
+  df,
+  ahs_preg_match
+)
+
+
+df$sdist <- ifelse(df$survey != "NFHS4" | df$survey != "NFHS5", (str_c(as.character(df$state), as.character(df$district), sep="")), df$district)
+
+
+df <- df %>% mutate(district_id = case_when(survey == "DLHS3" & state_dist == dlhsnfhsahs$DLHS3_id ~ dlhsnfhsahs$dist_id,
+                                            survey == "DLHS4" & state_dist == dlhsnfhsahs$DLHS4_id ~ dlhsnfhsahs$dist_id,
+                                            survey == "NFHS4" & district == dlhsnfhsahs$NFHS_AHS_id ~ dlhsnfhsahs$dist_id,
+                                            survey == "AHS" & district == dlhsnfhsahs$NFHS_AHS_id ~ dlhsnfhsahs$dist_id,
+                                            survey == "NFHS5" & district == dlhsnfhsahs$NFHS5_id ~ dlhsnfhsahs$dist_id,
+                                            TRUE ~ NA_real_))
+
+
+#dlhsnfhs4ahs <- stringdist_join(nfhsahs, dlhs,
+#                                by='namefix', #match based on fixed district name
+#                                mode='left', #use left join
+#                                method = "jw", #use jw distance metric
+#                                max_dist=99,
+#                                distance_col='dist') %>%
+#  group_by(namefix.x) %>%
+#  slice_min(order_by=dist, n=1)
+
+
+#names <- stringdist_join(nfhsahs, dlhs3,
+#                         by='district', #match based on district name
+#                         mode='left', #use left join
+#                         method = "jw", #use jw distance metric
+#                         max_dist=99,
+#                         distance_col='dist') %>%
+#  group_by(district.x) %>%
+#  slice_min(order_by=dist, n=1)
+
+#nfhsnames <- stringdist_join(nfhs5, nfhsahs,
+#                         by='district', #match based on district name
+#                         mode='left', #use left join
+#                         method = "jw", #use jw distance metric
+#                         max_dist=99,
+#                         distance_col='dist') %>%
+#  group_by(district.x) %>%
+#  slice_min(order_by=dist, n=1)

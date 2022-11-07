@@ -52,6 +52,9 @@ dlhs3$lineno <- as.numeric(dlhs3$lineno)
 
 dlhs3$district <- str_sub(dlhs3$dist,start= -2)
 
+#renaming dist as state_dist to make clear it is the state/district combo
+dlhs3$state_dist <- dlhs3$dist
+
 #dropping old district variable
 #dlhs3 <- dlhs3 %>% select(-c(dist))
 
@@ -88,6 +91,10 @@ df3hh <- fread("DLHS3-HH.csv", select = c(1:8, 734:740))
 
 #fixing district variable
 df3hh$district <- str_sub(df3hh$dist,start= -2)
+
+#renaming dist as state_dist to make clear it is the state/district combo
+df3hh$state_dist <- df3hh$dist
+
 #dropping old district variable
 #df3hh <- df3hh %>% select(-c(dist))
 #adding leading 0 to psu
@@ -584,18 +591,20 @@ table(dlhs3$district)
 #Moving dlhs3 district to after state
 dlhs3 <- dlhs3 %>% relocate(district, .after = state)
 
-########### Sept 19 2022 no longer using original dlhs3 district variable #########
-#need to make separate state_district variable in dlhs4 to match dlh3 district
-#dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
 
-#dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
-#dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
+########### Using DLHS3 state_district variable for harmonizing all districts. Keeping district and making state_dist variable
+#need to make separate state_district variable in dlhs4 to match dlh3 district
+dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
+
+dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
+dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
 
 #removing old district variable and replacing with new one
 #dlhs4 <- select(dlhs4, -c("district"))
 #dlhs4 <- rename(dlhs4, district = state_dist)
 
-#dlhs4 <- dlhs4 %>% relocate(district, .after = state)
+dlhs4 <- dlhs4 %>% relocate(state_dist, .after = district)
+dlhs3 <- dlhs3 %>% relocate(state_dist, .after = district)
 ###################################################################
 
 
@@ -830,7 +839,8 @@ dlhs4$jsy <- as.numeric(dlhs4$jsy)
 dlhs4$pp_checkup <- as.numeric(dlhs4$pp_checkup)
 dlhs4$index_alive <- as.numeric(dlhs4$index_alive)
 
-dlhs3$district <- as.numeric(dlhs3$district)
+#dlhs3$district <- as.numeric(dlhs3$district)
+dlhs3$district <- str_pad(dlhs3$district, 2, "left", "0")
 dlhs3$psu <- as.numeric(dlhs3$psu)
 
 #merging into one dataframe
@@ -862,6 +872,9 @@ dlhs <- dplyr::rename(dlhs, bpl = bpl_card)
 dlhs <- dlhs %>% relocate(sewwt, .after = shhwt)
 dlhs <- dlhs %>% select(-c("age_at_marriage")) #if we add this back in we can use s309 in nfhs4
 dlhs <- dlhs %>% relocate(tot_live_births, .after = age_first_birth)
+#dropping total pregnancies and multiples variable
+dlhs <- dlhs %>% select(-c("tot_preg", "multiples"))
+
 
 # making pregnancies dataset ----------------------------------------------
 #matching across dlhs3 and dlhs4

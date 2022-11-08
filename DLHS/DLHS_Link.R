@@ -279,6 +279,22 @@ dlhs3 <- dlhs3 %>% select(-c(v139_1, v139_2, v139_3, v139_4, v139_5, v139_6, v14
                              nonlive1, nonlive2, nonlive3, nonlive4, 
                              nonlive5, nonlive6))
 
+#matching on harmonized district ids (from district match file)
+#using dlhs3_district_names file created elsewhere
+
+#dropping NAs from districts not in dlhs3
+
+dlhs3_district_names <- dlhs3_district_names %>% filter(!is.na(dlhs3_district_names$DLHS3_id))
+
+dlhs3 <- left_join(dlhs3, dlhs3_district_names, 
+                       by = c("state_dist" = "DLHS3_id"))
+
+#this introduced multiple matches to district. Doing distinct to remove the multiples.
+dlhs3 <- distinct(dlhs3)
+
+#did a check. Works.
+#dlhs3_try_check <- dlhs3_distinct %>% select(c(state, district, state_dist, dist_id))
+
 #DLHS 3 now matches NFHS termination variables
 
 # DLHS-4 Load -------------------------------------------------------------
@@ -507,6 +523,28 @@ dlhs4 <- dlhs4 %>% select(-c(q141_1, q141_2, q141_3, q141_4, q141_5, q141_6, q14
                              nonlive1, nonlive2, nonlive3, nonlive4, 
                              nonlive5, nonlive6))
 
+#adding in harmonized district ids. From district harmonization file. Using dlhs4_district_names that was created there.
+
+########### Using DLHS3 state_district variable for harmonizing all districts. Keeping district and making state_dist variable
+#need to make separate state_district variable in dlhs4 to match dlh3 district
+dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
+
+dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
+dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
+
+
+dlhs4_district_names <- dlhs4_district_names %>% filter(!is.na(dlhs4_district_names$DLHS4_id))
+
+dlhs4 <- left_join(dlhs4, dlhs4_district_names, 
+                   by = c("state_dist" = "DLHS4_id"))
+
+
+#this introduced multiple matches to district. Doing distinct to remove the multiples.
+dlhs4 <- distinct(dlhs4)
+
+#check works
+#dlhs4 <- dlhs4_try %>% select(c(state, district, state_dist, dist_id))
+
 # matching dlhs 3 and 4 variables -----------------------------------------
 
 dlhs3 <- select(dlhs3, -c("hhno", "lineno"))
@@ -592,12 +630,6 @@ table(dlhs3$district)
 dlhs3 <- dlhs3 %>% relocate(district, .after = state)
 
 
-########### Using DLHS3 state_district variable for harmonizing all districts. Keeping district and making state_dist variable
-#need to make separate state_district variable in dlhs4 to match dlh3 district
-dlhs4$district <- str_pad(dlhs4$district, 2, "left", "0") 
-
-dlhs4$state_dist <- paste(dlhs4$state, dlhs4$district, sep ="")
-dlhs4$state_dist <- as.numeric(dlhs4$state_dist)
 
 #removing old district variable and replacing with new one
 #dlhs4 <- select(dlhs4, -c("district"))
@@ -840,7 +872,7 @@ dlhs4$pp_checkup <- as.numeric(dlhs4$pp_checkup)
 dlhs4$index_alive <- as.numeric(dlhs4$index_alive)
 
 #dlhs3$district <- as.numeric(dlhs3$district)
-dlhs3$district <- str_pad(dlhs3$district, 2, "left", "0")
+#dlhs3$district <- str_pad(dlhs3$district, 2, "left", "0")
 dlhs3$psu <- as.numeric(dlhs3$psu)
 
 #merging into one dataframe

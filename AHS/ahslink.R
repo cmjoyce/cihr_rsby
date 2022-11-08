@@ -379,6 +379,23 @@ names(ahs_preg_match)
 ahs_preg_match$state_dist <- paste(ahs_preg_match$state, ahs_preg_match$district, sep ="")
 
 
+#adding in NFHS4 district id variable from seperate district harmonization file. 
+# Using nfhs4_district_names file.
+
+ahs_district_names <- ahs_district_names %>% filter(!is.na(ahs_district_names$AHS_id))
+
+ahs_preg_match <- left_join(ahs_preg_match, ahs_district_names, 
+                   by = c("nfhs4_census2011_district_id" = "AHS_id"))
+
+
+#this introduced multiple matches to district. Doing distinct to remove the multiples.
+ahs_preg_match <- distinct(ahs_preg_match)
+
+#checking
+#ahs_try <- ahs_try %>% select(c(caseid, state, nfhs4_census2011_district_id, dist_id))
+
+
+
 #dropping dlhsnfhs_preg_mothercov variables not in ahs
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(ever_terminated, month_last_terminated, year_last_terminated, caste,
                                                                  fp_future, bpl, health_ins, other_terminations, miscarriage_abortion_stillbirth))
@@ -828,6 +845,9 @@ df$pp_checkup <- ifelse(df$pp_checkup == 2, 0, df$pp_checkup)
 
 
 # fixing district to match NFHS -------------------------------------------
+
+#Now in separate district match file. Done earlier in the harmonization of each file
+
 
 #now in Aim1 file
 

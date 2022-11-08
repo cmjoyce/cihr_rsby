@@ -393,7 +393,22 @@ names(dlhs)
 #  "female_condom"      "rhythm"             "withdrawal"         "other_method"
 
 
-#doing this afer merge
+#doing this after merge
+
+#adding in NFHS4 district id variable from seperate district harmonization file. 
+# Using nfhs4_district_names file.
+
+nfhs4_district_names <- nfhs4_district_names %>% filter(!is.na(nfhs4_district_names$NFHS4_id))
+
+nfhs4 <- left_join(nfhs4, nfhs4_district_names, 
+                   by = c("district" = "NFHS4_id"))
+
+
+#this introduced multiple matches to district. Doing distinct to remove the multiples.
+nfhs4 <- distinct(nfhs4)
+
+#checking
+#nfhs4_try <- nfhs4_try %>% select(c(caseid, state, district, dist_id))
 
 ### stopping here and combining NFHS4 and NFHS5. Deciding on some recoding and then combining with DLHS
 
@@ -983,6 +998,22 @@ nfhs5$survey <- c("NFHS5")
 nfhs5 <- nfhs5 %>% relocate(cghs, .after = rsby)
 nfhs5 <- nfhs5 %>% relocate(reimburse, .after = cghs)
 
+#adding in NFHS5 district id variable from seperate district harmonization file. 
+# Using nfhs4_district_names file.
+
+nfhs5_district_names <- nfhs5_district_names %>% filter(!is.na(nfhs5_district_names$NFHS5_id))
+
+nfhs5 <- left_join(nfhs5, nfhs5_district_names, 
+                   by = c("district" = "NFHS5_id"))
+
+
+#this introduced multiple matches to district. Doing distinct to remove the multiples.
+nfhs5 <- distinct(nfhs5)
+
+#checking
+#nfhs5_try <- nfhs5_try %>% select(c(caseid, state, district, dist_id))
+
+
 #nfhs5 contraceptive coding is different than in nfhs4 and DLHS. Will fix once all combined, for now coding is as follows
 # 0 = not using; 1 = pill; 2 = iud; 3 = injections; 4 = diaphragm; 5 = male condom/nirodh; 6 = female sterilization; 7 = male sterilization;
 # 8 = periodic abstinence; 9 = withdrawal; 10 = other traditional; (skipped 11-12) 13 = lactational amenorrhea; 14 = female condom; 
@@ -1421,7 +1452,7 @@ dlhsnfhs_preg_mothercov <- left_join(
 
 
 
-write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
+#write.csv(dlhsnfhs_preg_mothercov, "dlhsnfhs_preg_w_mom_cov.csv")
 
 dlhsnfhspreg <- read.csv("dlhsnfhs_preg_w_mom_cov.csv")
 

@@ -7,16 +7,39 @@ df <- read.csv("harmonized_variables.csv")
 
 # Making binary pregnancy outcome variables -------------------------------
 
-df$stillbirth
+#creating binary outcomes for the following coding scheme: 
+#1 LIVE BIRTH
+#2 STILLBIRTH
+#3 INDUCED ABORTION
+#4 SPONTANEOUS ABORTION
+
+table(df$outcome)
+
+df$lb <- ifelse(df$outcome == 1, 1, 0)
+df$sb <- ifelse(df$outcome == 2, 1, 0)
+df$abort <- ifelse(df$outcome == 3, 1, 0)
+df$miscarriage <- ifelse(df$outcome == 4, 1, 0)
 
 
+# creating any insurance variable -----------------------------------------
+
+# First harmonizing
+
+df <- df %>% mutate(insurance = case_when(esis == 1 ~ 1,
+                                          rsby == 1 ~ 1,
+                                          cghsshis == 1 ~ 1,
+                                          reimburse == 1 ~ 1, 
+                                          chip == 1 ~ 1,
+                                          other_private ==1 ~ 1, 
+                                          other_insurance ==1 ~ 1,
+                                          TRUE ~ 0))
 
 
 # analyses ----------------------------------------------------------------
 
 #calculating weights. For NFHS surveys weights must be divided by 1000000
 
-#dropping 166 DLSH4 observations that do not have weights. making new dataset.
+#dropping 48 observations that do not have weights. making new dataset.
 df <- df %>% filter(complete.cases(wt))
 
 df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
@@ -26,6 +49,20 @@ df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
                                        survey == "AHS" ~ wt,
                                        TRUE ~ NA_real_))
 
+#weight adjusted. Adjusting weight by medium sample (NFHS4) 
+
+df <- df %>% mutate(weight_adj = case_when(survey == "NFHS4" ~ weight * ((length(which(survey == "NFHS5"))) / 
+                                                                            (length(which(survey == "NFHS4")))),
+                                           survey == "DLHS3" ~ weight * ((length(which(survey == "NFHS5"))) / 
+                                                                           (length(which(survey == "DLHS3")))),
+                                           survey == "DLHS4" ~ weight * ((length(which(survey == "NFHS5"))) / 
+                                                                           (length(which(survey == "DLHS3")))),
+                                           survey == "NFHS5" ~ weight * ((length(which(survey == "NFHS5"))) / 
+                                                                           (length(which(survey == "NFHS5")))),
+                                           survey == "AHS" ~ weight * ((length(which(survey == "NFHS5"))) / 
+                                                                         (length(which(survey == "AHS")))),
+                                           TRUE ~ NA_real_))
+
 
 # calculating jackknife and bootstrap weights in survey ---------------------------------------------------------
 
@@ -33,7 +70,7 @@ library(survey)
 
 ##### Run on cluster ######
 
-weightdesign <- svydesign(data = df,ids = ~state, strata =  ~psu, nest = TRUE)
+weightdesign <- svydesign(data = df, ids = ~psu, strata = ~rural_urban, weights = ~weight_adj, nest = TRUE)
 
 dfboot <- as.svrepdesign(weightdesign, type="bootstrap")
 
@@ -65,33 +102,38 @@ dfboot <- read.csv("dfboot.csv")
 library(survey)
 library(broom)
 
-#complex survey design when combining dlhs and nfhs?
-#dropping 166 DLSH4 observations that do not have weights. making new dataset.
+#making strata variable from rural/urban
+df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
 
-design <- svydesign(ids = ~psu, weights = ~weight, nest = TRUE, data = df)
+design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 
 
-complexglm_rate_m <- svyglm(miscarriage ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+complexglm_rate_glm_m <- svyglm(miscarriage ~ insurance + primary + caste_group + age + dist_id, design = design,
                             data = df)
 
-complexglm_rate_m_bpl <- svyglm(miscarriage ~ bpl + age + state, design = design,
+complexglm_rate_glm_pred <- svyglm(miscarriage ~ insurance + caste_group + age + dist_id, design = design,
                                 data = df)
 
-tidy_mbpl <- tidy(complexglm_rate_m_bpl, conf.int = T)
+pred_means_primary_m <- svypredmeans(complexglm_rate_glm_pred, ~factor(primary))
 
-complexglm_rate_m_prim <- svyglm(miscarriage ~ primary + age + state, design = design,
+complexglm_rate_m_insurance <- svyglm(miscarriage ~ insurance + age + dist_id, design = design,
+                                data = df)
+
+tidy_m_insurance <- tidy(complexglm_rate_m_insurance, conf.int = T)
+
+complexglm_rate_m_prim <- svyglm(miscarriage ~ primary + age + dist_id, design = design,
                                  data = df)
 
 tidy_mprim <- tidy(complexglm_rate_m_prim, conf.int = T)
 
-complexglm_rate_m_urb <- svyglm(miscarriage ~  urban + age + state, design = design,
-                                data = df)
+#complexglm_rate_m_urb <- svyglm(miscarriage ~  urban + age + state, design = design,
+#                                data = df)
 
-tidy_murb <- tidy(complexglm_rate_m_urb, conf.int = T)
+#tidy_murb <- tidy(complexglm_rate_m_urb, conf.int = T)
 
-complexglm_rate_m_sch <- svyglm(miscarriage ~ scheduled_group + age + state, design = design,
+complexglm_rate_m_sch <- svyglm(miscarriage ~ caste_group + age + dist_id, design = design,
                                 data = df)
 
 tidy_msch <- tidy(complexglm_rate_m_sch, conf.int = T)
@@ -103,48 +145,48 @@ tidy_msch <- tidy(complexglm_rate_m_sch, conf.int = T)
 #                            family = quasibinomial(), data = df)
 
 
-complexglm_rate_a <- svyglm(abortion ~ bpl + primary + urban + scheduled_group + age + state, design = design,
-                            data = df)
+#complexglm_rate_a <- svyglm(abortion ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+#                            data = df)
 
-complexglm_rate_a_bpl <- svyglm(abortion ~ bpl+ age + state, design = design,
+complexglm_rate_a_insurance <- svyglm(abort ~ insurance + age + dist_id, design = design,
                                 data = df)
 
-tidy_abpl <- tidy(complexglm_rate_a_bpl, conf.int = TRUE)
+tidy_a_insurance <- tidy(complexglm_rate_a_insurance, conf.int = TRUE)
 
-complexglm_rate_a_prim <- svyglm(abortion ~ primary + age + state, design = design,
+complexglm_rate_a_prim <- svyglm(abort ~ primary + age + dist_id, design = design,
                                  data = df)
 
 tidy_aprim <- tidy(complexglm_rate_a_prim, conf.int = T)
 
-complexglm_rate_a_urb <- svyglm(abortion ~ urban  + age + state, design = design,
-                                data = df)
+#complexglm_rate_a_urb <- svyglm(abortion ~ urban  + age + state, design = design,
+#                                data = df)
 
-tidy_aurb <- tidy(complexglm_rate_a_urb, conf.int = T)
+#tidy_aurb <- tidy(complexglm_rate_a_urb, conf.int = T)
 
-complexglm_rate_a_sch <- svyglm(abortion ~ scheduled_group + age + state, design = design,
+complexglm_rate_a_sch <- svyglm(abort ~ caste_group + age + dist_id, design = design,
                                 data = df)
 
 tidy_asch <- tidy(complexglm_rate_a_sch, conf.int = T)
 
-complexglm_rate_s <- svyglm(stillbirth ~ bpl + primary + urban + scheduled_group + age + state, design = design,
-                            data = df)
+#complexglm_rate_s <- svyglm(stillbirth ~ bpl + primary + urban + scheduled_group + age + state, design = design,
+#                            data = df)
 
-complexglm_rate_s_bpl <- svyglm(stillbirth ~ bpl + age + state, design = design,
+complexglm_rate_s_insurance <- svyglm(sb ~ insurance + age + dist_id, design = design,
                                 data = df)
 
-tidy_sbpl <- tidy(complexglm_rate_s_bpl, conf.int = TRUE)
+tidy_sinsurance <- tidy(complexglm_rate_s_insurance, conf.int = TRUE)
 
-complexglm_rate_s_prim <- svyglm(stillbirth ~ primary + age + state, design = design,
+complexglm_rate_s_prim <- svyglm(sb ~ primary + age + dist_id, design = design,
                                  data = df)
 
 tidy_sprim <- tidy(complexglm_rate_s_prim, conf.int = TRUE)
 
-complexglm_rate_s_urb <- svyglm(stillbirth ~ urban + age + state, design = design,
-                                data = df)
+#complexglm_rate_s_urb <- svyglm(stillbirth ~ urban + age + state, design = design,
+#                                data = df)
 
-tidy_surb <- tidy(complexglm_rate_s_urb, conf.int = TRUE)
+#tidy_surb <- tidy(complexglm_rate_s_urb, conf.int = TRUE)
 
-complexglm_rate_s_sch <- svyglm(stillbirth ~ scheduled_group + age + state, design = design,
+complexglm_rate_s_sch <- svyglm(sb ~ caste_group + age + dist_id, design = design,
                                 data = df)
 
 tidy_ssch <- tidy(complexglm_rate_s_sch, conf.int = TRUE)
@@ -180,65 +222,53 @@ tab_model(complexglm_rate_s, transform = NULL)
 
 #Putting into RD scale by multiplying esitmates and confidence intervals by 100. This becomes table2 
 
-ts <- tidy(complexglm_rate_s, conf.int = TRUE)
-ts$estimate <- ts$estimate*100
-ts$conf.low <- ts$conf.low*100
-ts$conf.high <- ts$conf.high*100
+#ts <- tidy(complexglm_rate_s, conf.int = TRUE)
+#ts$estimate <- ts$estimate*100
+#ts$conf.low <- ts$conf.low*100
+#ts$conf.high <- ts$conf.high*100
 
-tidy_sbpl$estimate <- tidy_sbpl$estimate*100
-tidy_sbpl$conf.low <- tidy_sbpl$conf.low*100
-tidy_sbpl$conf.high <- tidy_sbpl$conf.high*100
+tidy_sinsurance$estimate <- tidy_sinsurance$estimate*100
+tidy_sinsurance$conf.low <- tidy_sinsurance$conf.low*100
+tidy_sinsurance$conf.high <- tidy_sinsurance$conf.high*100
 
 tidy_sprim$estimate <- tidy_sprim$estimate*100
 tidy_sprim$conf.low <- tidy_sprim$conf.low*100
 tidy_sprim$conf.high <- tidy_sprim$conf.high*100
-
-tidy_surb$estimate <- tidy_surb$estimate*100
-tidy_surb$conf.low <- tidy_surb$conf.low*100
-tidy_surb$conf.high <- tidy_surb$conf.high*100
 
 tidy_ssch$estimate <- tidy_ssch$estimate*100
 tidy_ssch$conf.low <- tidy_ssch$conf.low*100
 tidy_ssch$conf.high <- tidy_ssch$conf.high*100
 
 
-tm <- tidy(complexglm_rate_m, conf.int = TRUE)
-tm$estimate <- tm$estimate*100
-tm$conf.low <- tm$conf.low*100
-tm$conf.high <- tm$conf.high*100
+#tm <- tidy(complexglm_rate_m, conf.int = TRUE)
+#tm$estimate <- tm$estimate*100
+#tm$conf.low <- tm$conf.low*100
+#tm$conf.high <- tm$conf.high*100
 
-tidy_mbpl$estimate <- tidy_mbpl$estimate*100
-tidy_mbpl$conf.low <- tidy_mbpl$conf.low*100
-tidy_mbpl$conf.high <- tidy_mbpl$conf.high*100
+tidy_m_insurance$estimate <- tidy_m_insurance$estimate*100
+tidy_m_insurance$conf.low <- tidy_m_insurance$conf.low*100
+tidy_m_insurance$conf.high <- tidy_m_insurance$conf.high*100
 
 tidy_mprim$estimate <- tidy_mprim$estimate*100
 tidy_mprim$conf.low <- tidy_mprim$conf.low*100
 tidy_mprim$conf.high <- tidy_mprim$conf.high*100
 
-tidy_murb$estimate <- tidy_murb$estimate*100
-tidy_murb$conf.low <- tidy_murb$conf.low*100
-tidy_murb$conf.high <- tidy_murb$conf.high*100
-
 tidy_msch$estimate <- tidy_msch$estimate*100
 tidy_msch$conf.low <- tidy_msch$conf.low*100
 tidy_msch$conf.high <- tidy_msch$conf.high*100
 
-ta <- tidy(complexglm_rate_a, conf.int = TRUE)
-ta$estimate <- ta$estimate*100
-ta$conf.low <- ta$conf.low*100
-ta$conf.high <- ta$conf.high*100
+#ta <- tidy(complexglm_rate_a, conf.int = TRUE)
+#ta$estimate <- ta$estimate*100
+#ta$conf.low <- ta$conf.low*100
+#ta$conf.high <- ta$conf.high*100
 
-tidy_abpl$estimate <- tidy_abpl$estimate*100
-tidy_abpl$conf.low <- tidy_abpl$conf.low*100
-tidy_abpl$conf.high <- tidy_abpl$conf.high*100
+tidy_a_insurance$estimate <- tidy_a_insurance$estimate*100
+tidy_a_insurance$conf.low <- tidy_a_insurance$conf.low*100
+tidy_a_insurance$conf.high <- tidy_a_insurance$conf.high*100
 
 tidy_aprim$estimate <- tidy_aprim$estimate*100
 tidy_aprim$conf.low <- tidy_aprim$conf.low*100
 tidy_aprim$conf.high <- tidy_aprim$conf.high*100
-
-tidy_aurb$estimate <- tidy_aurb$estimate*100
-tidy_aurb$conf.low <- tidy_aurb$conf.low*100
-tidy_aurb$conf.high <- tidy_aurb$conf.high*100
 
 tidy_asch$estimate <- tidy_asch$estimate*100
 tidy_asch$conf.low <- tidy_asch$conf.low*100
@@ -278,12 +308,12 @@ df %>% select(age, urban_rural, years_school, bpl, scheduled_group, tot_live_bir
   gt::tab_options(table.font.names = "Times New Roman")
 
 #filter out NAs for plot so not showing NAs for miscarriage/abortion/stillbirth
-df_plot <- df %>% drop_na(nonbirth)
+df_plot <- df %>% drop_na(outcome)
 
 #making factor for labeling
-df_plot$Outcome <- factor(df_plot$nonbirth, 
-                          levels = c(1, 2, 3),
-                          labels = c("Miscarriage", "Abortion", "Stillbirth"))
+df_plot$Outcome <- factor(df_plot$outcome, 
+                          levels = c(1, 2, 3, 4),
+                          labels = c("Live Birth", "Stillbirth", "Miscarriage", "Abortion"))
 
 
 
@@ -317,14 +347,14 @@ df_plot %>%
 
 # SEPTEMBER 30 PLOT WITH YEAR ON X-AXIS
 d <- df_plot %>%
-  count(years = year_last_terminated, Outcome)  %>%
+  count(years = outcome_year, Outcome)  %>%
   group_by(years) %>%
   mutate(n = prop.table(n) * 100) %>%
   ggplot(aes(years, n, fill = Outcome)) +
   geom_col(position = 'dodge', na.rm = TRUE) + 
   ylim(0,100) +
   #  scale_fill_discrete(na.translate=FALSE) +
-  labs(x = "Year", y = "Percentage of all pregnancy terminations") +
+  labs(x = "Year", y = "Percentage of all pregnancy outcomes") +
   scale_fill_brewer(palette = "Paired") +
   theme_cowplot(10)
 

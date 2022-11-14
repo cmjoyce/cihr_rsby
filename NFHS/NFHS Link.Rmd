@@ -23,14 +23,21 @@ women <- read_dta("IAIR73FL_DC.DTA", col_select = c(1:134, 154:254, 355:394, 454
                                                     1707:1731, 3215:3223, 3775:3787, 3872, 4081:4087))
 
 
-hh <- read_dta("IAHR74FL.DTA", col_select = c(1:30, 101:200))
+hh <- read_dta("IAHR74FL.DTA", col_select = c(1:200))
 #which(colnames(hh) == "sh58") ## keeping only case IDs and BPL card for HH
 
-#keeping only variables needed for merge -- cluster number, household number, state, and BPL card
-hh <- hh %>% select(hv001, hv002, hv024, sh58)
+#keeping only variables needed for asset index + merge -- cluster number, household number, state
+hh <- hh %>% select(hv001, hv002, hv024, hv225, hv237, hv237a,
+                    hv237b, hv237c, hv237d, hv237f,
+                    hv237g, hv237h, hv237x, hv237z, hv243a, hv243c, hv244,
+                    sh37o, sh58)
 
 #renaming for merging so variables match between datasets (except bpl variable)
-hh <- dplyr::rename(hh, v001 = hv001, v002 = hv002, v024 = hv024, bpl = sh58)
+hh <- rename(hh, v001 = hv001, v002 = hv002, v024 = hv024, toilet_shared = hv225, 
+             water_treat = hv237, boil_water = hv237a, bleach_water = hv237b, strain_water = hv237c,
+             filter_water = hv237d, settle_water = hv237f, alum_water = hv237g, electr_purif_water = hv237h,
+             other_water = hv237x, dk_water = hv237z, mobile_phone = hv243a, 
+             animal_cart = hv243c, own_agric_land = hv244, computer = sh37o, bpl = sh58)
 
 #adding in BPL card variable
 nfhs4 <- left_join(
@@ -39,7 +46,7 @@ nfhs4 <- left_join(
   by = c("v001", "v002", "v024")
 )
 
-#write.csv(nfhs4, "nfhs4_link.csv") 
+write.csv(nfhs4, "nfhs4_link.csv") 
 
 ```
 
@@ -48,9 +55,11 @@ nfhs4 <- read.csv("nfhs4_link.csv")
 
 #renaming
 
-nfhs4 <- dplyr::rename(nfhs4, state = v024, wt = v005,  district = sdistri, psu = v021, religion = v130, caste = v131,
+nfhs4 <- rename(nfhs4, state = v024, wt = v005,  district = sdistri, psu = v021, religion = v130, caste = v131,
                 rural_urban = v025, caste_group = s116, source_water = v113,  
-                toilet = v116,
+                toilet = v116, radio = v120, tv = v121, fridge = v122, bike = v123, 
+                motorcycle = v124, car = v125, 
+                other_phone = v153, cook_fuel = v161, 
                 health_ins = v481, esis = v481a, cghs = v481b, shis = v481c,
                 rsby = v481d, chip = v481e, other_employer = v481f, reimburse = v481g,
                 other_private = v481h, other_insurance = v481x, 
@@ -105,10 +114,17 @@ nfhs4$pp_checkup <- ifelse(nfhs4$pp_checkup < 203, 1, 0)
 #July 20 2022 removing fertility calendar
 nfhs4 <- nfhs4 %>% select(caseid, wt, month, year, date, age, v018, v019, 
                           state, psu,  rural_urban, years_school, source_water, toilet,
+                          toilet_shared, radio, tv, fridge, bike,
+                          motorcycle, car,
+                          other_phone, cook_fuel,
+                          water_treat, boil_water, bleach_water, strain_water, filter_water,
+                          settle_water, alum_water, electr_purif_water, other_water, dk_water,
+                          mobile_phone, animal_cart, own_agric_land, computer,
                           religion, caste, v150, v190, v191,
                           tot_live_births, v208, v209, age_first_birth, 
                           current_method, fp_future, v367, index_mob, index_yob, month_received_anc, num_anc_visits,
-                          type_delivery, place_delivery, conducted_delivery, pp_checkup, health_ins, esis, cghs, shis, rsby, chip, other_employer, 
+                          type_delivery, place_delivery, conducted_delivery, pp_checkup, health_ins, esis, cghs, shis, rsby, chip,
+                          other_employer, 
                           reimburse, other_private, other_insurance, district, sslumc, sslumo, caste_group,
                           ever_terminated, month_last_terminated, year_last_terminated, months_last_termination_occurred,
                           other_terminations, miscarriage_abortion_stillbirth, 
@@ -429,14 +445,19 @@ nfhs5 <- fread("IAIR7AFL.csv", select = c(1:106, 167:267, 547:592, 673:707,
 
 
 
-hh_nfhs5 <- read_dta("IAHR7AFL.DTA", col_select = c(1:30, 150:260))
-#which(colnames(hh) == "sh58") ## keeping only case IDs and BPL card for HH
+hh_nfhs5 <- read_dta("IAHR7AFL.DTA", col_select = c(1:30, 73:116, 150:260))
+#which(colnames(hh) == "sh58") ## keeping only case IDs, asset index questions, and and BPL card for HH
 
 #keeping only variables needed for merge -- cluster number, household number, state, and BPL card
-hh_nfhs5 <- hh_nfhs5 %>% select(hv001, hv002, hv024, sh75)
+hh_nfhs5 <- hh_nfhs5 %>% select(hv001, hv002, hv024, hv225, hv237, hv237a, hv237b, hv237c, hv237d, hv237f, hv237g, hv237h,
+                                hv237x, hv237z, hv243c, hv243e, hv244, sh75)
 
 #renaming for merging so variables match between datasets (except bpl variable)
-hh5 <- dplyr::rename(hh_nfhs5, v001 = hv001, v002 = hv002, v024 = hv024, bpl= sh75)
+hh5 <- dplyr::rename(hh_nfhs5, v001 = hv001, v002 = hv002, v024 = hv024, toilet_shared = hv225, water_treat = hv237,
+                     boil_water = hv237a, bleach_water = hv237b, strain_water = hv237c, filter_water = hv237d, settle_water = hv237f,
+                     alum_water = hv237g, electr_purif_water = hv237h, other_water = hv237x, dk_water = hv237z, animal_cart = hv243c, 
+                     computer = hv243e, own_agric_land = hv244,
+                     bpl= sh75)
 
 #adding in BPL card variable
 nfhs5 <- left_join(
@@ -454,9 +475,10 @@ nfhs5 <- read.csv("nfhs5_link.csv")
 
 #renaming
 
-nfhs5 <- dplyr::rename(nfhs5, state = v024, wt = v005,  district = sdist, psu = v021, religion = v130, caste = v131,
+nfhs5 <- rename(nfhs5, state = v024, wt = v005,  district = sdist, psu = v021, religion = v130, caste = v131,
                 rural_urban = v025, caste_group = s116, source_water = v113,  
-                toilet = v116,
+                toilet = v116, radio = v120, tv = v121, fridge = v122, bike = v123, motorcycle = v124, car = v125, 
+                other_phone = v153, cook_fuel = v161, mobile_phone = v169a,
                 health_ins = v481, esis = v481a, cghs = v481b, shis = v481c,
                 rsby = v481d, chip = v481e, other_employer = v481f, reimburse = v481g,
                 other_private = v481h, other_insurance = v481x, 
@@ -519,6 +541,10 @@ nfhs5$pp_checkup <- ifelse(nfhs5$pp_checkup < 203, 1, 0)
 
 nfhs5 <- nfhs5 %>% select(caseid, wt, month, year, date, age, v018, v019, 
                           state, psu, rural_urban, years_school, source_water, toilet,
+                          toilet, radio, tv, fridge, bike, motorcycle, car,
+                          other_phone, cook_fuel, mobile_phone, toilet_shared, water_treat,
+                          boil_water, bleach_water, strain_water, filter_water, settle_water, alum_water, 
+                          electr_purif_water, other_water, dk_water, animal_cart, computer, own_agric_land,
                           religion, caste, v150, v190, v191,
                           tot_live_births, v208, v209, age_first_birth, 
                           current_method, fp_future, v367, index_mob, index_yob, month_received_anc, num_anc_visits,  
@@ -1051,6 +1077,9 @@ nfhs5 <- nfhs5 %>% relocate(shis, .after = cghs)
 nfhs4 <- nfhs4 %>% select(-c("sslumc", "sslumo"))
 #nfhs5 <- nfhs5 %>% select(-c("v190", "v191"))
 
+
+compare_df_cols(nfhs4, nfhs5)
+
 ### COMBINING NFHS-4 AND NFHS-5
 nfhs <- bind_rows(nfhs4, nfhs5)
 
@@ -1240,6 +1269,9 @@ nfhs <- nfhs %>% relocate(age, .after = year)
 
 dlhs$district <- as.numeric(dlhs$district)
 nfhs$state_dist <- as.numeric(nfhs$state_dist)
+
+library(janitor)
+compare_df_cols(dlhs, nfhs)
 
 #combining nfhs and dlhs
 dlhs_nfhs <- bind_rows(dlhs, nfhs)

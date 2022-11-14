@@ -1,4 +1,4 @@
-setwd(".")
+setwd("./District harmonization")
 
 # Fixing districts to match -----------------------------------------------
 
@@ -561,8 +561,10 @@ dlhsnfhsahs <- dlhsnfhsahs %>%                                        # Create I
 dlhsnfhsahs$AHS_id <- dlhsnfhsahs$NFHS_AHS_id
 dlhsnfhsahs <- dlhsnfhsahs %>% rename(NFHS4_id = NFHS_AHS_id)
 
+#saving new harmonized IDs
+#write.csv(dlhsnfhsahs,"districts_harmonized.csv")
 
-#not working. trying by survey.
+dlhsnfhsahs <- read.csv("districts_harmonized.csv")
 
 dlhsnfhsahs <- dlhsnfhsahs %>% ungroup()
 

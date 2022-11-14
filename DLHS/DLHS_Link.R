@@ -87,7 +87,7 @@ dlhs3$id_person <- paste(dlhs3$state, dlhs3$dist,dlhs3$psu, dlhs3$hhno, dlhs3$li
 #dupes <- subset(dlhs3, nn >1)
 
 #comparing to hh variable
-df3hh <- fread("DLHS3-HH.csv", select = c(1:8, 734:740))
+df3hh <- fread("DLHS3-HH.csv", select = c(1:8, 676:740))
 
 #fixing district variable
 df3hh$district <- str_sub(df3hh$dist,start= -2)
@@ -103,8 +103,12 @@ df3hh$psu <- str_pad(df3hh$psu, 2, "left", "0")
 df3hh$hh_id <- paste(df3hh$state,df3hh$dist,df3hh$psu,df3hh$hhno, sep = "")
 #df3hh <- df3hh %>% group_by(hh_id) %>% add_count(hh_id)
 
-#keeping only health insurance variables + linking variables
-dlhs3hh <- df3hh %>% select(c(state, dist, psu, hhno, hh_id, hv136a, hv136b, hv136c, hv136d, hv136e, hv136f, hv136g))
+#keeping only wealth index + health insurance variables + linking variables
+dlhs3hh <- df3hh %>% select(c(state, dist, psu, hhno, hh_id, hv119a, hv119b, hv119c, hv119d,
+                              hv119e, hv119f, hv119g, hv119h, hv119i, hv121, hv123,
+                              hv129i, hv129j, hv129k, hv129m, hv129n, hv129o, hv129p,
+                              hv129s, hv129t, hv129u, hv129v, hv130,
+                              hv136a, hv136b, hv136c, hv136d, hv136e, hv136f, hv136g))
 
 #left join matching on hhid
 
@@ -115,6 +119,11 @@ dlhs3 <- left_join(
   
 )
 
+dlhs3 <- rename(dlhs3, boil_water = hv119a, alum_water = hv119b, bleach_water = hv119c, strain_water = hv119d, 
+                filter_water = hv119e, electr_purif_water = hv119f, settle_water = hv119g, other_water = hv119h, dk_water = hv119i,
+                toilet_shared = hv121, cook_fuel = hv123, radio = hv129i, tv_bw = hv129j, tv_color = hv129k,
+                mobile_phone = hv129m, other_phone = hv129n, computer = hv129o, fridge = hv129p, bike = hv129s, motorcycle = hv129t,
+                animal_cart = hv129u, car = hv129v, own_agric_land = hv130)
 
 
 # July 20th 2022 redoing fertility to match NFHS --------------------------
@@ -299,8 +308,8 @@ dlhs3 <- distinct(dlhs3)
 
 # DLHS-4 Load -------------------------------------------------------------
 
-dlhs4 <- fread("DLHS-4 Women.csv", select = c(1:5, 6, 9:10, 19, 32, 44:48, 58, 63, 
-                                              93:102, 121, 123,149, 159:164, 
+dlhs4 <- fread("DLHS-4 Women.csv", select = c(1:6, 9:10, 19, 32, 44:102, 
+                                              121, 123,149, 159:164, 
                                               180:181, 185,192:197, 216:290, 303, 305, 307, 
                                               483:487, 530, 544, 958:968, 
                                               971, 974:976, 1115, 1275:1278))
@@ -312,7 +321,15 @@ dlhs4 <- fread("DLHS-4 Women.csv", select = c(1:5, 6, 9:10, 19, 32, 44:48, 58, 6
 dlhs4 <- rename(dlhs4, district = dist, date = qsinterviewdate, month = qsinterviewmonth,
                 year = qsinterviewyear, rural_urban = htype, years_school = hv13, religion = hv30,
                 caste = hv31a, caste_group = hv31b, source_water = hv32, 
-                water_treat = hv33, toilet= hv35, type_house = hv40, bpl_card = hv48,
+                water_treat = hv33, boil_water = hv34a, alum_water = hv34b, 
+                bleach_water = hv34c, strain_water = hv34d, filter_water = hv34e, 
+                electr_purif_water = hv34f, settle_water = hv34g, other_water = hv34h, dk_water = hv34i,
+                toilet= hv35, toilet_shared = hv36, cook_fuel = hv39,
+                type_house = hv40, radio = hv46a, tv = hv46b, computer_no_wifi = hv46c, 
+                computer_wifi = hv46d, other_phone = hv46e, mobile_phone = hv46f, 
+                fridge = hv46h, bike = hv46k, motorcycle = hv46l, car = hv46m,
+                animal_cart = hv46p, machine_cart = hv46q, own_agric_land = hv47,
+                bpl_card = hv48,
                 health_ins = hv49, age = q105, age_at_marriage = q107, 
                 age_first_birth = q121, tot_still_births = q128_sb, 
                 tot_induc_abort = q129_indu, tot_spont_abort = q129_spot,
@@ -329,6 +346,10 @@ dlhs4 <- rename(dlhs4, district = dist, date = qsinterviewdate, month = qsinterv
 
 #renaming prim_key and primekey_new to match hhi_id and id_person
 dlhs4 <- rename(dlhs4, hh_id = prim_key, id_person = primekey_new)
+
+#keeping only variables needed 
+dlhs4 <- dlhs4 %>% select(-c(hv37, hv38, hv41, hv42, hv43, hv44, hv45, hv46g, hv46i, hv46j, hv46n, 
+                             hv46o, hv46r, hv46s, hv46t, hv47a, hv47b, hv47c))
 
 #dlhs4 <- dlhs4 %>% group_by(id_person)
 #dlhs4 <- dlhs4 %>% add_count(id_person)
@@ -860,6 +881,36 @@ dlhs4 <- dlhs4 %>% relocate(index_yob, .after = index_mob)
 #moving dlhs3 weight variables which got mixed up 
 dlhs3 <- dlhs3 %>% relocate(pregnant:sewwt, .after = other_method)
 
+#harmonizing wealth index variables
+names(dlhs3)
+names(dlhs4)
+
+#making dlhs3 both types of tv variables (b&w and color) into one
+table(dlhs3$tv_bw)
+table(dlhs3$tv_color)
+
+length(which(dlhs3$tv_bw == 1 & dlhs3$tv_color == 1))
+
+dlhs3 <- dlhs3 %>% mutate(tv = case_when(tv_bw == 1 ~ 1,
+                                         tv_color == 1 ~ 1,
+                                         TRUE ~ 0))
+
+#dropping old variables
+dlhs3 <- dlhs3 %>% select(-c(tv_bw, tv_color))
+
+#now combining dlhs4 computers w/ and w/o internet into one variable
+dlhs4 <- dlhs4 %>% mutate(computer = case_when(computer_wifi == 1 ~ 1,
+                                               computer_no_wifi == 1 ~ 1,
+                                               TRUE ~ 0))
+#dropping old variables
+dlhs4 <- dlhs4 %>% select(-c(computer_no_wifi, computer_wifi))
+
+#dropping dlhs4 machine cart variable. Only animal cart is shared across surveys.
+dlhs4 <- dlhs4 %>% select(-c(machine_cart))
+
+library(janitor)
+compare_df_cols(dlhs3, dlhs4)
+
 #making numeric to match
 dlhs4$received_anc <- as.numeric(dlhs4$received_anc)
 dlhs4$month_received_anc <- as.numeric(dlhs4$month_received_anc)
@@ -870,6 +921,12 @@ dlhs4$conducted_delivery <- as.numeric(dlhs4$conducted_delivery)
 dlhs4$jsy <- as.numeric(dlhs4$jsy)
 dlhs4$pp_checkup <- as.numeric(dlhs4$pp_checkup)
 dlhs4$index_alive <- as.numeric(dlhs4$index_alive)
+dlhs4$index_mob <- as.numeric(dlhs4$index_mob)
+dlhs4$index_yob <- as.numeric(dlhs4$index_yob)
+dlhs4$multiples <- as.numeric(dlhs4$multiples)
+dlhs4$miscarriage_abortion_stillbirth <- as.numeric(dlhs4$miscarriage_abortion_stillbirth)
+dlhs4$month_last_terminated <- as.numeric(dlhs4$month_last_terminated)
+dlhs4$year_last_terminated <- as.numeric(dlhs4$year_last_terminated)
 
 #dlhs3$district <- as.numeric(dlhs3$district)
 #dlhs3$district <- str_pad(dlhs3$district, 2, "left", "0")
@@ -892,13 +949,13 @@ dlhs <- dlhs %>% relocate(id_person, .before = state)
 
 dlhs <- read.csv("dlhs.csv")
 
-#preliminary matching wiht NFHS
+#preliminary matching with NFHS
 dlhs <- dlhs %>% select(-c("hh_id"))
 dlhs <- rename(dlhs, caseid = id_person)
 dlhs <- dlhs %>% relocate(caseid, .before = state)
 dlhs <- dlhs %>% relocate(age, .after = year)
 dlhs <- dlhs %>% relocate(years_school, .after = caste_group)
-dlhs <- dlhs %>% select(-c("water_treat"))
+#dlhs <- dlhs %>% select(-c("water_treat"))
 dlhs <- dlhs %>% select(-c("type_house"))
 dlhs <- dplyr::rename(dlhs, bpl = bpl_card)
 dlhs <- dlhs %>% relocate(sewwt, .after = shhwt)

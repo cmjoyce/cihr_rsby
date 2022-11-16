@@ -943,7 +943,7 @@ dlhs <- dlhs %>% relocate(id_person, .before = state)
 
 
 
-#write.csv(dlhs, "dlhs.csv")
+write.csv(dlhs, "dlhs.csv")
 
 #next steps adding in NFHS/AHS/Policy variables. Add in district enrollment into RSBY last 
 

@@ -323,7 +323,9 @@ wps_educ <- wps %>% select(c(caseid, state, district, rural, stratum_code, psu, 
                              no_of_months_first_anc, source_of_anc, where_del_took_place, who_conducted_del_at_home, check_up_with_48_hours_of_del,
                              is_any_fp_methos_used, fp_method_used, sex, usual_residance, date_of_birth, month_of_birth, year_of_birth, mom_birth_yrmo,
                              religion, social_group_code, highest_qualification, house_structure, owner_status, drinking_water_source,
-                             is_water_filter, water_filteration, toilet_used, iscoveredbyhealthscheme, healthscheme_1, healthscheme_2,
+                             is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 
+                             is_television, is_computer, is_telephone, is_refrigerator, is_bicycle, is_scooter, is_car, cart,
+                             land_possessed, iscoveredbyhealthscheme, healthscheme_1, healthscheme_2,
                              wt, as, as_binned, nfhs4_census2011_district_id))
 
 
@@ -351,8 +353,13 @@ nrow(distinct(ahs_preg_educ))
 ahs_preg_educ <- distinct(ahs_preg_educ)
 
 
-ahs_preg_match <- ahs_preg_educ %>% select(c(caseid, state, district, state_dist, psu, out_come_of_preg, previous_sb, survey, year_of_abortion, yob, wt, year_of_intr, age,
-                                  rural, religion, social_group_code, highest_qualification,drinking_water_source, toilet_used, healthscheme_1, 
+ahs_preg_match <- ahs_preg_educ %>% select(c(caseid, state, district, psu, out_come_of_preg, previous_sb, survey, year_of_abortion, yob, wt, year_of_intr, age,
+                                  rural, religion, social_group_code, highest_qualification,
+                                  drinking_water_source,
+                                  is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 
+                                  is_television, is_computer, is_telephone, is_refrigerator, is_bicycle, is_scooter, is_car, cart,
+                                  land_possessed,
+                                  healthscheme_1, 
                                   healthscheme_2, age_at_first_conception,
                                   born_alive_total, no_of_months_first_anc, no_of_anc, kind_of_birth, previous_current_diff, where_del_took_place, who_conducted_del_at_home,
                                   check_up_with_48_hours_of_del, abortion_month, fp_method_used, as, nfhs4_census2011_district_id))
@@ -376,20 +383,29 @@ names(dlhsnfhs_preg_mothercov)
 names(ahs_preg_match)
 
 #making ahs_preg state_dist variable to match dlhsnfhs
+ahs_preg_match$district <- str_pad(ahs_preg_match$district, 2, "left", "0")
 ahs_preg_match$state_dist <- paste(ahs_preg_match$state, ahs_preg_match$district, sep ="")
 
+#check <- ahs_preg_match %>% select(c(state, district, state_dist))
+
+ahs_preg_match$state_dist <- as.numeric(ahs_preg_match$state_dist)
 
 #adding in NFHS4 district id variable from seperate district harmonization file. 
 # Using nfhs4_district_names file.
 
 ahs_district_names <- ahs_district_names %>% filter(!is.na(ahs_district_names$AHS_id))
 
+
 ahs_preg_match <- left_join(ahs_preg_match, ahs_district_names, 
-                   by = c("nfhs4_census2011_district_id" = "AHS_id"))
+                   by = c("state_dist" = "AHS_id"))
 
 
 #this introduced multiple matches to district. Doing distinct to remove the multiples.
 ahs_preg_match <- distinct(ahs_preg_match)
+
+length(which(is.na(ahs_preg_match$dist_id)))
+
+#check <- ahs_preg_match %>% filter(is.na(dist_id))
 
 #checking
 #ahs_try <- ahs_try %>% select(c(caseid, state, nfhs4_census2011_district_id, dist_id))
@@ -454,7 +470,7 @@ ahs_preg_match$primary <- ifelse(ahs_preg_match$highest_qualification > 2, 1, 0)
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(years_school))
 ahs_preg_match <- ahs_preg_match %>% select(-c(highest_qualification))
 
-dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(nonbirth))
+#dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(nonbirth))
 
 #making mediclaim other private
 ahs_preg_match <- ahs_preg_match %>% rename(other_private = mediclaim)
@@ -510,6 +526,69 @@ dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(year_of_intr = yea
 
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(outcome_year = year_outcome)
 
+#looking at asset index variables
+
+#renaming AHS asset index variables to match dlhsnfhs
+ahs_preg_match <- ahs_preg_match %>% rename(water_treat = is_water_filter, toilet_shared = is_toilet_shared, 
+                                            cook_fuel = cooking_fuel, radio = is_radio, computer = is_computer,
+                                            fridge = is_refrigerator, bike = is_bicycle, motorcycle = is_scooter, 
+                                            car = is_car, tv = is_television, own_agric_land = land_possessed)
+
+#matching DLHS/NFHS water treatment variable. DLHS/NFHS has water treatment as binary variables, 
+# AHS has it in an ordered categorical list. For polychoric asset index better to be ordered categorical.
+# Matching AHS coding: 1 boil 2 bleach/chlorine 3 aluminum 4 strain through cloth 5 water filters (ceramics/sand)
+# 6 electronic filters 7 let it stand and settle 8 other treatment
+
+# in both DLHS and NFHS lables 1 == yes
+
+#DLHS and NFHS let respondents pick more than one option. We have restricted to the order given below,
+# with the first ordered option superceding. 
+
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% 
+  mutate(water_filteration = case_when(boil_water == 1 ~ 1,
+                                       bleach_water == 1 ~ 2,
+                                       alum_water == 1 ~ 3,
+                                       strain_water == 1 ~ 4,
+                                       filter_water == 1 ~ 5,
+                                       electr_purif_water == 1 ~ 6,
+                                       settle_water == 1 ~ 7,
+                                       other_water == 1 ~ 8,
+                                       dk_water == 1 ~ NA_real_,
+                                       TRUE ~ NA_real_))
+
+#dropping old variables
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(boil_water, bleach_water, alum_water,
+                                                                 strain_water, filter_water, electr_purif_water, 
+                                                                 settle_water, other_water, dk_water))
+
+#matching animal cart variable. AHS asks about all carts. Limiting to animal cart.
+ahs_preg_match <- ahs_preg_match %>% mutate(animal_cart = case_when(cart == 1 ~ 1,
+                                              cart > 1 ~ 0,
+                                              TRUE ~ 0))
+
+#dropping old variable
+ahs_preg_match <- ahs_preg_match %>% select(-c(cart))
+
+#comparing dlhsnfhs and ahs
+compare_df_cols(dlhsnfhs_preg_mothercov, ahs_preg_match)
+
+#making telephone variables match the dlhsnfhspreg binary coding.
+# AHS lets you select telephone only (1), mobile phone only (2), both (3), or neither (4) 
+ahs_preg_match <- ahs_preg_match %>% mutate(telephone_land_line = case_when(is_telephone == 1 ~ 1,
+                                                                            is_telephone == 3 ~ 1,
+                                                                            TRUE ~ 0),
+                                            mobile_phone = case_when(is_telephone == 2 ~ 1,
+                                                                     is_telephone == 3 ~ 1,
+                                                                     TRUE ~ 0))
+
+#dropping old is_telephone variable
+ahs_preg_match <- ahs_preg_match %>% select(-c(is_telephone))
+
+#renaming dlhsnfhspreg other_phone to be telephone_land_line
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% rename(telephone_land_line = other_phone)
+
+
+
 #making ahs state numeric
 ahs_preg_match$state <- as.numeric(ahs_preg_match$state)
 ahs_preg_match$psu <- as.numeric(ahs_preg_match$psu)
@@ -522,7 +601,7 @@ df <- bind_rows(dlhsnfhs_preg_mothercov, ahs_preg_match)
 
 #write.csv(df, "full_combined_preg.csv")
 
-df <- read.csv("full_combined_preg.csv")
+#df <- read.csv("full_combined_preg.csv")
 
 
 # Harmonizing all variables -----------------------------------------------
@@ -841,7 +920,185 @@ df$pp_checkup <- ifelse(df$pp_checkup == 9, NA, df$pp_checkup)
 #Making all 2s into 0s. then will match across surveys.
 df$pp_checkup <- ifelse(df$pp_checkup == 2, 0, df$pp_checkup)
 
+#fixing asset index variables. In all cases 1 == yes. Making all other values 0 == no
+table(df$water_treat)
+df$water_treat <- ifelse(df$water_treat == 1, 1, 0)
+
+#toilet shared. In DLHS4 options 1 and 2 both indicate a shared toilet. 3 is not shared. In all other surveys 2 is no.
+table(df$toilet_shared)
+
+df <- df %>% mutate(toilet_share = case_when(survey == "DLHS4" & toilet_shared < 3 ~ 1,
+                                             survey == "DLHS3" & toilet_shared == 1 ~ 1,
+                                             survey == "NFHS4" & toilet_shared == 1 ~ 1,
+                                             survey == "NFHS5" & toilet_shared == 1 ~ 1,
+                                             survey == "AHS" & toilet_shared == 1 ~ 1,
+                                             TRUE ~ 0))
+
+#removing old toilet shared variable
+df <- df %>% select(-c(toilet_shared))
+
+#matching cooking fuel variable
+#NFHS4, NFHS5, and DLHS3 all have matching items. AHS matches DLHS4 and both will therefore be recoded to match
+
+#CORRECT CODING:
+#ELECTRICITY 01 
+# LPG/NATURAL GAS 02 
+#BIOGAS 03 
+#KEROSENE 04 
+#COAL/LIGNITE 05 
+#CHARCOAL 06 
+#WOOD 07 
+#STRAW/SHRUBS/GRASS 08 
+#AGRICULTURAL CROP WASTE 09 
+#DUNG CAKES 10
+#OTHER  96
+
+# In DLHS4 and AHS the coding is as follows: 
+#firewood 01
+#crop residue 02
+#cow dung cake 03
+#coal/ignite/charcoal 04
+#kerosene 05
+#lpg/png 06
+#electricity 07
+#biogas 08
+#no cooking 09
+#any other 96
+
+#making charcoal (6) in DLHS3, NFHS4, and NFHS5 part of the "coal/ignite" (5)
+#combining straw/shrubs/grass (8) and crop residue into one variable (9)
+
+#In NFHS4 and NFHS5 code 97 indicates "not a dejure resident" and therefore making those NA
+
+#Making AHS other into 96
+
+df$cooking_fuel <- df$cook_fuel
+
+df <- df %>% mutate(cooking_fuel = case_when(survey == "DLHS3" & cook_fuel == 5 ~ 6,
+                                             survey == "DLHS3" & cook_fuel == 8 ~ 9,
+                                             survey == "DLHS3" & cook_fuel == 1 ~ 1,
+                                             survey == "DLHS3" & cook_fuel == 2 ~ 2,
+                                             survey == "DLHS3" & cook_fuel == 3 ~ 3,
+                                             survey == "DLHS3" & cook_fuel == 4 ~ 4,
+                                             survey == "DLHS3" & cook_fuel == 6 ~ 6,
+                                             survey == "DLHS3" & cook_fuel == 7 ~ 7,
+                                             survey == "DLHS3" & cook_fuel == 9 ~ 9,
+                                             survey == "DLHS3" & cook_fuel == 10 ~ 10,
+                                             survey == "DLHS3" & cook_fuel == 96 ~ 96,
+                                             survey == "NFHS4" & cook_fuel == 5 ~ 6,
+                                             survey == "NFHS4" & cook_fuel == 8 ~ 9,
+                                             survey == "NFHS4" & cook_fuel == 1 ~ 1,
+                                             survey == "NFHS4" & cook_fuel == 2 ~ 2,
+                                             survey == "NFHS4" & cook_fuel == 3 ~ 3,
+                                             survey == "NFHS4" & cook_fuel == 4 ~ 4,
+                                             survey == "NFHS4" & cook_fuel == 6 ~ 6,
+                                             survey == "NFHS4" & cook_fuel == 7 ~ 7,
+                                             survey == "NFHS4" & cook_fuel == 9 ~ 9,
+                                             survey == "NFHS4" & cook_fuel == 10 ~ 10,
+                                             survey == "NFHS4" & cook_fuel == 96 ~ 96,
+                                             survey == "NFHS5" & cook_fuel == 5 ~ 6,
+                                             survey == "NFHS5" & cook_fuel == 8 ~ 9,
+                                             survey == "NFHS5" & cook_fuel == 1 ~ 1,
+                                             survey == "NFHS5" & cook_fuel == 2 ~ 2,
+                                             survey == "NFHS5" & cook_fuel == 3 ~ 3,
+                                             survey == "NFHS5" & cook_fuel == 4 ~ 4,
+                                             survey == "NFHS5" & cook_fuel == 6 ~ 6,
+                                             survey == "NFHS5" & cook_fuel == 7 ~ 7,
+                                             survey == "NFHS5" & cook_fuel == 9 ~ 9,
+                                             survey == "NFHS5" & cook_fuel == 10 ~ 10,
+                                             survey == "NFHS5" & cook_fuel == 96 ~ 96,
+                                             survey == "DLHS4" & cook_fuel == 7 ~ 1,
+                                             survey == "DLHS4" & cook_fuel == 6 ~ 2,
+                                             survey == "DLHS4" & cook_fuel == 8 ~ 3,
+                                             survey == "DLHS4" & cook_fuel == 5 ~ 4,
+                                             survey == "DLHS4" & cook_fuel == 4 ~ 6,
+                                             survey == "DLHS4" & cook_fuel == 1 ~ 7,
+                                             survey == "DLHS4" & cook_fuel == 2 ~ 9,
+                                             survey == "DLHS4" & cook_fuel == 3 ~ 10,
+                                             survey == "DLHS4" & cook_fuel == 96 ~ 96,
+                                             survey == "AHS" & cook_fuel == 7 ~ 1,
+                                             survey == "AHS" & cook_fuel == 6 ~ 2,
+                                             survey == "AHS" & cook_fuel == 8 ~ 3,
+                                             survey == "AHS" & cook_fuel == 5 ~ 4,
+                                             survey == "AHS" & cook_fuel == 4 ~ 6,
+                                             survey == "AHS" & cook_fuel == 1 ~ 7,
+                                             survey == "AHS" & cook_fuel == 2 ~ 9,
+                                             survey == "AHS" & cook_fuel == 3 ~ 10,
+                                             survey == "AHS" & cook_fuel == 9 ~ 96,
+                                             TRUE ~ NA_real_))
+
+table(df$survey, df$cook_fuel)
+table(df$survey, df$cooking_fuel)
+
+#removing old cook_fuel label
+df <- df %>% select(-c(cook_fuel))
+
+#now looking at radio variable
+# 1 is yes across all surveys. Harmonizing to this.
+df$radio <- ifelse(df$radio == 1, 1, 0)
+
+#now harmonizing computer
+table(df$survey, df$computer)
+
+#In AHS 1 and 2 are yes (with and without internet). In reset of surveys only 1 is yes.
+df <- df %>% mutate(has_computer = case_when(survey == "AHS" & computer < 3 ~ 1,
+                                             survey == "DLHS3" & computer == 1 ~ 1,
+                                             survey == "DLHS4" & computer == 1 ~ 1,
+                                             survey == "NFHS4" & computer == 1 ~ 1,
+                                             survey == "NFHS5" & computer == 1 ~ 1,
+                                             TRUE ~ 0))
+
+df <- df %>% select(-c(computer))
+
+#now looking at fridge. In NFHS4 and NFHS5 7 is not a dejure resident
+table(df$survey, df$fridge)
+
+df$fridge <- ifelse(df$fridge == 1, 1, 0)
+
+#has a bicycle
+table(df$survey, df$bike)
+df$bike <- ifelse(df$bike == 1, 1, 0)
+
+#has a motorcycle or scooter
+table(df$survey, df$motorcycle)
+df$motorcycle <- ifelse(df$motorcycle == 1, 1, 0)
+
+#animal cart
+table(df$survey, df$animal_cart)
+df$animal_cart <- ifelse(df$animal_cart == 1, 1, 0)
+
+#car 
+table(df$survey, df$car)
+df$car <- ifelse(df$car == 1, 1, 0)
+
+#owns agricultural land 
+table(df$survey, df$own_agric_land)
+
+df <- df %>% mutate(owns_land = case_when(survey == "AHS" & own_agric_land < 6 ~ 1,
+                                          survey == "DLHS3" & own_agric_land == 1 ~ 1,
+                                          survey == "DLHS4" & own_agric_land == 1 ~ 1,
+                                          survey == "NFHS4" & own_agric_land == 1 ~ 1,
+                                          survey == "NFHS5" & own_agric_land == 1 ~ 1,
+                                          TRUE ~ 0))
+
+table(df$survey, df$owns_land)
+table(df$survey, df$own_agric_land)
+
+#dropping old variable 
+df <- df %>% select(-c(own_agric_land))
+
+#looking at created water filteration variable and renaming
+table(df$survey, df$water_filteration)
+df <- rename(df, type_water_filter = water_filteration)
+df$type_water_filter <- as.numeric(df$type_water_filter)
+
+#looking at tv
+table(df$survey, df$tv)
+
+df$tv <- ifelse(df$tv == 1, 1, 0)
+
 #write.csv(df, "harmonized_variables.csv")
+#copy over to Aim 1 file.
 
 
 # fixing district to match NFHS -------------------------------------------
@@ -849,7 +1106,6 @@ df$pp_checkup <- ifelse(df$pp_checkup == 2, 0, df$pp_checkup)
 #Now in separate district match file. Done earlier in the harmonization of each file
 
 
-#now in Aim1 file
 
 
 

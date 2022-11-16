@@ -5,6 +5,14 @@ setwd("./Caroline Thesis/Aim 1")
 df <- read.csv("harmonized_variables.csv")
 
 
+# Limiting to districts that are represented in every survey --------------
+
+table(df$survey, df$dist_id)
+
+# Creating asset index ----------------------------------------------------
+
+
+
 # Making binary pregnancy outcome variables -------------------------------
 
 #creating binary outcomes for the following coding scheme: 

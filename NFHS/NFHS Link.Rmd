@@ -1083,7 +1083,7 @@ compare_df_cols(nfhs4, nfhs5)
 ### COMBINING NFHS-4 AND NFHS-5
 nfhs <- bind_rows(nfhs4, nfhs5)
 
-#write.csv(nfhs, "nfhs.csv")
+write.csv(nfhs, "nfhs.csv")
 
 ```
 

@@ -12,6 +12,100 @@ table(df$survey, df$dist_id)
 # Creating asset index ----------------------------------------------------
 
 
+#The second way will be the polychoric 2-factor recommendation from Martel et al. 2021
+
+#asset index variables:
+# radio, mobile phone, land line, fridge, bike, motorcycle, animal cart, car, tv, type of water filter, 
+# water source, toilet type, toilet shared, cooking fuel, has computer, owns land
+
+#based on DHS guidance not using owning agricultural land as that would be less likely in rural areas
+
+#making telephone land line 7 (not a dejure resident) into 0s.
+df$telephone_land_line <- ifelse(df$telephone_land_line == 1, 1, 0)
+
+#fixing coding for mobile phone. In all surveys 1 == yes
+df$mobile_phone <- ifelse(df$mobile_phone == 1, 1, 0)
+
+#making 96s into NAs
+df$cooking_fuel <- ifelse(df$cooking_fuel == 96, NA, df$cooking_fuel)
+
+#making type of toilet current 9s (other) as NA, and then recoding 0s (no toilet/field/outside) as 9s.
+
+table(df$toilet_type)
+df$toilet_type <- ifelse(df$toilet_type == 9, NA, df$toilet_type)
+df$toilet_type <- ifelse(df$toilet_type == 0, 9, df$toilet_type)
+
+df <- df %>% mutate(
+  toilet_rev = case_when(
+    toilet_type == 9 ~ 1,
+    toilet_type == 8 ~ 2,
+    toilet_type == 7 ~ 3,
+    toilet_type == 6 ~ 4,
+    toilet_type == 5 ~ 5,
+    toilet_type == 4 ~ 6,
+    toilet_type == 3 ~ 7,
+    toilet_type == 2 ~ 8,
+    toilet_type == 1 ~ 9
+  )
+)
+
+
+asset <- df %>% select(c(caseid, rural_urban, water_treat, radio, mobile_phone, telephone_land_line, fridge, bike, motorcycle, 
+                         animal_cart, car, #type_water_filter, 
+                         water_source, toilet_rev, toilet_share, 
+                         cooking_fuel, has_computer))
+
+#examining for squared mmultiple correlations
+smc <- psych::smc(asset[,3:16])
+smc
+
+#drop variables with less than 0.05 -- explain less than 5% of variance. In this case bike, radio and animal car
+
+asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, mobile_phone, #telephone_land_line, 
+                                fridge, motorcycle, 
+                         car,
+                         water_source, toilet_rev, toilet_share, 
+                         cooking_fuel, has_computer))
+
+
+#not enough responses for type of water filter
+
+asset$type_water_filter <- as.factor(asset$type_water_filter)
+asset$water_source <- as.factor(asset$water_source)
+asset$toilet_type <- as.factor(asset$toilet_type)
+asset$cooking_fuel <- as.factor(asset$cooking_fuel)
+
+#loading package for PCA
+library(factoextra)
+library(psych)
+
+asset.pca <- prcomp(na.omit(asset), scale = TRUE)
+asset.pca
+
+asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
+
+#make 7s in land line into NAs
+
+prn<-psych::principal(asset_smc[,3:12], rotate="none", nfactors=2, cor = "mixed", 
+                      covar=T, scores=TRUE, missing = TRUE)
+
+index <- prn$scores[,2]
+
+Assets.indexed<-mutate(asset_smc,wi_quintile=as.factor(cut(index,breaks=5,labels= c(1,2,3,4,5))),
+                       wi_continuous = index)
+
+length(which(is.na(Assets.indexed$quintile)))
+
+ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = quintile), position = "fill")+ xlab("state")+
+  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
+
+#adding continuous and quintile household wealth variables into full 
+
+df_w_wi <- left_join(df, Assets.indexed)
+
+#renaming
+
+df <- df_w_wi
 
 # Making binary pregnancy outcome variables -------------------------------
 

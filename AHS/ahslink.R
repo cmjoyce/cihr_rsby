@@ -601,7 +601,7 @@ df <- bind_rows(dlhsnfhs_preg_mothercov, ahs_preg_match)
 
 #write.csv(df, "full_combined_preg.csv")
 
-df <- read.csv("full_combined_preg.csv")
+#df <- read.csv("full_combined_preg.csv")
 
 
 # Harmonizing all variables -----------------------------------------------
@@ -682,10 +682,7 @@ df$caste_group <- ifelse(df$caste_group > 2, 0, df$caste_group)
 #8 surface water
 #9 other source
 
-#FIRST Matching on AHS. Then swapping 6 and 7 as below.
-
-
-#Starting with DLHS (both) that mostly matches. Making current 7 (protected spring) into other (96)
+#Starting with DLHS (both) that mostly matches. Making current 7 into other (96)
 df$water <- df$source_water
 
 df$water <- ifelse(df$survey == "DLHS3" & df$water == 7, 96, df$water)
@@ -704,7 +701,7 @@ df$water <- ifelse(df$survey == "DLHS4" & df$water == 8, 96, df$water)
 df$water <- ifelse(df$survey == "DLHS3" & df$water == 12, 8, df$water)
 df$water <- ifelse(df$survey == "DLHS4" & df$water == 12, 8, df$water)
 
-#making DLHS anything over 8 into "other" group of 9 (rainwater collection, packaged/bottled water are now all other)
+#making DLHS anything over 8 into "other" group of 9
 df$water <- ifelse(df$survey == "DLHS3" & df$water > 8, 9, df$water)
 df$water <- ifelse(df$survey == "DLHS4" & df$water > 8, 9, df$water)
 
@@ -723,20 +720,14 @@ df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 13 ~ 2,
                                          survey == "NFHS5" & water == 14 ~ 2,
                                          TRUE ~ waternew))
 
-# remove option 3 (hand pump) from DLHS and AHS -- not an option in NFHS and move on from there. 
+# remove option 3 from DLHS and AHS -- not asked and move on from there. 
 
 df$waternew <- ifelse(df$waternew == 3, 9, df$waternew)
 
 
 # Remove surface water (8) from DLHS and AHS and make 9 (other) as well. also not asked.
 
-#df$waternew <- ifelse(df$waternew == 8, 9, df$waternew)
-
-#make surface water match. In NFHS4 and NFHS5 it's 43, in DLHS and AHS it's 8
-df <- df %>% mutate(waternew = case_when(survey == "NFHS4" & water == 43 ~ 8,
-                                         survey == "NFHS5" & water == 43 ~ 8,
-                                         TRUE ~ waternew))
-
+df$waternew <- ifelse(df$waternew == 8, 9, df$waternew)
 
 
 # In NFHS 21 becomes 4, 31 becomes 5, 32 becomes 6, 61-62 becomes 7
@@ -768,8 +759,8 @@ df <- df %>% mutate(watertry = case_when(survey == "NFHS5" & water == 13 ~ 9,
                                          survey == "NFHS5" & water == 41 ~ 9,
                                          survey == "NFHS4" & water == 42 ~ 9,
                                          survey == "NFHS5" & water == 42 ~ 9,
-                                         #survey == "NFHS4" & water == 43 ~ 9,
-                                         #survey == "NFHS5" & water == 43 ~ 9,
+                                         survey == "NFHS4" & water == 43 ~ 9,
+                                         survey == "NFHS5" & water == 43 ~ 9,
                                          survey == "NFHS4" & water == 51 ~ 9,
                                          survey == "NFHS5" & water == 51 ~ 9,
                                          survey == "NFHS4" & water == 71 ~ 9,
@@ -782,63 +773,16 @@ df <- df %>% mutate(watertry = case_when(survey == "NFHS5" & water == 13 ~ 9,
                                          TRUE ~ waternew))
 
 # Now making 4 into 3 and 9 into 8 to make it consecutive.
-#df$watertry <- ifelse(df$watertry == 4, 3, df$watertry)
-#df$watertry <- ifelse(df$watertry == 9, 8, df$watertry)
+df$watertry <- ifelse(df$watertry == 4, 3, df$watertry)
+df$watertry <- ifelse(df$watertry == 9, 8, df$watertry)
 
 # now making anything over 3 n-1 
 df$watertry <- ifelse(df$watertry > 3, (df$watertry) -1, df$watertry)
 
-#Now switching 6 and 7. See below for new coding scheme.
-#December 1 2022 matching on JMP / UNICEF updated improved vs. unimproved facilities. The new coding is as follows:
-#   1   piped-water-into-dwelling-yardplot
-#2   public-tap-stand-pipe
-#3   tubewell-or-borehole
-#4   protected-dugwell
-#5 tanker/truck/cart
-#6   unprotected-dug-well
-#7 surface water
-#8 other source
+#getting rid of old / other water variables and renaming watertry into water_source
+df <- df %>% select(-c(waternew, water, source_water))
 
-df <- df %>% mutate(water_update = case_when(watertry == 6 ~ 7,
-                                             watertry == 7 ~ 6,
-                                             TRUE ~ watertry))
-
-#getting rid of old / other water variables and renaming water_update into water_source
-df <- df %>% select(-c(waternew, water, watertry))
-
-#now doing improved vs. unimproved to not lose responses into other. Following JMP 2017 Wash data is as follows:
-# NO Facilities (1): Surface Water
-# Unimproved Facilities (2): Unprotected well and unprotected spring
-# Improved Facilities (3): Piped into dwelling, yard plot; piped into public standpost; boreholes/tubewells; protected wells and springs;
-#rainwater; packaged water (bottled water); delivered water (tanker truck and cart)
-table(df$survey, df$source_water)
-
-#making no facilities and unimproved to match, and makiing all NAs match. Then all else options are improved
-
-df <- df %>% mutate(improved_water = case_when(survey == "DLHS3" & source_water == 12 ~ 1,
-                                               survey == "DLHS3" & source_water == 6 ~ 2,
-                                               survey == "DLHS3" & source_water == 8 ~ 2,
-                                               survey == "DLHS3" & source_water == 96 ~ NA_real_,
-                                               survey == "DLHS4" & source_water == 12 ~ 1,
-                                               survey == "DLHS4" & source_water == 6 ~ 2,
-                                               survey == "DLHS4" & source_water == 8 ~ 2,
-                                               survey == "DLHS4" & source_water == 96 ~ NA_real_,
-                                               survey == "NFHS4" & source_water == 43 ~ 1,
-                                               survey == "NFHS4" & source_water == 32 ~ 2,
-                                               survey == "NFHS4" & source_water == 42 ~ 2,
-                                               survey == "NFHS4" & source_water > 94 ~ NA_real_,
-                                               survey == "NFHS5" & source_water == 43 ~ 1,
-                                               survey == "NFHS5" & source_water == 32 ~ 2,
-                                               survey == "NFHS5" & source_water == 42 ~ 2,
-                                               survey == "NFHS5" & source_water > 94 ~ NA_real_,
-                                               survey == "AHS" & source_water == 8 ~ 1,
-                                               survey == "AHS" & source_water == 6 ~ 2,
-                                               survey == "AHS" & source_water == 9 ~ NA_real_,
-                                               TRUE ~ 3))
-
-#df <- df %>% rename(water_source = water_update)
-
-
+df <- df %>% rename(water_source = watertry)
 
 # now doing type of toilet. Following this coding:
 #0 OPEN DEFECATION/NO FACILITY/OPEN SPACE OR FIELD
@@ -881,8 +825,6 @@ df <- df %>% mutate(toiletnew = case_when(survey == "DLHS3" & toilet == 51 ~ 0,
 #now adding back in AHS values
 
 df$toilet_type <- ifelse(df$survey == "AHS", df$toilet, df$toiletnew)
-
-
 
 #removing extraneous toilet variables
 df <- df %>% select(-c(toilet, toiletnew))
@@ -1003,7 +945,7 @@ df <- df %>% select(-c(toilet_shared))
 # LPG/NATURAL GAS 02 
 #BIOGAS 03 
 #KEROSENE 04 
-#COAL/LIGNITE/CHARCOAL 05 
+#COAL/LIGNITE 05 
 #CHARCOAL 06 
 #WOOD 07 
 #STRAW/SHRUBS/GRASS 08 
@@ -1025,17 +967,6 @@ df <- df %>% select(-c(toilet_shared))
 
 #making charcoal (6) in DLHS3, NFHS4, and NFHS5 part of the "coal/ignite" (5)
 #combining straw/shrubs/grass (8) and crop residue into one variable (9)
-
-#COMBINED IS THEREFORE 
-#ELECTRICITY 01 
-# LPG/NATURAL GAS 02 
-#BIOGAS 03 
-#KEROSENE 04 
-#COAL/LIGNITE/CHARCOAL 05 
-#WOOD 06 
-#STRAW/SHRUBS/GRASS/AGRICULTURAL CROP WASTE 07 
-#DUNG CAKES 08
-#OTHER  96
 
 #In NFHS4 and NFHS5 code 97 indicates "not a dejure resident" and therefore making those NA
 
@@ -1098,12 +1029,6 @@ df <- df %>% mutate(cooking_fuel = case_when(survey == "DLHS3" & cook_fuel == 5 
 
 table(df$survey, df$cook_fuel)
 table(df$survey, df$cooking_fuel)
-
-#fixing numbering
-df$cooking_fuel <- ifelse(df$cooking_fuel > 4, df$cooking_fuel - 1, df$cooking_fuel)
-df$cooking_fuel <- ifelse(df$cooking_fuel > 6, df$cooking_fuel - 1, df$cooking_fuel)
-df$cooking_fuel <- ifelse(df$cooking_fuel == 94, 96, df$cooking_fuel)
-
 
 #removing old cook_fuel label
 df <- df %>% select(-c(cook_fuel))

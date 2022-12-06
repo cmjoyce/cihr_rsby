@@ -1,5 +1,6 @@
 # Aim 1 import ------------------------------------------------------
 library(tidyverse)
+
 setwd("./Caroline Thesis/Aim 1")
 
 df <- read.csv("harmonized_variables.csv")
@@ -35,6 +36,7 @@ table(df$toilet_type)
 df$toilet_type <- ifelse(df$toilet_type == 9, NA, df$toilet_type)
 df$toilet_type <- ifelse(df$toilet_type == 0, 9, df$toilet_type)
 
+#reverse coding toilet for comprehension
 df <- df %>% mutate(
   toilet_rev = case_when(
     toilet_type == 9 ~ 1,
@@ -52,52 +54,51 @@ df <- df %>% mutate(
 
 asset <- df %>% select(c(caseid, rural_urban, water_treat, radio, mobile_phone, telephone_land_line, fridge, bike, motorcycle, 
                          animal_cart, car, #type_water_filter, 
-                         water_source, toilet_rev, toilet_share, 
+                        improved_water, toilet_rev, toilet_share, 
                          cooking_fuel, has_computer))
 
-#examining for squared mmultiple correlations
+#examining for squared multiple correlations
 smc <- psych::smc(asset[,3:16])
 smc
 
-#drop variables with less than 0.05 -- explain less than 5% of variance. In this case bike, radio and animal car
+#drop variables with less than 0.05 -- explain less than 5% of variance. In this case bike, radio and animal car, and improved water
 
 asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, mobile_phone, #telephone_land_line, 
                                 fridge, motorcycle, 
                          car,
-                         water_source, toilet_rev, toilet_share, 
+                         toilet_rev, toilet_share, 
                          cooking_fuel, has_computer))
 
 
 #not enough responses for type of water filter
 
-asset$type_water_filter <- as.factor(asset$type_water_filter)
-asset$water_source <- as.factor(asset$water_source)
-asset$toilet_type <- as.factor(asset$toilet_type)
-asset$cooking_fuel <- as.factor(asset$cooking_fuel)
+#asset$type_water_filter <- as.factor(asset$type_water_filter)
+#asset$water_source <- as.factor(asset$water_source)
+#asset$toilet_type <- as.factor(asset$toilet_type)
+#asset$cooking_fuel <- as.factor(asset$cooking_fuel)
 
 #loading package for PCA
 library(factoextra)
 library(psych)
 
-asset.pca <- prcomp(na.omit(asset), scale = TRUE)
-asset.pca
+#asset.pca <- prcomp(na.omit(asset), scale = TRUE)
+#asset.pca
 
-asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
+#asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
 
-#make 7s in land line into NAs
 
-prn<-psych::principal(asset_smc[,3:12], rotate="none", nfactors=2, cor = "mixed", 
+prn<-psych::principal(asset_smc[,3:11], rotate="none", nfactors=2, cor = "mixed", 
                       covar=T, scores=TRUE, missing = TRUE)
 
 index <- prn$scores[,2]
 
-Assets.indexed<-mutate(asset_smc,wi_quintile=as.factor(cut(index,breaks=5,labels= c(1,2,3,4,5))),
+
+Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
                        wi_continuous = index)
 
-length(which(is.na(Assets.indexed$quintile)))
 
-ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = quintile), position = "fill")+ xlab("state")+
-  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
+#ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
+#  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
 
 #adding continuous and quintile household wealth variables into full 
 
@@ -172,13 +173,13 @@ library(survey)
 
 ##### Run on cluster ######
 
-weightdesign <- svydesign(data = df, ids = ~psu, strata = ~rural_urban, weights = ~weight_adj, nest = TRUE)
+#weightdesign <- svydesign(data = df, ids = ~psu, strata = ~rural_urban, weights = ~weight_adj, nest = TRUE)
 
-dfboot <- as.svrepdesign(weightdesign, type="bootstrap")
+#dfboot <- as.svrepdesign(weightdesign, type="bootstrap")
 
-write.csv(dfboot, "dfboot.csv")
+#write.csv(dfboot, "dfboot.csv")
 
-dfboot <- read.csv("dfboot.csv")
+#dfboot <- read.csv("dfboot.csv")
 
 
 
@@ -199,15 +200,58 @@ dfboot <- read.csv("dfboot.csv")
 
 #summary(glm(miscarriage_sb ~ state + primary + urban + scheduled_group, family = binomial(link = "logit"), data = df))
 
-#complex model run on cluster. Code below copied over
 
-library(survey)
-library(broom)
+# calculating rates per year ----------------------------------------------
 
 #making strata variable from rural/urban
 df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
 
 design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
+#dropping nas from outcomes
+df <- df %>% filter(!is.na(sb))
+
+#dropping unknown outcome years
+df <- df %>% filter(!is.na(outcome_year))
+
+sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
+
+#likely need to filter out 2021. Only 2006 births which is significantly lower than previous years.
+
+sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_wi_rate <- svyby(~miscarriage, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_wi_rate <- svyby(~abort, ~wi_quintile, design, svymean, vartype = c("se", "ci"))
+
+#dropping pregnancies that completed in 2021
+df_complete_years <- df %>% filter(outcome_year != 2021)
+design_completeyears <- svydesign(data = df_complete_years, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+sb_wi_year_rate <- svyby(~sb, ~outcome_year*~wi_quintile, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_wi_year_rate$sb_per1000 <- sb_wi_year_rate$sb*1000
+sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
+sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
+
+ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = wi_quintile)) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + ylim(0,25)+
+  scale_color_brewer(palette = "Paired")+
+  theme_cowplot()
+
+ggplot(data = sb_wi_year_rate, mapping = aes(x= wi_quintile, y = sb_per1000, group = outcome_year)) + geom_line() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+#  geom_line()
+#  scale_color_brewer(palette = "Paired")+
+  theme_cowplot()
+
+#complex model run on cluster. Code below copied over
+
+library(survey)
+library(broom)
+
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 
@@ -215,86 +259,21 @@ design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weig
 complexglm_rate_glm_m <- svyglm(miscarriage ~ insurance + primary + caste_group + age + dist_id, design = design,
                             data = df)
 
-complexglm_rate_glm_pred <- svyglm(miscarriage ~ insurance + caste_group + age + dist_id, design = design,
-                                data = df)
-
 pred_means_primary_m <- svypredmeans(complexglm_rate_glm_pred, ~factor(primary))
-
-complexglm_rate_m_insurance <- svyglm(miscarriage ~ insurance + age + dist_id, design = design,
-                                data = df)
 
 tidy_m_insurance <- tidy(complexglm_rate_m_insurance, conf.int = T)
 
-complexglm_rate_m_prim <- svyglm(miscarriage ~ primary + age + dist_id, design = design,
-                                 data = df)
-
-tidy_mprim <- tidy(complexglm_rate_m_prim, conf.int = T)
-
-#complexglm_rate_m_urb <- svyglm(miscarriage ~  urban + age + state, design = design,
-#                                data = df)
-
-#tidy_murb <- tidy(complexglm_rate_m_urb, conf.int = T)
-
-complexglm_rate_m_sch <- svyglm(miscarriage ~ caste_group + age + dist_id, design = design,
-                                data = df)
-
-tidy_msch <- tidy(complexglm_rate_m_sch, conf.int = T)
-
-
-#library(margins)
-#devtools::install_github("tzoltak/margins")
-#complexglm_rate_m_log <- svyglm(miscarriage ~ age + state, design = design,
-#                            family = quasibinomial(), data = df)
-
-
-#complexglm_rate_a <- svyglm(abortion ~ bpl + primary + urban + scheduled_group + age + state, design = design,
-#                            data = df)
 
 complexglm_rate_a_insurance <- svyglm(abort ~ insurance + age + dist_id, design = design,
                                 data = df)
 
 tidy_a_insurance <- tidy(complexglm_rate_a_insurance, conf.int = TRUE)
 
-complexglm_rate_a_prim <- svyglm(abort ~ primary + age + dist_id, design = design,
-                                 data = df)
-
-tidy_aprim <- tidy(complexglm_rate_a_prim, conf.int = T)
-
-#complexglm_rate_a_urb <- svyglm(abortion ~ urban  + age + state, design = design,
-#                                data = df)
-
-#tidy_aurb <- tidy(complexglm_rate_a_urb, conf.int = T)
-
-complexglm_rate_a_sch <- svyglm(abort ~ caste_group + age + dist_id, design = design,
-                                data = df)
-
-tidy_asch <- tidy(complexglm_rate_a_sch, conf.int = T)
-
-#complexglm_rate_s <- svyglm(stillbirth ~ bpl + primary + urban + scheduled_group + age + state, design = design,
-#                            data = df)
 
 complexglm_rate_s_insurance <- svyglm(sb ~ insurance + age + dist_id, design = design,
                                 data = df)
 
 tidy_sinsurance <- tidy(complexglm_rate_s_insurance, conf.int = TRUE)
-
-complexglm_rate_s_prim <- svyglm(sb ~ primary + age + dist_id, design = design,
-                                 data = df)
-
-tidy_sprim <- tidy(complexglm_rate_s_prim, conf.int = TRUE)
-
-#complexglm_rate_s_urb <- svyglm(stillbirth ~ urban + age + state, design = design,
-#                                data = df)
-
-#tidy_surb <- tidy(complexglm_rate_s_urb, conf.int = TRUE)
-
-complexglm_rate_s_sch <- svyglm(sb ~ caste_group + age + dist_id, design = design,
-                                data = df)
-
-tidy_ssch <- tidy(complexglm_rate_s_sch, conf.int = TRUE)
-
-
-
 
 
 
@@ -387,25 +366,32 @@ tidy_asch$conf.high <- tidy_asch$conf.high*100
 
 library(gtsummary)
 
-#harmonizing bpl card variable. In all surveys 1 is they do hold a BPL card. 0 and 2 are no, 8 is don't know. Making all of those values == to 0 to be
-# no does not hold one, even if it's don't know.
-df$bpl <- ifelse(df$bpl == 1, 1, 0)
+
+# Table 1 creation --------------------------------------------------------
+
+df %>% 
+  select(age, age_first_birth, tot_live_births, primary, outcome_year, insurance) %>%
+  tbl_summary()   
+
 
 #rural == 0, 1s as they must be urbans.
 
-df$urban_rural <- factor(df$urban, 
+df$rural_urban <- factor(df$rural_urban, 
                          levels = c(0, 1),
                          labels = c("Rural", "Urban"))
 
 
-df %>% select(age, urban_rural, years_school, bpl, scheduled_group, tot_live_births) %>% tbl_summary(
+df %>% 
+  select(age, rural_urban, tot_live_births, primary, insurance) %>% 
+  tbl_summary(
   label = list(
     age ~ "Age",
-    urban_rural ~ "Rural / Urban",
-    years_school ~ "Years of School Completed",
-    bpl ~ "Holds BPL Card",
-    scheduled_group ~ "Scheduled Caste or Tribe",
-    tot_live_births ~ "Total Live Births"),
+    rural_urban ~ "Rural / Urban",
+    #age_first_birth ~ "Age at first birth",
+    tot_live_births ~ "Total live births",
+    primary ~ "Completed Primary School",
+    #outcome_year ~ "Year of Pregnancy Outcome",
+    insurance ~ "Household has any insurance"),
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
 
@@ -432,19 +418,7 @@ g+geom_bar(position = "dodge") +
 library(ggsci)
 library(RColorBrewer)
 
-df_plot %>%
-  count(survey = factor(survey), Outcome)  %>%
-  group_by(survey) %>%
-  mutate(n = prop.table(n) * 100) %>%
-  ggplot(aes(survey, n, fill = Outcome)) +
-  geom_col(position = 'dodge', na.rm = TRUE) + 
-  ylim(0,100) +
-  #  scale_fill_discrete(na.translate=FALSE) +
-  labs(x = "Survey",
-       y = "Percentage of all pregnancy terminations") +
-  scale_fill_brewer(palette = "Paired") +
-  #  theme_minimal() +
-  theme_cowplot()
+
 
 
 # SEPTEMBER 30 PLOT WITH YEAR ON X-AXIS
@@ -462,6 +436,16 @@ d <- df_plot %>%
 
 d + scale_x_continuous(breaks=seq(2004,2021,1))
 
+
+df_plot %>% 
+  ggplot(aes(x = outcome_year, y = abort)) +
+  stat_summary(fun = mean, geom = "point") +
+  stat_summary(fun = mean, geom = "line") +
+#  geom_vline(xintercept = 0, linetype = 3, size = 0.3) +
+#  ylim(0, 0.1)+
+#  labs(y = "Paid Job") +
+#  labs(x = "Birth month relative to policy change")+
+  theme_cowplot(12)
 
 # OR Tables ---------------------------------------------------------------
 
@@ -677,3 +661,17 @@ df <- df %>% mutate(district_id = case_when(survey == "DLHS3" & state_dist == dl
 #                         distance_col='dist') %>%
 #  group_by(district.x) %>%
 #  slice_min(order_by=dist, n=1)
+
+df_plot %>%
+  count(survey = factor(survey), Outcome)  %>%
+  group_by(survey) %>%
+  mutate(n = prop.table(n) * 100) %>%
+  ggplot(aes(survey, n, fill = Outcome)) +
+  geom_col(position = 'dodge', na.rm = TRUE) + 
+  ylim(0,100) +
+  #  scale_fill_discrete(na.translate=FALSE) +
+  labs(x = "Survey",
+       y = "Percentage of all pregnancy terminations") +
+  scale_fill_brewer(palette = "Paired") +
+  #  theme_minimal() +
+  theme_cowplot()

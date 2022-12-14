@@ -97,8 +97,8 @@ Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
                        wi_continuous = index)
 
 
-#ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
-#  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
+ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
+  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
 
 #adding continuous and quintile household wealth variables into full 
 
@@ -107,6 +107,9 @@ df_w_wi <- left_join(df, Assets.indexed)
 #renaming
 
 df <- df_w_wi
+
+
+
 
 # Making binary pregnancy outcome variables -------------------------------
 
@@ -159,13 +162,15 @@ df <- df %>% mutate(weight_adj = case_when(survey == "NFHS4" ~ weight * ((length
                                            survey == "DLHS3" ~ weight * ((length(which(survey == "NFHS5"))) / 
                                                                            (length(which(survey == "DLHS3")))),
                                            survey == "DLHS4" ~ weight * ((length(which(survey == "NFHS5"))) / 
-                                                                           (length(which(survey == "DLHS3")))),
+                                                                           (length(which(survey == "DLHS4")))),
                                            survey == "NFHS5" ~ weight * ((length(which(survey == "NFHS5"))) / 
                                                                            (length(which(survey == "NFHS5")))),
                                            survey == "AHS" ~ weight * ((length(which(survey == "NFHS5"))) / 
                                                                          (length(which(survey == "AHS")))),
                                            TRUE ~ NA_real_))
 
+#writing new csv
+#write.csv(df, "df_socioeconomic.csv")
 
 # calculating jackknife and bootstrap weights in survey ---------------------------------------------------------
 
@@ -225,9 +230,27 @@ sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na
 ms_wi_rate <- svyby(~miscarriage, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 abort_wi_rate <- svyby(~abort, ~wi_quintile, design, svymean, vartype = c("se", "ci"))
 
-#dropping pregnancies that completed in 2021
-df_complete_years <- df %>% filter(outcome_year != 2021)
+#dropping pregnancies that completed in 2021 or 2020 as many states not sampled
+df_complete_years <- df %>% filter(outcome_year < 2020)
 design_completeyears <- svydesign(data = df_complete_years, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+#now making sure every state is represented in every year.
+#dropping states: 1 jammu & kashmir + ladakh (missing 2009 + 2010)
+#7 Delhi (missing 2009 & 2010)
+#13 nagaland (missing 2004 - 2007)
+#24 gujarat (missing 2009 & 2010)
+#25 dadra & nagar haveli and daman & diu (missing 2009 & 2010)
+#30 lakshadweep (missing 2009 & 2010)
+table(df_complete_years$state, df_complete_years$outcome_year)
+
+dat <- df_complete_years %>% filter(state != 1, state != 7, state != 13, state != 24, state != 25, state != 30)
+
+sb_wi_rate <- svyby(~sb, ~wi_quintile, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_wi_rate$sb_per1000 <- sb_wi_rate$sb*1000
+sb_wi_rate$ci_l_per1000 <- sb_wi_rate$ci_l*1000
+sb_wi_rate$ci_u_per1000 <- sb_wi_rate$ci_u*1000
+
+
 
 sb_wi_year_rate <- svyby(~sb, ~outcome_year*~wi_quintile, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
@@ -235,16 +258,111 @@ sb_wi_year_rate$sb_per1000 <- sb_wi_year_rate$sb*1000
 sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
 sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
 
-ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = wi_quintile)) + geom_point() + 
+library(cowplot)
+stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = wi_quintile)) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + ylim(0,25)+
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+
+#with shapes instead of colors
+ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000)) + geom_point(aes(shape = wi_quintile)) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+ 
   geom_line() + ylim(0,25)+
   scale_color_brewer(palette = "Paired")+
   theme_cowplot()
 
-ggplot(data = sb_wi_year_rate, mapping = aes(x= wi_quintile, y = sb_per1000, group = outcome_year)) + geom_line() + 
+ggplot(data = sb_wi_rate, mapping = aes(x= wi_quintile, y = sb_per1000)) + 
+  geom_point() +
+  geom_line() + 
+  ylim(0,15) +
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Wealth Quintile")+
+  theme_cowplot()
+
+# now looking at primary school
+sb_prim_year_rate <- svyby(~sb, ~outcome_year*~primary, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_prim_year_rate$sb_per1000 <- sb_prim_year_rate$sb*1000
+sb_prim_year_rate$ci_l_per1000 <- sb_prim_year_rate$ci_l*1000
+sb_prim_year_rate$ci_u_per1000 <- sb_prim_year_rate$ci_u*1000
+
+
+ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-#  geom_line()
-#  scale_color_brewer(palette = "Paired")+
+  geom_line() + ylim(0,25)+
+  scale_color_brewer(palette = "Paired",  name = "Completed Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+#now looking at abortion
+abort_prim_year_rate <- svyby(~abort, ~outcome_year*~primary, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+abort_prim_year_rate$abort_per1000 <- abort_prim_year_rate$abort*1000
+abort_prim_year_rate$ci_l_per1000 <- abort_prim_year_rate$ci_l*1000
+abort_prim_year_rate$ci_u_per1000 <- abort_prim_year_rate$ci_u*1000
+
+abort_wi_year_rate <- svyby(~abort, ~outcome_year*~wi_quintile, design_completeyears, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
+
+abort_wi_year_rate$abort_per1000 <- abort_wi_year_rate$abort*1000
+abort_wi_year_rate$ci_l_per1000 <- abort_wi_year_rate$ci_l*1000
+abort_wi_year_rate$ci_u_per1000 <- abort_wi_year_rate$ci_u*1000
+
+ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = wi_quintile)) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() +
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of abortions per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() +
+  scale_color_brewer(palette = "Paired", name = "Completed Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of abortions per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+
+#now looking at miscarriage
+miscarriage_prim_year_rate <- svyby(~miscarriage, ~outcome_year*~primary, design_completeyears, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+miscarriage_prim_year_rate$miscarriage_per1000 <- miscarriage_prim_year_rate$miscarriage*1000
+miscarriage_prim_year_rate$ci_l_per1000 <- miscarriage_prim_year_rate$ci_l*1000
+miscarriage_prim_year_rate$ci_u_per1000 <- miscarriage_prim_year_rate$ci_u*1000
+
+miscarriage_wi_year_rate <- svyby(~miscarriage, ~outcome_year*~wi_quintile, design_completeyears, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
+miscarriage_wi_year_rate$miscarriage_per1000 <- miscarriage_wi_year_rate$miscarriage*1000
+miscarriage_wi_year_rate$ci_l_per1000 <- miscarriage_wi_year_rate$ci_l*1000
+miscarriage_wi_year_rate$ci_u_per1000 <- miscarriage_wi_year_rate$ci_u*1000
+
+ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = wi_quintile)) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() +
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of miscarriage per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + 
+  scale_color_brewer(palette = "Paired", name = "Completed Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of miscarriage per 1000 pregnancies") +
+  labs(x = "Year")+
   theme_cowplot()
 
 #complex model run on cluster. Code below copied over
@@ -252,8 +370,124 @@ ggplot(data = sb_wi_year_rate, mapping = aes(x= wi_quintile, y = sb_per1000, gro
 library(survey)
 library(broom)
 
+#calculating midpoint
+table(df_complete_years$wi_quintile)
+
+#highest wealth index midpoint
+highest_range <- (length(which(df_complete_years$wi_quintile == 5)) / sum(table(df_complete_years$wi_quintile)))
+highest_midpoint <- highest_range / 2
+
+quint4_range <- (length(which(df_complete_years$wi_quintile == 4)) / sum(table(df_complete_years$wi_quintile)))
+quint4_midpoint <- (quint4_range / 2) + highest_range
+
+quint3_range <- (length(which(df_complete_years$wi_quintile == 3)) / sum(table(df_complete_years$wi_quintile)))
+quint3_midpoint <- (quint3_range / 2) + quint4_range
+
+quint2_range <- (length(which(df_complete_years$wi_quintile == 2)) / sum(table(df_complete_years$wi_quintile)))
+quint2_midpoint <- (quint2_range / 2) + quint3_range
+
+lowest_range <- (length(which(df_complete_years$wi_quintile == 1)) / sum(table(df_complete_years$wi_quintile)))
+lowest_midpoint <- (lowest_range / 2) + quint2_range
+
+
+df_complete_years <- df_complete_years %>% mutate(wi_midpoint = case_when(wi_quintile == 5 ~ highest_midpoint,
+                                                                          wi_quintile == 4 ~ quint4_midpoint,
+                                                                          wi_quintile == 3 ~ quint3_midpoint,
+                                                                          wi_quintile == 2 ~ quint2_midpoint,
+                                                                          wi_quintile == 1 ~ lowest_midpoint,
+                                                                          TRUE ~ NA_real_))
+#redoing design to account for midpoint variable
+design_completeyears <- svydesign(data = df_complete_years, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
+
+sb_wi_rii <- svyglm(sb ~ wi_midpoint + age, design = design_completeyears, family = quasibinomial(link = "log"))
+
+#rii with midpoint
+sb_rii <- svyglm(sb ~ wi_midpoint + age + outcome_year, design = design_completeyears, family = quasibinomial(link = "log"))
+
+sb_rii <- sb_rii %>% tidy(conf.int = T) %>%
+  mutate(across(where(is.numeric), round, digits = 2))
+
+rii <- sb_rii$coefficients[2]
+
+#SII check using following equation SII = 2 X M X (RII−1) / RII + 1
+
+m <- svymean(~sb, design_completeyears)
+
+sb_sii <- (m*2*(rii - 1)) / (rii + 1)
+
+sb_wi_rii <- sb_wi_rii %>% 
+  tidy(conf.int = TRUE) %>%       
+  mutate(across(where(is.numeric), round, digits = 2))
+
+sb_wi_sii <- svyglm(sb ~ wi_midpoint + age + outcome_year, design = design_completeyears, family = quasibinomial(link = "identity"))
+
+sb_wi_sii <- sb_wi_sii %>% 
+  tidy(conf.int = TRUE)
+
+sb_wi_sii$estimate <- sb_wi_sii$estimate*100
+sb_wi_sii$conf.low <- sb_wi_sii$conf.low*100
+sb_wi_sii$conf.high <- sb_wi_sii$conf.high*100
+
+sb_wi_sii <- sb_wi_sii %>%  mutate(across(where(is.numeric), round, digits = 2))
+
+
+# now abortion
+abort_wi_rii <- svyglm(abort ~ wi_quintile + age, design = design_completeyears, family = quasibinomial(link = "log"))
+
+#rii with midpoint
+abort_rii <- svyglm(abort ~ wi_midpoint + age + outcome_year, design = design_completeyears, family = quasibinomial(link = "log"))
+abort_rii <- abort_rii %>% tidy(conf.int = TRUE) %>% mutate(across(where(is.numeric), round, digits = 2))
+
+abort_sii <- svyglm(abort ~ wi_midpoint + outcome_year, design = design_completeyears, family = quasibinomial(link = "identity"))
+abort_sii <- abort_sii %>% tidy(conf.int = TRUE) %>% mutate(across(where(is.numeric), round, digits = 2))
+
+
+
+abort_wi_rii <- abort_wi_rii %>% 
+  tidy(conf.int = TRUE) %>%       
+  mutate(across(where(is.numeric), round, digits = 2))
+
+abort_wi_sii <- svyglm(abort ~ wi_quintile, design = design_completeyears, family = quasibinomial(link = "identity"))
+
+abort_wi_sii <- abort_wi_sii %>% 
+  tidy(conf.int = TRUE)
+
+abort_wi_sii$estimate <- abort_wi_sii$estimate*100
+abort_wi_sii$conf.low <- abort_wi_sii$conf.low*100
+abort_wi_sii$conf.high <- abort_wi_sii$conf.high*100
+
+abort_wi_sii <- abort_wi_sii %>%  mutate(across(where(is.numeric), round, digits = 2))
+
+#now miscarriage
+miscarriage_rii <- svyglm(miscarriage ~ wi_midpoint + age + outcome_year, design = design_completeyears, family = quasibinomial(link = "log"))
+miscarriage_rii <- miscarriage_rii %>% tidy(conf.int = TRUE) %>% mutate(across(where(is.numeric), round, digits = 2))
+
+miscarriage_sii <- svyglm(miscarriage ~ wi_midpoint + outcome_year, design = design_completeyears, family = quasibinomial(link = "identity"))
+miscarriage_sii <- miscarriage_sii %>% tidy(conf.int = TRUE) %>% mutate(across(where(is.numeric), round, digits = 2))
+
+
+
+miscarriage_wi_rii <- svyglm(miscarriage ~ wi_quintile + age, design = design_completeyears, family = quasibinomial(link = "log"))
+
+miscarriage_wi_rii <- miscarriage_wi_rii %>% 
+  tidy(conf.int = TRUE) %>%       
+  mutate(across(where(is.numeric), round, digits = 2))
+
+
+miscarriage_wi_sii <- svyglm(miscarriage ~ wi_quintile + age, design = design_completeyears, family = quasibinomial(link = "identity"))
+
+miscarriage_wi_sii <- miscarriage_wi_sii %>% 
+  tidy(conf.int = TRUE)
+
+miscarriage_wi_sii$estimate <- miscarriage_wi_sii$estimate*100
+miscarriage_wi_sii$conf.low <- miscarriage_wi_sii$conf.low*100
+miscarriage_wi_sii$conf.high <- miscarriage_wi_sii$conf.high*100
+
+miscarriage_wi_sii <- miscarriage_wi_sii %>%  mutate(across(where(is.numeric), round, digits = 2))
+
 
 
 complexglm_rate_glm_m <- svyglm(miscarriage ~ insurance + primary + caste_group + age + dist_id, design = design,

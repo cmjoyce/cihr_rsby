@@ -225,6 +225,8 @@ census <- full_join(census2001, census2011)
 
 #write.csv(census, "ever_married_women_by_state.csv")
 
+census <- read.csv("ever_married_women_by_state.csv")
+
 #now add in sampled fraction by state.
 #read in state variable for each survey, group by state and get row sums (total interviewed/state),
 #then weight_adj=wt × (total females age 15-49 in each state at the time of the survey)/(number of women age 15-49 interviewed in the survey)
@@ -247,14 +249,190 @@ dlhs4 <- dlhs4 %>% count(state)
 dlhs3 <- dlhs3 %>% rename(dlhs3_sampled = n)
 dlhs4 <- dlhs4 %>% rename(dlhs4_sampled = n)
 
+dlhs3$survey <- c("dlhs3")
+dlhs4$survey <- c("dlhs4")
+
 
 nfhs4 <- read_dta("IAIR73FL_DC.DTA", col_select = c(1:30))
 
+nfhs4 <- nfhs4 %>% select(v024) %>% count(v024)
+
+nfhs4$survey <- c("nfhs4")
+
 nfhs5 <- fread("IAIR7AFL.csv", select = c(1:30))
+nfhs5 <- nfhs5 %>% select(v024) %>% count(v024)
+
+nfhs5$survey <- c("nfhs5")
+
+nfhs4 <- nfhs4 %>% rename(nfhs4_sampled = n)
+nfhs5 <- nfhs5 %>% rename(nfhs5_sampled = n)
+
+nfhs4 <- nfhs4 %>% rename(state = v024)
+nfhs5 <- nfhs5 %>% rename(state = v024) 
 
 
 ahs <- read_dta("women.dta", col_select = c(1))
+ahs <- ahs %>% count(STATE)
+ahs$survey <- c("ahs")
+ahs <- ahs %>% rename(ahs_sampled = n)
+ahs <- ahs %>% rename(state = STATE)
 
 #then must adjust state (use previously written code) and match on census
+#Harmonizing state coding
 
+#changing state variable. This will go back to DLHS-3 state. Putting Telangana back into Andhra Pradesh as it was not formed until 2014. 
+dlhs4$state_new <- dlhs4$state #Making new state variable that is clone of original state.
+
+
+#taking DLHS-4 telangana responses and making them andhra pradesh
+dlhs4$state_new <- ifelse(dlhs4$state_new == 36, 28, dlhs4$state_new)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+dlhs4$state_new <- ifelse(dlhs4$state_new > 25, (dlhs4$state_new-1), dlhs4$state_new)
+
+
+#DLHS3 and 4 are now matched from that one change. Moving onto NFHS.
+
+#NFHS-4 has no matching values with DLHS3 and 4 for state. Easier to start from fresh. 
+
+#Harmonizing state coding
+nfhs4 <- nfhs4 %>% mutate(state_try = case_when(state == 14 ~ 1,
+                                                     state == 13 ~ 2,
+                                                      state == 28 ~ 3,
+                                                      state == 6 ~ 4,
+                                                      state == 34 ~ 5,
+                                                      state == 12 ~ 6,
+                                                      state == 25 ~ 7,
+                                                      state == 29 ~ 8,
+                                                      state == 33 ~ 9,
+                                                      state == 5 ~ 10,
+                                                      state == 30 ~ 11, 
+                                                      state == 3 ~ 12,
+                                                      state == 24 ~ 13,
+                                                      state == 21 ~ 14,
+                                                      state == 23 ~ 15, 
+                                                      state == 32 ~ 16,
+                                                      state == 22 ~ 17,
+                                                      state == 4 ~ 18,
+                                                      state == 35 ~ 19,
+                                                      state == 15 ~ 20,
+                                                      state == 26 ~ 21,
+                                                      state == 7 ~ 22,
+                                                      state == 19 ~ 23,
+                                                      state == 11 ~ 24,
+                                                      state == 9 ~ 25,
+                                                      state == 8 ~ 26,
+                                                      state == 20 ~ 27,
+                                                      state == 2 ~ 28,
+                                                      state == 16 ~ 29,
+                                                      state == 10 ~ 30,
+                                                      state == 18 ~ 31,
+                                                      state == 17 ~ 32,
+                                                      state == 31 ~ 33,
+                                                      state == 27 ~ 34,
+                                                      state == 1 ~ 35,
+                                                      state == 36 ~ 28, #telangana responses and making them andhra pradesh
+                                                     ))
+
+#putting all dadra & nagar haveli responses into daman & diu 
+nfhs4$state_try <- ifelse(nfhs4$state_try == 26, 25, nfhs4$state_try)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+nfhs4$state_try <- ifelse(nfhs4$state_try > 25, (nfhs4$state_try-1), nfhs4$state_try)
+
+#doing the same for dlhs3
+#putting all dadra & nagar haveli responses into daman & diu 
+dlhs3$state_try <- ifelse(dlhs3$state == 26, 25, dlhs3$state)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+dlhs3$state_try <- ifelse(dlhs3$state_try > 25, (dlhs3$state_try-1), dlhs3$state_try)
+
+dlhs3 <- dlhs3 %>% select(-c(state))
+dlhs3 <- dlhs3 %>% rename(state = state_try)
+
+nfhs4 <- nfhs4 %>% select(-c(state))
+nfhs4 <- nfhs4 %>% rename(state = state_try)
+
+dlhs4 <- dlhs4 %>% select(-c(state))
+dlhs4 <- dlhs4 %>% rename(state = state_new)
+
+#NFHS-4 now matches DLHS
+
+#Now matching  NFHS-5. 
+
+nfhs5$new_state <- ifelse(nfhs5$state == 37, 1, nfhs5$state) #putting all of ladakh into jammu and kashmir
+
+#Putting telangana into andhra pradesh
+nfhs5$new_state <- ifelse(nfhs5$state == 36, 28, nfhs5$new_state)
+
+#putting all dadra & nagar haveli responses into daman & diu 
+nfhs5$new_state <- ifelse(nfhs5$new_state == 26, 25, nfhs5$new_state)
+
+#now missing response 26. Subtracting 1 from all responses over 25 to rectify
+
+nfhs5$new_state <- ifelse(nfhs5$new_state > 25, (nfhs5$new_state-1), nfhs5$new_state)
+
+#states now match across surveys. Dropping newstate and state
+nfhs5 <- nfhs5 %>% select(-c(state))
+nfhs5 <- nfhs5 %>% rename(state = new_state)
+
+#combining rows of new same state
+nfhs4 <- nfhs4 %>%
+  group_by(state) %>%
+  summarise(across(c(nfhs4_sampled), sum))
+
+nfhs5 <- nfhs5 %>%
+  group_by(state) %>%
+  summarise(across(c(nfhs5_sampled), sum))
+
+
+#ahs state stays as is. Merging upon all surveys.
+
+nfhs <- left_join(nfhs4, nfhs5, by = "state")
+
+
+dlhs4 <- dlhs4 %>%
+  group_by(state) %>%
+  summarise(across(c(dlhs4_sampled), sum))
+
+dlhs3 <- dlhs3 %>%
+  group_by(state) %>%
+  summarise(across(c(dlhs3_sampled), sum))
+
+
+dlhs3 <- dlhs3 %>% select(-c(survey))
+dlhs4 <- dlhs4 %>% select(-c(survey))
+
+dlhs <- left_join(dlhs3, dlhs4, by = "state")
+
+dlhsnfhs <- full_join(nfhs, dlhs, by = "state")
+
+ahs <- ahs %>% select(-c(survey))
+ahsdlhsnfhs <- full_join(dlhsnfhs, ahs, by = "state")
+
+census <- census %>% rename(state = state_match)
+
+sampled <- full_join(census, ahsdlhsnfhs, by = "state")
+
+#now calculating proportions as: 
+#(total females age 15-49 in the country at the time of the survey)/(number of women age 15-49 interviewed in the survey)
+
+#using closest census to outcome year. Only DLHS3 will use census 2001. Will calculate proportion for both 2001 and 2011, outcome year
+#will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 20001. 2006-2008 will use 2011.
+
+sampled$dlhs3_prop_2001 <- sampled$EM_2001 / sampled$dlhs3_sampled
+sampled$dlhs3_prop_2011 <- sampled$EM_2011 / sampled$dlhs3_sampled
+
+sampled$dlhs4_prop <- sampled$EM_2011 / sampled$dlhs4_sampled
+
+sampled$ahs_prop <- sampled$EM_2011 / sampled$ahs_sampled
+
+sampled$nfhs4_prop <- sampled$EM_2011 / sampled$nfhs4_sampled
+sampled$nfhs5_prop <- sampled$EM_2011 / sampled$nfhs5_sampled
+
+#saving as csv
+#write.csv(sampled, "sampled_prop_by_state.csv")
 

@@ -615,48 +615,60 @@ print(tab2, preview = "docx")
 
 sb_prim_rr <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
 sb_prim_rr <- sb_prim_rr %>% tidy(conf.int = TRUE) 
+sb_prim_rr 
 
 #NOW EXPONENTIATE THE COEFFICIENT
-#STOPPING HERE 12/20/22 
+
+sb_prim_exp_rr <- exp(sb_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_conflow <- exp(sb_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+
+
+
 #BELOW UPDATE ALL EDUC + CASTE RR AND RD USING FORUMULAS ABOVE. REDO THEIR TABLES.
 
-#sbprim_rr <- (sb_prim_rr$estimate[2] * 1000) %>% round_half_up(digits = 2)
-#sbprim_rr_conf.low <- (sb_prim_rr$conf.low[2]*1000) %>% round_half_up(digits = 2)
-#sbprim_rr_conf.high <- (sb_prim_rr$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
 sb_prim_rd <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
 sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
-sbprim_rd <- sb_prim_rd$estimate[2] %>% round_half_up(digits = 2)
-sbprim_rd_conflow <- sb_prim_rd$conf.low[2] %>% round_half_up(digits = 2)
-sbprim_rd_confhigh <- sb_prim_rd$conf.high[2]  %>% round_half_up(digits = 2)
+sbprim_rd <- (sb_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_conflow <- (sb_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_confhigh <- (sb_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-abort_prim_rr <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design)
+abort_prim_rr <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
 abort_prim_rr <- abort_prim_rr %>% tidy(conf.int = TRUE) 
-abortprim_rr <- (abort_prim_rr$estimate[2] * 1000) %>% round_half_up(digits = 2)
-abortprim_rr_conf.low <- (abort_prim_rr$conf.low[2]*1000) %>% round_half_up(digits = 2)
-abortprim_rr_conf.high <- (abort_prim_rr$conf.high[2]*1000) %>% round_half_up(digits = 2)
+abort_prim_rr 
 
-abort_prim_rd <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = quasibinomial())
+#NOW EXPONENTIATE THE COEFFICIENT
+
+abort_prim_exp_rr <- exp(abort_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_conflow <- exp(abort_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_confhigh <- exp(abort_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+
+abort_prim_rd <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
 abort_prim_rd <- abort_prim_rd %>% tidy(conf.int = TRUE)
-abortprim_rd <- abort_prim_rd$estimate[2] %>% round_half_up(digits = 2)
-abortprim_rd_conflow <- abort_prim_rd$conf.low[2] %>% round_half_up(digits = 2)
-abortprim_rd_confhigh <- abort_prim_rd$conf.high[2]  %>% round_half_up(digits = 2)
+abortprim_rd <- (abort_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_conflow <- (abort_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_confhigh <- (abort_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-miscarriage_prim_rr <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design)
+miscarriage_prim_rr <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
 miscarriage_prim_rr <- miscarriage_prim_rr %>% tidy(conf.int = TRUE) 
-miscarriageprim_rr <- (miscarriage_prim_rr$estimate[2] * 1000) %>% round_half_up(digits = 2)
-miscarriageprim_rr_conf.low <- (miscarriage_prim_rr$conf.low[2]*1000) %>% round_half_up(digits = 2)
-miscarriageprim_rr_conf.high <- (miscarriage_prim_rr$conf.high[2]*1000) %>% round_half_up(digits = 2)
+miscarriage_prim_rr 
 
-miscarriage_prim_rd <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = quasibinomial())
+#NOW EXPONENTIATE THE COEFFICIENT
+
+miscarriage_prim_exp_rr <- exp(miscarriage_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_conflow <- exp(miscarriage_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_confhigh <- exp(miscarriage_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+
+miscarriage_prim_rd <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
 miscarriage_prim_rd <- miscarriage_prim_rd %>% tidy(conf.int = TRUE)
-miscarriageprim_rd <- miscarriage_prim_rd$estimate[2] %>% round_half_up(digits = 2)
-miscarriageprim_rd_conflow <- miscarriage_prim_rd$conf.low[2] %>% round_half_up(digits = 2)
-miscarriageprim_rd_confhigh <- miscarriage_prim_rd$conf.high[2]  %>% round_half_up(digits = 2)
+miscarriageprim_rd <- (miscarriage_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_conflow <- (miscarriage_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_confhigh <- (miscarriage_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-rr_prim_estimates <- rbind(sbprim_rr, abortprim_rr, miscarriageprim_rr)
-rr_prim_conf.low <- rbind(sbprim_rr_conf.low, abortprim_rr_conf.low, miscarriageprim_rr_conf.low)
-rr_prim_conf.high <- rbind(sbprim_rr_conf.high, abortprim_rr_conf.high, miscarriageprim_rr_conf.high)
+rr_prim_estimates <- rbind(sb_prim_exp_rr, abort_prim_exp_rr, miscarriage_prim_exp_rr)
+rr_prim_conf.low <- rbind(sb_prim_exp_conflow, abort_prim_exp_conflow, miscarriage_prim_exp_conflow)
+rr_prim_conf.high <- rbind(sb_prim_exp_confhigh, abort_prim_exp_confhigh, miscarriage_prim_exp_confhigh)
 
 rd_prim_estimates <- rbind(sbprim_rd, abortprim_rd, miscarriageprim_rd)
 rd_prim_conf.low <- rbind(sbprim_rd_conflow, abortprim_rd_conflow, miscarriageprim_rd_conflow)
@@ -664,13 +676,13 @@ rd_prim_conf.high <- rbind(sbprim_rd_confhigh, abortprim_rd_confhigh, miscarriag
 
 rr_prim <- cbind(rr_prim_estimates, rr_prim_conf.low, rr_prim_conf.high)
 rr_prim <- as.data.frame(rr_prim)
-rr_prim <- rr_prim %>% rename(RD = V1, Conf.Low = V2, Conf.High = V3)
+rr_prim <- rr_prim %>% rename(RR = V1, Conf.Low = V2, Conf.High = V3)
 rr_prim$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
-rr_prim <- rr_prim %>% relocate(Outcome, .before = RD)
+rr_prim <- rr_prim %>% relocate(Outcome, .before = RR)
 
 rd_prim <- cbind(rd_prim_estimates, rd_prim_conf.low, rd_prim_conf.high)
 rd_prim <- as.data.frame(rd_prim)
-rd_prim <- rd_prim %>% rename(RR = V1, RRConf.Low = V2, RRConf.High = V3)
+rd_prim <- rd_prim %>% rename(RD = V1, RDConf.Low = V2, RDConf.High = V3)
 
 table3 <- cbind(rr_prim, rd_prim)
 
@@ -688,71 +700,78 @@ df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
 design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 
-#caste is coded as 1 and tribe as 2
+sb_caste_rr <- svyglm(sb ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
+sb_caste_rr <- sb_caste_rr %>% tidy(conf.int = TRUE) 
+sb_caste_rr 
 
-sb_caste_sii <- svyglm(sb ~ as.factor(caste_group) + age + outcome_year + as.factor(state), design = design)
-sb_caste_sii <- sb_caste_sii %>% tidy(conf.int = TRUE) 
-sbcaste_sii <- (sb_caste_sii$estimate[2] * 1000) %>% round_half_up(digits = 2)
-sbcaste_sii_conf.low <- (sb_caste_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
-sbcaste_sii_conf.high <- (sb_caste_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
+#NOW EXPONENTIATE THE COEFFICIENT
 
-sbtribe_sii <- (sb_caste_sii$estimate[3] * 1000) %>% round_half_up(digits = 2)
-sbtribe_sii_conf.low <- (sb_caste_sii$conf.low[3]*1000) %>% round_half_up(digits = 2)
-sbtribe_sii_conf.high <- (sb_caste_sii$conf.high[3]*1000) %>% round_half_up(digits = 2)
+sb_caste_exp_rr <- exp(sb_caste_rr$estimate[2]) %>% round_half_up(digits = 2)
+sb_caste_exp_conflow <- exp(sb_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
+sb_caste_exp_confhigh <- exp(sb_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
-sb_caste_rii <- svyglm(sb ~ casteary + age + outcome_year + as.factor(state), design = design, family = quasibinomial())
-sb_caste_rii <- sb_caste_rii %>% tidy(conf.int = TRUE)
-sbcaste_rii <- sb_caste_rii$estimate[2] %>% round_half_up(digits = 2)
-sbcaste_rii_conflow <- sb_caste_rii$conf.low[2] %>% round_half_up(digits = 2)
-sbcaste_rii_confhigh <- sb_caste_rii$conf.high[2]  %>% round_half_up(digits = 2)
 
-abort_caste_sii <- svyglm(abort ~ casteary + age + outcome_year + as.factor(state), design = design)
-abort_caste_sii <- abort_caste_sii %>% tidy(conf.int = TRUE) 
-abortcaste_sii <- (abort_caste_sii$estimate[2] * 1000) %>% round_half_up(digits = 2)
-abortcaste_sii_conf.low <- (abort_caste_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
-abortcaste_sii_conf.high <- (abort_caste_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
+sb_caste_rd <- svyglm(sb ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
+sb_caste_rd <- sb_caste_rd %>% tidy(conf.int = TRUE)
+sbcaste_rd <- (sb_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+sbcaste_rd_conflow <- (sb_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbcaste_rd_confhigh <- (sb_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-abort_caste_rii <- svyglm(abort ~ casteary + age + outcome_year + as.factor(state), design = design, family = quasibinomial())
-abort_caste_rii <- abort_caste_rii %>% tidy(conf.int = TRUE)
-abortcaste_rii <- abort_caste_rii$estimate[2] %>% round_half_up(digits = 2)
-abortcaste_rii_conflow <- abort_caste_rii$conf.low[2] %>% round_half_up(digits = 2)
-abortcaste_rii_confhigh <- abort_caste_rii$conf.high[2]  %>% round_half_up(digits = 2)
+abort_caste_rr <- svyglm(abort ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
+abort_caste_rr <- abort_caste_rr %>% tidy(conf.int = TRUE) 
+abort_caste_rr 
 
-miscarriage_caste_sii <- svyglm(miscarriage ~ casteary + age + outcome_year + as.factor(state), design = design)
-miscarriage_caste_sii <- miscarriage_caste_sii %>% tidy(conf.int = TRUE) 
-miscarriagecaste_sii <- (miscarriage_caste_sii$estimate[2] * 1000) %>% round_half_up(digits = 2)
-miscarriagecaste_sii_conf.low <- (miscarriage_caste_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
-miscarriagecaste_sii_conf.high <- (miscarriage_caste_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
+#NOW EXPONENTIATE THE COEFFICIENT
 
-miscarriage_caste_rii <- svyglm(miscarriage ~ casteary + age + outcome_year + as.factor(state), design = design, family = quasibinomial())
-miscarriage_caste_rii <- miscarriage_caste_rii %>% tidy(conf.int = TRUE)
-miscarriagecaste_rii <- miscarriage_caste_rii$estimate[2] %>% round_half_up(digits = 2)
-miscarriagecaste_rii_conflow <- miscarriage_caste_rii$conf.low[2] %>% round_half_up(digits = 2)
-miscarriagecaste_rii_confhigh <- miscarriage_caste_rii$conf.high[2]  %>% round_half_up(digits = 2)
+abort_caste_exp_rr <- exp(abort_caste_rr$estimate[2]) %>% round_half_up(digits = 2)
+abort_caste_exp_conflow <- exp(abort_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
+abort_caste_exp_confhigh <- exp(abort_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-sii_caste_estimates <- rbind(sbcaste_sii, abortcaste_sii, miscarriagecaste_sii)
-sii_caste_conf.low <- rbind(sbcaste_sii_conf.low, abortcaste_sii_conf.low, miscarriagecaste_sii_conf.low)
-sii_caste_conf.high <- rbind(sbcaste_sii_conf.high, abortcaste_sii_conf.high, miscarriagecaste_sii_conf.high)
+abort_caste_rd <- svyglm(abort ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
+abort_caste_rd <- abort_caste_rd %>% tidy(conf.int = TRUE)
+abortcaste_rd <- (abort_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+abortcaste_rd_conflow <- (abort_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortcaste_rd_confhigh <- (abort_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-rii_caste_estimates <- rbind(sbcaste_rii, abortcaste_rii, miscarriagecaste_rii)
-rii_caste_conf.low <- rbind(sbcaste_rii_conflow, abortcaste_rii_conflow, miscarriagecaste_rii_conflow)
-rii_caste_conf.high <- rbind(sbcaste_rii_confhigh, abortcaste_rii_confhigh, miscarriagecaste_rii_confhigh)
+miscarriage_caste_rr <- svyglm(miscarriage ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
+miscarriage_caste_rr <- miscarriage_caste_rr %>% tidy(conf.int = TRUE) 
+miscarriage_caste_rr 
 
-sii_caste <- cbind(sii_caste_estimates, sii_caste_conf.low, sii_caste_conf.high)
-sii_caste <- as.data.frame(sii_caste)
-sii_caste <- sii_caste %>% rename(SII = V1, Conf.Low = V2, Conf.High = V3)
-sii_caste$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
-sii_caste <- sii_caste %>% relocate(Outcome, .before = SII)
+#NOW EXPONENTIATE THE COEFFICIENT
 
-rii_caste <- cbind(rii_caste_estimates, rii_caste_conf.low, rii_caste_conf.high)
-rii_caste <- as.data.frame(rii_caste)
-rii_caste <- rii_caste %>% rename(RII = V1, RIIConf.Low = V2, RIIConf.High = V3)
+miscarriage_caste_exp_rr <- exp(miscarriage_caste_rr$estimate[2]) %>% round_half_up(digits = 2)
+miscarriage_caste_exp_conflow <- exp(miscarriage_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
+miscarriage_caste_exp_confhigh <- exp(miscarriage_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-table3 <- cbind(sii_caste, rii_caste)
+miscarriage_caste_rd <- svyglm(miscarriage ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
+miscarriage_caste_rd <- miscarriage_caste_rd %>% tidy(conf.int = TRUE)
+miscarriagecaste_rd <- (miscarriage_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+miscarriagecaste_rd_conflow <- (miscarriage_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriagecaste_rd_confhigh <- (miscarriage_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-tab3 <- flextable(table3) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
-print(tab3, preview = "docx")
+rr_caste_estimates <- rbind(sb_caste_exp_rr, abort_caste_exp_rr, miscarriage_caste_exp_rr)
+rr_caste_conf.low <- rbind(sb_caste_exp_conflow, abort_caste_exp_conflow, miscarriage_caste_exp_conflow)
+rr_caste_conf.high <- rbind(sb_caste_exp_confhigh, abort_caste_exp_confhigh, miscarriage_caste_exp_confhigh)
+
+rd_caste_estimates <- rbind(sbcaste_rd, abortcaste_rd, miscarriagecaste_rd)
+rd_caste_conf.low <- rbind(sbcaste_rd_conflow, abortcaste_rd_conflow, miscarriagecaste_rd_conflow)
+rd_caste_conf.high <- rbind(sbcaste_rd_confhigh, abortcaste_rd_confhigh, miscarriagecaste_rd_confhigh)
+
+rr_caste <- cbind(rr_caste_estimates, rr_caste_conf.low, rr_caste_conf.high)
+rr_caste <- as.data.frame(rr_caste)
+rr_caste <- rr_caste %>% rename(RR = V1, Conf.Low = V2, Conf.High = V3)
+rr_caste$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
+rr_caste <- rr_caste %>% relocate(Outcome, .before = RR)
+
+rd_caste <- cbind(rd_caste_estimates, rd_caste_conf.low, rd_caste_conf.high)
+rd_caste <- as.data.frame(rd_caste)
+rd_caste <- rd_caste %>% rename(RD = V1, RDConf.Low = V2, RDConf.High = V3)
+
+table4 <- cbind(rr_caste, rd_caste)
+
+tab4 <- flextable(table4) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
+print(tab4, preview = "docx")
 
 
 library(stargazer)

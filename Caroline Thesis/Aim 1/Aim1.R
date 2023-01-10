@@ -519,23 +519,65 @@ design_noweight <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, nest =
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
 
 
+#making two groups to compare RII and SII. 2004 - 2010 
+
+groupa <- df %>% filter(outcome_year < 2010)
+groupb <- df %>% filter(outcome_year > 2009)
+
+design_a <- svydesign(data = groupa, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+design_b <- svydesign(data = groupb, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
 # Wealth index SII and RII ------------------------------------------------
 
 #looking at it with 0.2 - 1 quints
 library(janitor)
 sb_wiquint_sii <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design)
 sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
-sbwi_sii <- sb_wiquint_sii$coefficients[2] * 1000
+sbwi_sii <- sb_wiquint_sii$estimate[2] * 1000
 sbwi_sii <- round_half_up(sbwi_sii, digits = 2)
 sbwi_sii_conf.low <- (sb_wiquint_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
 sbwi_sii_conf.high <- (sb_wiquint_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
-#calculating RR. quasipoisson glm
+#now in group a
+sb_wiquint_sii_group_a <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design_a)
+sb_wiquint_sii_group_a <- sb_wiquint_sii_group_a %>% tidy(conf.int = TRUE) 
+sbwi_sii_group_a <- sb_wiquint_sii_group_a$estimate[2] * 1000
+sbwi_sii_group_a <- round_half_up(sbwi_sii_group_a, digits = 2)
+sbwi_sii_group_a_conf.low <- (sb_wiquint_sii_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbwi_sii_group_a_conf.high <- (sb_wiquint_sii_group_a$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+#now in group b
+sb_wiquint_sii_group_b <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design_b)
+sb_wiquint_sii_group_b <- sb_wiquint_sii_group_b %>% tidy(conf.int = TRUE) 
+sbwi_sii_group_b <- sb_wiquint_sii_group_b$estimate[2] * 1000
+sbwi_sii_group_b <- round_half_up(sbwi_sii_group_b, digits = 2)
+sbwi_sii_group_b_conf.low <- (sb_wiquint_sii_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbwi_sii_group_b_conf.high <- (sb_wiquint_sii_group_b$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+#calculating RII. quasipoisson glm
 sb_wiquint_rii <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
 sb_wiquint_rii <- sb_wiquint_rii %>% tidy(conf.int = TRUE)
 sbwi_rii <- sb_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
 sbwi_rii_conflow <- sb_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 sbwi_rii_confhigh <- sb_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
+
+
+#now group a 
+sb_wiquint_rii_group_a <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson())
+sb_wiquint_rii_group_a <- sb_wiquint_rii_group_a %>% tidy(conf.int = TRUE)
+sbwi_rii_group_a <- sb_wiquint_rii_group_a$estimate[2] %>% round_half_up(digits = 2)
+sbwi_rii_group_a_conflow <- sb_wiquint_rii_group_a$conf.low[2] %>% round_half_up(digits = 2)
+sbwi_rii_group_a_confhigh <- sb_wiquint_rii_group_a$conf.high[2]  %>% round_half_up(digits = 2)
+
+
+#now group b 
+sb_wiquint_rii_group_b <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson())
+sb_wiquint_rii_group_b <- sb_wiquint_rii_group_b %>% tidy(conf.int = TRUE)
+sbwi_rii_group_b <- sb_wiquint_rii_group_b$estimate[2] %>% round_half_up(digits = 2)
+sbwi_rii_group_b_conflow <- sb_wiquint_rii_group_b$conf.low[2] %>% round_half_up(digits = 2)
+sbwi_rii_group_b_confhigh <- sb_wiquint_rii_group_b$conf.high[2]  %>% round_half_up(digits = 2)
 
 
 abort_wiquint_sii <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design)
@@ -545,12 +587,41 @@ abortwi_sii <- round_half_up(abortwi_sii, digits = 2)
 abortwi_sii_conf.low <- (abort_wiquint_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
 abortwi_sii_conf.high <- (abort_wiquint_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
-#calculating RR. The difference between intercept (bottom wealth) and wi_quint estimate, divided by 2.
+
+abort_wiquint_sii_group_a <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design_a)
+abort_wiquint_sii_group_a <- abort_wiquint_sii_group_a %>% tidy(conf.int = TRUE) 
+abortwi_sii_group_a <- abort_wiquint_sii_group_a$estimate[2] * 1000
+abortwi_sii_group_a <- round_half_up(abortwi_sii_group_a, digits = 2)
+abortwi_sii_group_a_conf.low <- (abort_wiquint_sii_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortwi_sii_group_a_conf.high <- (abort_wiquint_sii_group_a$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+abort_wiquint_sii_group_b <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design_b)
+abort_wiquint_sii_group_b <- abort_wiquint_sii_group_b %>% tidy(conf.int = TRUE) 
+abortwi_sii_group_b <- abort_wiquint_sii_group_b$estimate[2] * 1000
+abortwi_sii_group_b <- round_half_up(abortwi_sii_group_b, digits = 2)
+abortwi_sii_group_b_conf.low <- (abort_wiquint_sii_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortwi_sii_group_b_conf.high <- (abort_wiquint_sii_group_b$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+
+
 abort_wiquint_rii <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
 abort_wiquint_rii <- abort_wiquint_rii %>% tidy(conf.int = TRUE)
 abortwi_rii <- abort_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
 abortwi_rii_conflow <- abort_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 abortwi_rii_confhigh <- abort_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
+
+abort_wiquint_rii_group_a <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson())
+abort_wiquint_rii_group_a <- abort_wiquint_rii_group_a %>% tidy(conf.int = TRUE)
+abortwi_rii_group_a <- abort_wiquint_rii_group_a$estimate[2] %>% round_half_up(digits = 2)
+abortwi_rii_group_a_conflow <- abort_wiquint_rii_group_a$conf.low[2] %>% round_half_up(digits = 2)
+abortwi_rii_group_a_confhigh <- abort_wiquint_rii_group_a$conf.high[2]  %>% round_half_up(digits = 2)
+
+abort_wiquint_rii_group_b <- svyglm(abort ~ wi_quint + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson())
+abort_wiquint_rii_group_b <- abort_wiquint_rii_group_b %>% tidy(conf.int = TRUE)
+abortwi_rii_group_b <- abort_wiquint_rii_group_b$estimate[2] %>% round_half_up(digits = 2)
+abortwi_rii_group_b_conflow <- abort_wiquint_rii_group_b$conf.low[2] %>% round_half_up(digits = 2)
+abortwi_rii_group_b_confhigh <- abort_wiquint_rii_group_b$conf.high[2]  %>% round_half_up(digits = 2)
+
 
 
 miscarriage_wiquint_sii <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design)
@@ -560,6 +631,22 @@ miscarriagewi_sii <- round_half_up(miscarriagewi_sii, digits = 2)
 miscarriagewi_sii_conf.low <- (miscarriage_wiquint_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
 miscarriagewi_sii_conf.high <- (miscarriage_wiquint_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
+miscarriage_wiquint_sii_group_a <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design_a)
+miscarriage_wiquint_sii_group_a <- miscarriage_wiquint_sii_group_a %>% tidy(conf.int = TRUE) 
+miscarriagewi_sii_group_a <- miscarriage_wiquint_sii_group_a$estimate[2] * 1000
+miscarriagewi_sii_group_a <- round_half_up(miscarriagewi_sii_group_a, digits = 2)
+miscarriagewi_sii_group_a_conf.low <- (miscarriage_wiquint_sii_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriagewi_sii_group_a_conf.high <- (miscarriage_wiquint_sii_group_a$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+miscarriage_wiquint_sii_group_b <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design_b)
+miscarriage_wiquint_sii_group_b <- miscarriage_wiquint_sii_group_b %>% tidy(conf.int = TRUE) 
+miscarriagewi_sii_group_b <- miscarriage_wiquint_sii_group_b$estimate[2] * 1000
+miscarriagewi_sii_group_b <- round_half_up(miscarriagewi_sii_group_b, digits = 2)
+miscarriagewi_sii_group_b_conf.low <- (miscarriage_wiquint_sii_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriagewi_sii_group_b_conf.high <- (miscarriage_wiquint_sii_group_b$conf.high[2]*1000) %>% round_half_up(digits = 2)
+
+
+
 #calculating RR. 
 miscarriage_wiquint_rii <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
 miscarriage_wiquint_rii <- miscarriage_wiquint_rii %>% tidy(conf.int = TRUE)
@@ -567,19 +654,49 @@ miscarriagewi_rii <- miscarriage_wiquint_rii$estimate[2] %>% round_half_up(digit
 miscarriagewi_rii_conflow <- miscarriage_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 miscarriagewi_rii_confhigh <- miscarriage_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
 
+miscarriage_wiquint_rii_group_a <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson())
+miscarriage_wiquint_rii_group_a <- miscarriage_wiquint_rii_group_a %>% tidy(conf.int = TRUE)
+miscarriagewi_rii_group_a <- miscarriage_wiquint_rii_group_a$estimate[2] %>% round_half_up(digits = 2)
+miscarriagewi_rii_group_a_conflow <- miscarriage_wiquint_rii_group_a$conf.low[2] %>% round_half_up(digits = 2)
+miscarriagewi_rii_group_a_confhigh <- miscarriage_wiquint_rii_group_a$conf.high[2]  %>% round_half_up(digits = 2)
 
-sii_estimates <- rbind(sbwi_sii, abortwi_sii, miscarriagewi_sii)
-sii_conf.low <- rbind(sbwi_sii_conf.low, abortwi_sii_conf.low, miscarriagewi_sii_conf.low)
-sii_conf.high <- rbind(sbwi_sii_conf.high, abortwi_sii_conf.high, miscarriagewi_sii_conf.high)
+miscarriage_wiquint_rii_group_b <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson())
+miscarriage_wiquint_rii_group_b <- miscarriage_wiquint_rii_group_b %>% tidy(conf.int = TRUE)
+miscarriagewi_rii_group_b <- miscarriage_wiquint_rii_group_b$estimate[2] %>% round_half_up(digits = 2)
+miscarriagewi_rii_group_b_conflow <- miscarriage_wiquint_rii_group_b$conf.low[2] %>% round_half_up(digits = 2)
+miscarriagewi_rii_group_b_confhigh <- miscarriage_wiquint_rii_group_b$conf.high[2]  %>% round_half_up(digits = 2)
 
-rii_estimates <- rbind(sbwi_rii, abortwi_rii, miscarriagewi_rii)
-rii_conf.low <- rbind(sbwi_rii_conflow, abortwi_rii_conflow, miscarriagewi_rii_conflow)
-rii_conf.high <- rbind(sbwi_rii_confhigh, abortwi_rii_confhigh, miscarriagewi_rii_confhigh)
+
+sii_estimates <- rbind(sbwi_sii, sbwi_sii_group_a, sbwi_sii_group_b,
+                       abortwi_sii, abortwi_sii_group_a, abortwi_sii_group_b,
+                       miscarriagewi_sii, miscarriagewi_sii_group_a, miscarriagewi_sii_group_b)
+
+sii_conf.low <- rbind(sbwi_sii_conf.low, sbwi_sii_group_a_conf.low, sbwi_sii_group_b_conf.low,
+                      abortwi_sii_conf.low, abortwi_sii_group_a_conf.low, abortwi_sii_group_b_conf.low,
+                      miscarriagewi_sii_conf.low, miscarriagewi_sii_group_a_conf.low, miscarriagewi_sii_group_b_conf.low)
+
+sii_conf.high <- rbind(sbwi_sii_conf.high, sbwi_sii_group_a_conf.high, sbwi_sii_group_b_conf.high,
+                       abortwi_sii_conf.high, abortwi_sii_group_a_conf.high, abortwi_sii_group_b_conf.high,
+                       miscarriagewi_sii_conf.high, miscarriagewi_sii_group_a_conf.high, miscarriagewi_sii_group_b_conf.high)
+
+rii_estimates <- rbind(sbwi_rii, sbwi_rii_group_a, sbwi_rii_group_b,
+                       abortwi_rii, abortwi_rii_group_a, abortwi_rii_group_b,
+                       miscarriagewi_rii, miscarriagewi_rii_group_a, miscarriagewi_rii_group_b)
+
+rii_conf.low <- rbind(sbwi_rii_conflow, sbwi_rii_group_a_conflow, sbwi_rii_group_b_conflow,
+                      abortwi_rii_conflow, abortwi_rii_group_a_conflow, abortwi_rii_group_b_conflow,
+                      miscarriagewi_rii_conflow, miscarriagewi_rii_group_a_conflow, miscarriagewi_rii_group_b_conflow)
+
+rii_conf.high <- rbind(sbwi_rii_confhigh, sbwi_rii_group_a_confhigh, sbwi_rii_group_b_confhigh,
+                       abortwi_rii_confhigh, abortwi_rii_group_a_confhigh, abortwi_rii_group_b_confhigh,
+                       miscarriagewi_rii_confhigh, miscarriagewi_rii_group_a_confhigh, miscarriagewi_rii_group_b_confhigh)
 
 sii <- cbind(sii_estimates, sii_conf.low, sii_conf.high)
 sii <- as.data.frame(sii)
 sii <- sii %>% rename(SII = V1, Conf.Low = V2, Conf.High = V3)
-sii$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
+sii$Outcome <- c("Stillbirth All Years", "Stillbirth 2004-2009", "Stillbirth 2010-2019",
+                 "Abortion All Years", "Abortion 2004-2009", "Abortion 2010-2019",
+                 "Miscarriage All Years", "Miscarriage 2004-2009", "Miscarriage 2010-2019")
 sii <- sii %>% relocate(Outcome, .before = SII)
 
 rii <- cbind(rii_estimates, rii_conf.low, rii_conf.high)
@@ -624,8 +741,27 @@ sb_prim_exp_conflow <- exp(sb_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
 sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
+#now pre and post
+sb_prim_rr_group_a <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson(link = "log"))
+sb_prim_rr_group_a <- sb_prim_rr_group_a %>% tidy(conf.int = TRUE) 
+sb_prim_rr_group_a 
 
-#BELOW UPDATE ALL EDUC + CASTE RR AND RD USING FORUMULAS ABOVE. REDO THEIR TABLES.
+#NOW EXPONENTIATE THE COEFFICIENT
+
+sb_prim_exp_rr_group_a <- exp(sb_prim_rr_group_a$estimate[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_conflow_group_a <- exp(sb_prim_rr_group_a$conf.low[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_confhigh_group_a <- exp(sb_prim_rr_group_a$conf.high[2]) %>% round_half_up(digits = 2)
+
+sb_prim_rr_group_b <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson(link = "log"))
+sb_prim_rr_group_b <- sb_prim_rr_group_b %>% tidy(conf.int = TRUE) 
+sb_prim_rr_group_b 
+
+#NOW EXPONENTIATE THE COEFFICIENT
+
+sb_prim_exp_rr_group_b <- exp(sb_prim_rr_group_b$estimate[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_conflow_group_b <- exp(sb_prim_rr_group_b$conf.low[2]) %>% round_half_up(digits = 2)
+sb_prim_exp_confhigh_group_b <- exp(sb_prim_rr_group_b$conf.high[2]) %>% round_half_up(digits = 2)
+
 
 
 sb_prim_rd <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
@@ -633,6 +769,19 @@ sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
 sbprim_rd <- (sb_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 sbprim_rd_conflow <- (sb_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 sbprim_rd_confhigh <- (sb_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+sb_prim_rd_group_a <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design_a, family = gaussian(link = "identity"))
+sb_prim_rd_group_a <- sb_prim_rd_group_a %>% tidy(conf.int = TRUE)
+sbprim_rd_group_a <- (sb_prim_rd_group_a$estimate[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_group_a_conflow <- (sb_prim_rd_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_group_a_confhigh <- (sb_prim_rd_group_a$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+sb_prim_rd_group_b <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design_b, family = gaussian(link = "identity"))
+sb_prim_rd_group_b <- sb_prim_rd_group_b %>% tidy(conf.int = TRUE)
+sbprim_rd_group_b <- (sb_prim_rd_group_b$estimate[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_group_b_conflow <- (sb_prim_rd_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+sbprim_rd_group_b_confhigh <- (sb_prim_rd_group_b$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
 
 abort_prim_rr <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
 abort_prim_rr <- abort_prim_rr %>% tidy(conf.int = TRUE) 
@@ -644,11 +793,47 @@ abort_prim_exp_rr <- exp(abort_prim_rr$estimate[2]) %>% round_half_up(digits = 2
 abort_prim_exp_conflow <- exp(abort_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
 abort_prim_exp_confhigh <- exp(abort_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
+abort_prim_rr_group_a <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson(link = "log"))
+abort_prim_rr_group_a <- abort_prim_rr_group_a %>% tidy(conf.int = TRUE) 
+abort_prim_rr_group_a 
+
+#NOW EXPONENTIATE THE COEFFICIENT
+
+abort_prim_exp_rr_group_a <- exp(abort_prim_rr_group_a$estimate[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_conflow_group_a <- exp(abort_prim_rr_group_a$conf.low[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_confhigh_group_a <- exp(abort_prim_rr_group_a$conf.high[2]) %>% round_half_up(digits = 2)
+
+abort_prim_rr_group_b <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson(link = "log"))
+abort_prim_rr_group_b <- abort_prim_rr_group_b %>% tidy(conf.int = TRUE) 
+abort_prim_rr_group_b 
+
+#NOW EXPONENTIATE THE COEFFICIENT
+
+abort_prim_exp_rr_group_b <- exp(abort_prim_rr_group_b$estimate[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_conflow_group_b <- exp(abort_prim_rr_group_b$conf.low[2]) %>% round_half_up(digits = 2)
+abort_prim_exp_confhigh_group_b <- exp(abort_prim_rr_group_b$conf.high[2]) %>% round_half_up(digits = 2)
+
+
 abort_prim_rd <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
 abort_prim_rd <- abort_prim_rd %>% tidy(conf.int = TRUE)
 abortprim_rd <- (abort_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 abortprim_rd_conflow <- (abort_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 abortprim_rd_confhigh <- (abort_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+
+abort_prim_rd_group_a <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design_a, family = gaussian(link = "identity"))
+abort_prim_rd_group_a <- abort_prim_rd_group_a %>% tidy(conf.int = TRUE)
+abortprim_rd_group_a <- (abort_prim_rd_group_a$estimate[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_group_a_conflow <- (abort_prim_rd_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_group_a_confhigh <- (abort_prim_rd_group_a$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+abort_prim_rd_group_b <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design_b, family = gaussian(link = "identity"))
+abort_prim_rd_group_b <- abort_prim_rd_group_b %>% tidy(conf.int = TRUE)
+abortprim_rd_group_b <- (abort_prim_rd_group_b$estimate[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_group_b_conflow <- (abort_prim_rd_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+abortprim_rd_group_b_confhigh <- (abort_prim_rd_group_b$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+
 
 miscarriage_prim_rr <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
 miscarriage_prim_rr <- miscarriage_prim_rr %>% tidy(conf.int = TRUE) 
@@ -660,14 +845,55 @@ miscarriage_prim_exp_rr <- exp(miscarriage_prim_rr$estimate[2]) %>% round_half_u
 miscarriage_prim_exp_conflow <- exp(miscarriage_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
 miscarriage_prim_exp_confhigh <- exp(miscarriage_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
+miscarriage_prim_rr_group_a <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design_a, family = quasipoisson(link = "log"))
+miscarriage_prim_rr_group_a <- miscarriage_prim_rr_group_a %>% tidy(conf.int = TRUE) 
+miscarriage_prim_rr_group_a 
+
+#NOW EXPONENTIATE THE COEFFICIENT
+
+miscarriage_prim_exp_rr_group_a <- exp(miscarriage_prim_rr_group_a$estimate[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_conflow_group_a <- exp(miscarriage_prim_rr_group_a$conf.low[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_confhigh_group_a <- exp(miscarriage_prim_rr_group_a$conf.high[2]) %>% round_half_up(digits = 2)
+
+miscarriage_prim_rr_group_b <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design_b, family = quasipoisson(link = "log"))
+miscarriage_prim_rr_group_b <- miscarriage_prim_rr_group_b %>% tidy(conf.int = TRUE) 
+miscarriage_prim_rr_group_b 
+
+#NOW EXPONENTIATE THE COEFFICIENT
+
+miscarriage_prim_exp_rr_group_b <- exp(miscarriage_prim_rr_group_b$estimate[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_conflow_group_b <- exp(miscarriage_prim_rr_group_b$conf.low[2]) %>% round_half_up(digits = 2)
+miscarriage_prim_exp_confhigh_group_b <- exp(miscarriage_prim_rr_group_b$conf.high[2]) %>% round_half_up(digits = 2)
+
+
 miscarriage_prim_rd <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
 miscarriage_prim_rd <- miscarriage_prim_rd %>% tidy(conf.int = TRUE)
 miscarriageprim_rd <- (miscarriage_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 miscarriageprim_rd_conflow <- (miscarriage_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 miscarriageprim_rd_confhigh <- (miscarriage_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-rr_prim_estimates <- rbind(sb_prim_exp_rr, abort_prim_exp_rr, miscarriage_prim_exp_rr)
+miscarriage_prim_rd_group_a <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design_a, family = gaussian(link = "identity"))
+miscarriage_prim_rd_group_a <- miscarriage_prim_rd_group_a %>% tidy(conf.int = TRUE)
+miscarriageprim_rd_group_a <- (miscarriage_prim_rd_group_a$estimate[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_group_a_conflow <- (miscarriage_prim_rd_group_a$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_group_a_confhigh <- (miscarriage_prim_rd_group_a$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+miscarriage_prim_rd_group_b <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design_b, family = gaussian(link = "identity"))
+miscarriage_prim_rd_group_b <- miscarriage_prim_rd_group_b %>% tidy(conf.int = TRUE)
+miscarriageprim_rd_group_b <- (miscarriage_prim_rd_group_b$estimate[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_group_b_conflow <- (miscarriage_prim_rd_group_b$conf.low[2]*1000) %>% round_half_up(digits = 2)
+miscarriageprim_rd_group_b_confhigh <- (miscarriage_prim_rd_group_b$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+
+
+rr_prim_estimates <- rbind(sb_prim_exp_rr, sb_prim_exp_rr_group_a, sb_prim_exp_rr_group_b,
+                           abort_prim_exp_rr, abort_prim_exp_rr_group_a, abort_prim_exp_rr_group_b,
+                           miscarriage_prim_exp_rr, miscarriage_prim_exp_rr_group_a, miscarriage_prim_exp_rr_group_b)
+
+#Pausing here Jan 9. Update above overall esitmate and then continue remaking tables + caste
+
 rr_prim_conf.low <- rbind(sb_prim_exp_conflow, abort_prim_exp_conflow, miscarriage_prim_exp_conflow)
+
+
 rr_prim_conf.high <- rbind(sb_prim_exp_confhigh, abort_prim_exp_confhigh, miscarriage_prim_exp_confhigh)
 
 rd_prim_estimates <- rbind(sbprim_rd, abortprim_rd, miscarriageprim_rd)

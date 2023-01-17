@@ -1099,7 +1099,7 @@ rd_primary$conf.low <- rd_primary$conf.low*1000
 rd_primary$conf.high <- rd_primary$conf.high*1000
 
 dw_rd_primary <- dwplot(rd_primary) +
-  theme_bw() + xlab("Risk Difference by Primary Education") + ylab("") + 
+  theme_bw() + xlab("Risk Difference of Primary Education per 1,000 pregnancies") + ylab("") + 
   geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
   theme_cowplot(12)+
   theme(legend.position = "none")

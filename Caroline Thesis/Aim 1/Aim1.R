@@ -155,11 +155,17 @@ df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
                                        survey == "AHS" ~ wt,
                                        TRUE ~ NA_real_))
 
+
+#making PSUs into new value that is state + psu combined
+df$psu2 <- paste(df$state, df$psu, sep = "")
+
 #weight adjusted. De-normalizing weights from "sampled dataset.
 #using closest census to outcome year. Only DLHS3 will use census 2001. Will calculate proportion for both 2001 and 2011, outcome year
 #will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 2001. 2006-2008 will use 2011.
 
 #load in sampled from weight denormalization file
+
+sampled <- read.csv("sampled_prop_by_state.csv")
 
 df <- left_join(df, sampled, by = "state")
 
@@ -207,11 +213,24 @@ df <- read.csv("df_socioeconomic.csv")
 #making strata variable from rural/urban
 df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
 
-design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+library(survey)
+
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
+
+sb_year_rate$sb_per1000 <- sb_year_rate$sb*1000
+sb_year_rate$ci_l_per1000 <- sb_year_rate$ci_l*1000
+sb_year_rate$ci_u_per1000 <- sb_year_rate$ci_u*1000
+sb_year_rate$se_per1000 <- sb_year_rate$se*1000
+
+ms_year_rate$ms_per1000 <- ms_year_rate$miscarriage*1000
+ms_year_rate$ci_l_per1000 <- ms_year_rate$ci_l*1000
+ms_year_rate$ci_u_per1000 <- ms_year_rate$ci_u*1000
+ms_year_rate$se_per1000 <- ms_year_rate$se*1000
+
 
 sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 ms_wi_rate <- svyby(~miscarriage, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -245,6 +264,7 @@ stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y
   labs(x = "Year")+
   theme_cowplot(11)
 
+
 #Jan 11 using stillbirth_wi_rate below + forest plot
 sbwirate <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
@@ -255,9 +275,17 @@ sbwirate <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb
   labs(x = "Year")+
   theme_cowplot(11)
 
+#sb rate only. No wealth quintile.
+
+stillbirth_rate <- ggplot(data = sb_year_rate, mapping = aes(x= outcome_year, y = sb_per1000)) + geom_point() + 
+geom_line() + ylim(0,20)+
+labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
 #plot just lowest and highest
 highlow_quints <- df %>% filter(wi_quintile == 1 | wi_quintile == 5)
-design_highlow <- svydesign(data = highlow_quints, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design_highlow <- svydesign(data = highlow_quints, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 sb_wi_year_rate_highlow <- svyby(~sb, ~outcome_year*~wi_quintile, design_highlow, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
@@ -521,13 +549,14 @@ df <- df %>% mutate(wi_quint = case_when(wi_quintile == 1 ~ 0.2,
 
 #redoing design to account for midpoint and wi_quint variable
 library(survey)
-design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
-design_noweight <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, nest = TRUE)
+design_noweight <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, nest = TRUE)
 
 
 #PSUs are repeated between NFHSs and DLHSs, have set nest = TRUE to account for that. Will look into this more.
-
+# 1 31 2023 have created new state/psu combined variable (psu2) after reading on DHS forum it's 
+#recommended since PSUs are repeated across states
 
 #making two groups to compare RII and SII. 2004 - 2010 
 
@@ -536,16 +565,142 @@ design_noweight <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, nest =
 df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
 
 #redoing design to account for binarized variable
-design <- svydesign(data = df, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 
 groupa <- df %>% filter(outcome_year < 2010)
 groupb <- df %>% filter(outcome_year > 2009)
 
-design_a <- svydesign(data = groupa, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design_a <- svydesign(data = groupa, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
-design_b <- svydesign(data = groupb, ids = ~psu, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design_b <- svydesign(data = groupb, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
+
+#creating age categories
+df <- df %>% mutate(agecat = case_when(age < 20 ~ 1,
+                                       age >= 20 & age < 25 ~ 2,
+                                       age >= 25 & age < 30 ~ 3,
+                                       age >= 30 & age < 35 ~ 4,
+                                       age >= 35 & age < 40 ~ 5,
+                                       age >= 40 & age < 45 ~ 6,
+                                       age >= 45 ~ 7,
+                                       TRUE ~ NA_real_))
+
+
+# NFHS only rates ---------------------------------------------------------
+
+nfhs <- df %>% filter(survey == "NFHS4" | survey == "NFHS5")
+
+
+
+nfhs_design <- svydesign(data = nfhs, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+sb_year_rate_nfhs <- svyby(~sb, ~outcome_year, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_nfhs <- svyby(~miscarriage, ~outcome_year, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_year_rate_nfhs <- svyby(~abort, ~outcome_year, nfhs_design, svymean, vartype = c("se", "ci"))
+
+ms_year_rate_age_nfhs <- svyby(~miscarriage, ~outcome_year+agecat, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_year_rate$sb_per1000 <- sb_year_rate$sb*1000
+sb_year_rate$ci_l_per1000 <- sb_year_rate$ci_l*1000
+sb_year_rate$ci_u_per1000 <- sb_year_rate$ci_u*1000
+sb_year_rate$se_per1000 <- sb_year_rate$se*1000
+
+ms_year_rate_nfhs$ms_per1000 <- ms_year_rate_nfhs$miscarriage*1000
+ms_year_rate_nfhs$ci_l_per1000 <- ms_year_rate_nfhs$ci_l*1000
+ms_year_rate_nfhs$ci_u_per1000 <- ms_year_rate_nfhs$ci_u*1000
+ms_year_rate_nfhs$se_per1000 <- ms_year_rate_nfhs$se*1000
+
+ms_year_rate_age_nfhs$ms_per1000 <- ms_year_rate_age_nfhs$miscarriage*1000
+ms_year_rate_age_nfhs$ci_l_per1000 <- ms_year_rate_age_nfhs$ci_l*1000
+ms_year_rate_age_nfhs$ci_u_per1000 <- ms_year_rate_age_nfhs$ci_u*1000
+ms_year_rate_age_nfhs$se_per1000 <- ms_year_rate_age_nfhs$se*1000
+
+
+ms_rate_nfhs <- ggplot(data = ms_year_rate_nfhs, mapping = aes(x= outcome_year, y = ms_per1000)) + 
+  geom_point() + 
+  geom_line() + ylim(0,100)+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+ms_rate_age_nfhs <- ggplot(data = ms_year_rate_age_nfhs, mapping = aes(x= outcome_year, y = ms_per1000, color = as.factor(agecat))) + 
+  #geom_point() + 
+  geom_line() + ylim(0,100)+
+  labs(y = "rate_age of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+ms_rate_nfhs + scale_x_continuous(breaks = seq(2010, 2019, by = 1))
+
+
+ms_year_rate_urban_nfhs <- svyby(~miscarriage, ~outcome_year+rural_urban, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_urban_nfhs$ms_per1000 <- ms_year_rate_urban_nfhs$miscarriage*1000
+ms_year_rate_urban_nfhs$ci_l_per1000 <- ms_year_rate_urban_nfhs$ci_l*1000
+ms_year_rate_urban_nfhs$ci_u_per1000 <- ms_year_rate_urban_nfhs$ci_u*1000
+ms_year_rate_urban_nfhs$se_per1000 <- ms_year_rate_urban_nfhs$se*1000
+ms_rate_urban_nfhs <- ggplot(data = ms_year_rate_urban_nfhs, mapping = aes(x= outcome_year, y = ms_per1000, color = as.factor(rural_urban))) + 
+  #geom_point() + 
+  geom_line() + ylim(0,100)+
+  labs(y = "rate_age of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+
+# AHS only rates ----------------------------------------------------------
+
+ahs <- df %>% filter(survey == "AHS")
+
+
+
+ahs_design <- svydesign(data = ahs, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+sb_year_rate_ahs <- svyby(~sb, ~outcome_year, ahs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_ahs <- svyby(~miscarriage, ~outcome_year, ahs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_year_rate_ahs <- svyby(~abort, ~outcome_year, ahs_design, svymean, vartype = c("se", "ci"))
+
+ms_year_rate_ahs$ms_per1000 <- ms_year_rate_ahs$miscarriage*1000
+ms_year_rate_ahs$ci_l_per1000 <- ms_year_rate_ahs$ci_l*1000
+ms_year_rate_ahs$ci_u_per1000 <- ms_year_rate_ahs$ci_u*1000
+ms_year_rate_ahs$se_per1000 <- ms_year_rate_ahs$se*1000
+
+
+ms_rate_ahs <- ggplot(data = ms_year_rate_ahs, mapping = aes(x= outcome_year, y = ms_per1000)) + 
+  geom_point() + 
+  geom_line() + ylim(0,100)+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+#ms_rate_ahs + scale_x_continuous(breaks = seq(2010, 2019, by = 1))
+
+
+# dlhs only rates ----------------------------------------------------------
+
+dlhs <- df %>% filter(survey == "DLHS3" | survey == "DLHS4")
+
+
+
+dlhs_design <- svydesign(data = dlhs, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+sb_year_rate_dlhs <- svyby(~sb, ~outcome_year, dlhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_dlhs <- svyby(~miscarriage, ~outcome_year, dlhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_year_rate_dlhs <- svyby(~abort, ~outcome_year, dlhs_design, svymean, vartype = c("se", "ci"))
+
+ms_year_rate_dlhs$ms_per1000 <- ms_year_rate_dlhs$miscarriage*1000
+ms_year_rate_dlhs$ci_l_per1000 <- ms_year_rate_dlhs$ci_l*1000
+ms_year_rate_dlhs$ci_u_per1000 <- ms_year_rate_dlhs$ci_u*1000
+ms_year_rate_dlhs$se_per1000 <- ms_year_rate_dlhs$se*1000
+
+
+ms_rate_dlhs <- ggplot(data = ms_year_rate_dlhs, mapping = aes(x= outcome_year, y = ms_per1000)) + 
+  geom_point() + 
+  geom_line() + ylim(0,100)+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+#ms_rate_dlhs + scale_x_continuous(breaks = seq(2010, 2019, by = 1))
 
 # Wealth index SII and RII ------------------------------------------------
 

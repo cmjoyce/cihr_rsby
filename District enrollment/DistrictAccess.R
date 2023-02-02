@@ -176,6 +176,8 @@ stateplot + geom_col() + facet_wrap(vars(df.year)) #+ theme(axis.text.x = elemen
 
 #write.csv(df, "districtenrollment.csv")
 
+dist <- read.csv("districtenrollment.csv")
+
 # plotting % enrolled by region -------------------------------------------
 
 #removing % enrolled calcuatlions where there are more enrolled than total, as data error from gov website
@@ -218,5 +220,72 @@ p5 + geom_col() + coord_flip()
 p5 + facet_wrap(cols = vars(year)) 
 
 
+
+# matching state to coding from codebook ----------------------------------
+
+table(dist$State)
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+#trimming to remove and leading or trailing spaces
+dist$State <- trim(dist$State)
+
+dist <- dist %>% mutate(state_match = case_when(State == "Andhra Pradesh" ~ 27,
+                                                State == "Arunachal Pradesh" ~ 12,
+                                                State == "Assam" ~ 18,
+                                                State == "Bihar" ~ 10,
+                                                State == "Chandigarh" ~ 4,
+                                                State == "Chhattisgarh" ~ 22,
+                                                State == "Delhi" ~ 7,
+                                                State == "Goa" ~ 29,
+                                                State == "Gujarat" ~ 24,
+                                                State == "Haryana" ~ 6,
+                                                State == "Himachal Pradesh" ~ 2,
+                                                State == "Jammu and Kashmir" ~ 1,
+                                                State == "Jharkand" ~ 20,
+                                                State == "Karnataka" ~ 28,
+                                                State == "Kerala" ~ 31,
+                                                State == "Madhya Pradesh" ~ 23,
+                                                State == "Maharashtra" ~ 26,
+                                                State == "Manipur" ~ 14,
+                                                State == "Meghalaya" ~ 17,
+                                                State == "Mizoram" ~ 15,
+                                                State == "Nagaland" ~ 13,
+                                                State == "Orrisa" ~ 21,
+                                                State == "Pondicherry" ~ 33,
+                                                State == "Punjab" ~ 3,
+                                                State == "Rajasthan" ~ 8,
+                                                State == "Tamil Nadu" ~ 32,
+                                                State == "Tripura" ~ 16,
+                                                State == "Uttar Pradesh" ~ 9,
+                                                State == "Uttrakhand" ~ 5,
+                                                State == "West Bengal" ~ 19,
+                                                TRUE ~ NA_real_))
+  
+
+
+#now need to add in correct district code to match on name + state
+#using "districts_harmonized.csv" that was created in District harmonization 
+
+dist_names <- read.csv("districts_harmonized.csv")
+dist_names <- dist_names %>% select(c(dist_id, namefix))
+
+#using df (harmonized variables) from Aim1.R file
+dist_state <- df %>% select(c(state, dist_id))
+
+dist_names_state <- left_join(dist_names, dist_state)
+
+#dropping districts without state values as that means they are not in our sample
+dist_names_state <- dist_names_state %>% filter(!is.na(state))
+
+dist_names_state <- dist_names_state %>% rename(District = namefix, state_match = state)
+
+dist_check <- left_join(dist, dist_names_state, by = c("District", "state_match"))
+
+dist_check <- unique(dist_check)
+
+write.csv(dist_check, "dist_check_unique.csv")
+
+check <- dist_check %>% filter(is.na(dist_id))
+
+#fix district names and match to spelling in district harmonization file
 
                                                     

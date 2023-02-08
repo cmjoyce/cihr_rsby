@@ -212,10 +212,16 @@ df <- read.csv("df_socioeconomic.csv")
 
 #making strata variable from rural/urban
 df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
+table(df$strat_rurb)
+
+df_urban <- df %>% filter(strat_rurb == 1)
+df_rural <- df %>% filter(strat_rurb == 2)
 
 library(survey)
 
 design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design_urban <- svydesign(data = df_urban, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+design_rural <- svydesign(data = df_rural, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -747,12 +753,20 @@ sb_wiquint_sii_group_b$term[sb_wiquint_sii_group_b$term=="wi_quint"] <- "Stillbi
 #calculating RII. quasipoisson glm
 sb_wiquint_rii <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
 sb_wiquint_rii <- sb_wiquint_rii %>% tidy(conf.int = TRUE)
-sbwi_rii <- sb_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
-sbwi_rii_conflow <- sb_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
+
+#now exponentiating the coeffiecient
+sb_wiquint_exp_rii <- exp(sb_wiquint_rii$estimate[2]) %>% round_half_up(digits = 2)
+sb_wiquint_exp_conflow <- exp(sb_wiquint_rii$conf.low[2]) %>% round_half_up(digits = 2)
+sb_wiquint_exp_confhigh <- exp(sb_wiquint_rii$conf.high[2]) %>% round_half_up(digits = 2)
+
+
+#sbwi_rii <- sb_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
+#sbwi_rii_conflow <- sb_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 sbwi_rii_confhigh <- sb_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
 
 #tidying for dot and whisker plot
 sb_wiquint_rii <- sb_wiquint_rii %>% filter(row_number() %in% c(2))
+sb_wiquint_exp_rii <- exp(sb_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1) #exponentiating just estimate, std error, and CI
 sb_wiquint_rii$term[sb_wiquint_rii$term=="wi_quint"] <- "Stillbirth All Years"
 
 
@@ -1665,21 +1679,38 @@ df$scheduled_c_t <- factor(df$caste_group,
 
 
 df %>% 
-  select(age, rural_urban, scheduled_c_t,tot_live_births, primary, insurance) %>% 
+  select(age, rural_urban, scheduled_c_t, primary) %>% 
   tbl_summary(
   label = list(
     age ~ "Age",
     rural_urban ~ "Rural / Urban",
     scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
-    #age_first_birth ~ "Age at first birth",
-    tot_live_births ~ "Total live births",
-    primary ~ "Completed Primary School",
-    #outcome_year ~ "Year of Pregnancy Outcome",
-    insurance ~ "Household has any insurance"),
-  #statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    primary ~ "Completed Primary School"),
+  statistic = list(all_continuous() ~ "{mean} ({sd})"),
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
 
+
+df %>% 
+  select(age, rural_urban, scheduled_c_t, primary) %>% 
+  mutate(rural_urban = paste(" ", rural_urban)) %>%
+  tbl_strata(
+    strata = rural_urban,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(label = 
+                    list(
+                      age ~ "Age",
+                      #rural_urban ~ "Rural / Urban",
+                      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+                      primary ~ "Completed Primary School"),
+                  statistic = list(all_continuous() ~ "{mean} ({sd})"),
+                  missing_text =  "Missing") #%>%
+      #add_n(),
+    #.header = "**{strata}**" N = {n}"
+  ) %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman")
+  
 #filter out NAs for plot so not showing NAs for miscarriage/abortion/stillbirth
 df_plot <- df %>% drop_na(outcome)
 

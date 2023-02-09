@@ -251,6 +251,7 @@ sb_wi_rate$ci_u_per1000 <- sb_wi_rate$ci_u*1000
 
 
 
+
 sb_wi_year_rate <- svyby(~sb, ~outcome_year*~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
 sb_wi_year_rate$sb_per1000 <- sb_wi_year_rate$sb*1000
@@ -258,14 +259,43 @@ sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
 sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
 sb_wi_year_rate$se_per1000 <- sb_wi_year_rate$se*1000
 
+sb_wi_year_rate_strat <- svyby(~sb, ~outcome_year*~wi_quintile + rural_urban, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_wi_year_rate_strat$sb_per1000 <- sb_wi_year_rate_strat$sb*1000
+sb_wi_year_rate_strat$ci_l_per1000 <- sb_wi_year_rate_strat$ci_l*1000
+sb_wi_year_rate_strat$ci_u_per1000 <- sb_wi_year_rate_strat$ci_u*1000
+sb_wi_year_rate_strat$se_per1000 <- sb_wi_year_rate_strat$se*1000
+
+sb_wi_year_rate_rural <- svyby(~sb, ~outcome_year*~wi_quintile, design_rural, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_wi_year_rate_rural$sb_per1000 <- sb_wi_year_rate_rural$sb*1000
+sb_wi_year_rate_rural$ci_l_per1000 <- sb_wi_year_rate_rural$ci_l*1000
+sb_wi_year_rate_rural$ci_u_per1000 <- sb_wi_year_rate_rural$ci_u*1000
+sb_wi_year_rate_rural$se_per1000 <- sb_wi_year_rate_rural$se*1000
+
+sb_wi_year_rate_urban <- svyby(~sb, ~outcome_year*~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_wi_year_rate_urban$sb_per1000 <- sb_wi_year_rate_urban$sb*1000
+sb_wi_year_rate_urban$ci_l_per1000 <- sb_wi_year_rate_urban$ci_l*1000
+sb_wi_year_rate_urban$ci_u_per1000 <- sb_wi_year_rate_urban$ci_u*1000
+sb_wi_year_rate_urban$se_per1000 <- sb_wi_year_rate_urban$se*1000
+
 library(cowplot)
-my_colors <- RColorBrewer::brewer.pal(5, "Reds")[4:9]
+library(rcartocolor)
+mycolors <- carto_pal(11, "Safe")[4:9]
 
 stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + ylim(0,25)+
   scale_color_grey(name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+stillbirth_wi_year_strat <- ggplot(data = sb_wi_year_rate_strat, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + 
+  geom_line() + 
+  ylim(0,25)+
+  scale_color_manual(values = mycolors, name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                      labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  facet_wrap(~rural_urban)+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
@@ -289,66 +319,6 @@ labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
 
-#plot just lowest and highest
-highlow_quints <- df %>% filter(wi_quintile == 1 | wi_quintile == 5)
-design_highlow <- svydesign(data = highlow_quints, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
-
-sb_wi_year_rate_highlow <- svyby(~sb, ~outcome_year*~wi_quintile, design_highlow, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-
-sb_wi_year_rate_highlow$sb_per1000 <- sb_wi_year_rate_highlow$sb*1000
-sb_wi_year_rate_highlow$ci_l_per1000 <- sb_wi_year_rate_highlow$ci_l*1000
-sb_wi_year_rate_highlow$ci_u_per1000 <- sb_wi_year_rate_highlow$ci_u*1000
-sb_wi_year_rate_highlow$se_per1000 <- sb_wi_year_rate_highlow$se*1000
-
-library(cowplot)
-ggplot(data = sb_wi_year_rate_highlow, mapping = aes(x= outcome_year, y = sb_per1000, color = wi_quintile)) + geom_point() + 
-  geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + ylim(0,25)+
-  scale_color_grey(name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                   labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
-  labs(y = "Rate of stillbirths per 1000 pregnancies") +
-  labs(x = "Year")+
-  theme_cowplot()
-
-ggplot(data = sb_wi_year_rate_highlow, mapping = aes(x= outcome_year, y = sb_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000,color = wi_quintile)) + #geom_point() + 
-  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + 
-  geom_ribbon(alpha = 0.15)+
-  ylim(0,25)+
-  scale_color_grey(name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                   labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
-  labs(y = "Rate of stillbirths per 1000 pregnancies") +
-  labs(x = "Year")+
-  theme_cowplot()
-
-
-#with ribbon showing confidence interval
-ggplot(data=sb_wi_year_rate, aes(x=outcome_year, y=sb_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000, fill=wi_quintile, linetype=wi_quintile)) + 
-  #geom_point() +     
-  geom_line() + 
-  geom_ribbon(alpha=0.25) + 
-  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
-  labs(y = "Rate of stillbirths per 1000 pregnancies") +
-  labs(x = "Year")+
-  theme_cowplot()
-
-#with shapes instead of colors
-ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000)) + geom_point(aes(shape = wi_quintile)) + 
-  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+ 
-  geom_line() + ylim(0,25)+
-  scale_color_brewer(palette = "Paired")+
-  theme_cowplot()
-
-ggplot(data = sb_wi_rate, mapping = aes(x= wi_quintile, y = sb_per1000)) + 
-  geom_point() +
-  geom_line() + 
-  ylim(0,15) +
-  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
-  labs(y = "Rate of stillbirths per 1000 pregnancies") +
-  labs(x = "Wealth Quintile")+
-  theme_cowplot()
 
 # now looking at primary school
 sb_prim_year_rate <- svyby(~sb, ~outcome_year*~primary, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -380,6 +350,24 @@ ggplot(data=sb_prim_year_rate, aes(x=outcome_year, y=sb_per1000, ymin=ci_l_per10
   labs(x = "Year")+
   theme_cowplot()
 
+#primary stratified by rural urban
+
+sb_prim_year_rate_strat <- svyby(~sb, ~outcome_year*~primary + rural_urban, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_prim_year_rate_strat$sb_per1000 <- sb_prim_year_rate_strat$sb*1000
+sb_prim_year_rate_strat$ci_l_per1000 <- sb_prim_year_rate_strat$ci_l*1000
+sb_prim_year_rate_strat$ci_u_per1000 <- sb_prim_year_rate_strat$ci_u*1000
+
+ggplot(data = sb_prim_year_rate_strat, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + 
+  geom_line() + 
+  ylim(0,25)+
+  scale_color_manual(values = mycolors, name = "Completed Primary School", breaks =c("0", "1"), 
+                      labels = c("No", "Yes"))+
+  facet_wrap(~rural_urban)+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
 #now looking at scheduled caste and tribe
 sb_caste_year_rate <- svyby(~sb, ~outcome_year*caste_group, design, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
 
@@ -395,6 +383,25 @@ stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot()
+
+
+#SC/ST stratified by rural urban
+
+sb_caste_year_rate_strat <- svyby(~sb, ~outcome_year*~caste_group + rural_urban, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_caste_year_rate_strat$sb_per1000 <- sb_caste_year_rate_strat$sb*1000
+sb_caste_year_rate_strat$ci_l_per1000 <- sb_caste_year_rate_strat$ci_l*1000
+sb_caste_year_rate_strat$ci_u_per1000 <- sb_caste_year_rate_strat$ci_u*1000
+
+ggplot(data = sb_caste_year_rate_strat, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_group))) + 
+  geom_line() + 
+  #ylim(0,25)+
+  scale_color_manual(values = mycolors, name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
+  facet_wrap(~rural_urban)+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
 
 #now looking at abortion
 abort_prim_year_rate <- svyby(~abort, ~outcome_year*~primary, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -1691,9 +1698,9 @@ df %>%
   gt::tab_options(table.font.names = "Times New Roman")
 
 
-df %>% 
+t1_strat <- df %>% 
   select(age, rural_urban, scheduled_c_t, primary) %>% 
-  mutate(rural_urban = paste(" ", rural_urban)) %>%
+  mutate(rural_urban = paste("Urbanicity -", rural_urban)) %>%
   tbl_strata(
     strata = rural_urban,
     .tbl_fun =
@@ -1705,9 +1712,7 @@ df %>%
                       scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
                       primary ~ "Completed Primary School"),
                   statistic = list(all_continuous() ~ "{mean} ({sd})"),
-                  missing_text =  "Missing") #%>%
-      #add_n(),
-    #.header = "**{strata}**" N = {n}"
+                  missing_text =  "Missing")
   ) %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
   
@@ -1991,6 +1996,68 @@ df_plot %>%
   scale_fill_brewer(palette = "Paired") +
   #  theme_minimal() +
   theme_cowplot()
+
+#plot just lowest and highest
+highlow_quints <- df %>% filter(wi_quintile == 1 | wi_quintile == 5)
+design_highlow <- svydesign(data = highlow_quints, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+sb_wi_year_rate_highlow <- svyby(~sb, ~outcome_year*~wi_quintile, design_highlow, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_wi_year_rate_highlow$sb_per1000 <- sb_wi_year_rate_highlow$sb*1000
+sb_wi_year_rate_highlow$ci_l_per1000 <- sb_wi_year_rate_highlow$ci_l*1000
+sb_wi_year_rate_highlow$ci_u_per1000 <- sb_wi_year_rate_highlow$ci_u*1000
+sb_wi_year_rate_highlow$se_per1000 <- sb_wi_year_rate_highlow$se*1000
+
+library(cowplot)
+ggplot(data = sb_wi_year_rate_highlow, mapping = aes(x= outcome_year, y = sb_per1000, color = wi_quintile)) + geom_point() + 
+  geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + ylim(0,25)+
+  scale_color_grey(name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                   labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+ggplot(data = sb_wi_year_rate_highlow, mapping = aes(x= outcome_year, y = sb_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000,color = wi_quintile)) + #geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + 
+  geom_ribbon(alpha = 0.15)+
+  ylim(0,25)+
+  scale_color_grey(name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                   labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+
+#with ribbon showing confidence interval
+ggplot(data=sb_wi_year_rate, aes(x=outcome_year, y=sb_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000, fill=wi_quintile, linetype=wi_quintile)) + 
+  #geom_point() +     
+  geom_line() + 
+  geom_ribbon(alpha=0.25) + 
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot()
+
+#with shapes instead of colors
+ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000)) + geom_point(aes(shape = wi_quintile)) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+ 
+  geom_line() + ylim(0,25)+
+  scale_color_brewer(palette = "Paired")+
+  theme_cowplot()
+
+ggplot(data = sb_wi_rate, mapping = aes(x= wi_quintile, y = sb_per1000)) + 
+  geom_point() +
+  geom_line() + 
+  ylim(0,15) +
+  scale_color_brewer(palette = "Paired", name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Wealth Quintile")+
+  theme_cowplot()
+
 
 # calculating jackknife and bootstrap weights in survey ---------------------------------------------------------
 

@@ -532,7 +532,7 @@ design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~wei
 
 
 # NFHS only rates ---------------------------------------------------------
-library(emmeans)
+
 
 nfhs <- df %>% filter(survey == "NFHS4" | survey == "NFHS5")
 
@@ -632,9 +632,6 @@ summary(margins(nfhs_try, at = list(wi_scaled = c(0, 1))))
 
 
 #### AVERAGE COMPARISONS TO GIVE RATIO. FIRST YOU TAKE DIFFERENCE BETWEEN 0 AND 1 AND THEN  ###
-avg_comparisons(sb_wiquint_rii_nfhs, 
-                variables = list(wi_perc_rank_nfhs = c(0,1)), 
-                by = "year_bin_nfhs", transform_pre = "difference" , transform_post = "exp")
 
 
 avg_comparisons(sb_wiquint_sii_nfhs, 
@@ -767,82 +764,155 @@ library(splines)
 library(broom)
 library(marginaleffects)
 sb_wiquint_sii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
-sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
+#sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
+
+sb_wi_sii <- avg_comparisons(sb_wiquint_sii, 
+                variables = list(wi_perc_rank = c(0,1)), 
+                by = "year_bin")
+
+#adding in term column
+sb_wi_sii$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbwisii <- tidy(sb_wi_sii) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
 
 #tidying for dot and whisker plot
 #including interaction term
-sb_wiquint_sii <- sb_wiquint_sii %>% filter(row_number() %in% c(2))
-sb_wiquint_sii$term[sb_wiquint_sii$term=="wi_quint"] <- "Stillbirth"
-#sb_wiquint_sii$term[sb_wiquint_sii$term=="outcome_year"] <- "Stillbirth year only"
-#sb_wiquint_sii$term[sb_wiquint_sii$term=="wi_quint:outcome_year"] <- "Interaction of wealth quintile and year"
+#sb_wiquint_sii <- sb_wiquint_sii %>% filter(row_number() %in% c(2))
+
+#rename terms for each year grouping
+#sb_wiquint_sii$term[sb_wiquint_sii$term=="wi_quint"] <- "Stillbirth"
 
 
 #calculating RII. quasipoisson glm
-sb_wiquint_rii <- svyglm(sb ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
-sb_wiquint_rii <- sb_wiquint_rii %>% tidy(conf.int = TRUE)
+sb_wiquint_rii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson())
+#sb_wiquint_rii <- sb_wiquint_rii %>% tidy(conf.int = TRUE)
+
+sb_wi_rii <- avg_comparisons(sb_wiquint_rii, 
+                variables = list(wi_perc_rank = c(0,1)), 
+                by = "year_bin", transform_pre = "lnratioavg",
+                transform_post = exp)
+
+
+#adding in term column
+sb_wi_rii$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbwirii <- tidy(sb_wi_rii) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
 
 #tidying for dot and whisker plot
-sb_wiquint_rii <- sb_wiquint_rii %>% filter(row_number() %in% c(2))
-sb_wiquint_exp_rii <- exp(sb_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1) #exponentiating just estimate, std error, and CI
-sb_wiquint_exp_rii$term <- "Stillbirth" #creating term since exponentiating values removes labels
+#sb_wiquint_rii <- sb_wiquint_rii %>% filter(row_number() %in% c(2))
+#sb_wiquint_exp_rii <- exp(sb_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1) #exponentiating just estimate, std error, and CI
+#sb_wiquint_exp_rii$term <- "Stillbirth" #creating term since exponentiating values removes labels
 #sb_wiquint_exp_rii$term[sb_wiquint_exp_rii$term=="outcome_year"] <- "Stillbirth year only"
 #sb_wiquint_exp_rii$term[sb_wiquint_exp_rii$term=="wi_quint:outcome_year"] <- "Interaction of wealth quintile and year"
 
 
-abort_wiquint_sii <- svyglm(abort ~ wi_quint +  outcome_year + age + as.factor(state), design = design)
-abort_wiquint_sii <- abort_wiquint_sii %>% tidy(conf.int = TRUE) 
+abort_wiquint_sii <- svyglm(abort ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
+#abort_wiquint_sii <- abort_wiquint_sii %>% tidy(conf.int = TRUE) 
 #abortwi_sii <- abort_wiquint_sii$estimate[2] * 1000
 #abortwi_sii <- round_half_up(abortwi_sii, digits = 2)
 #abortwi_sii_conf.low <- (abort_wiquint_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #abortwi_sii_conf.high <- (abort_wiquint_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
+abort_wi_sii <- avg_comparisons(abort_wiquint_sii, 
+                             variables = list(wi_perc_rank = c(0,1)), 
+                             by = "year_bin")
+
+#adding in term column
+abort_wi_sii$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortwisii <- tidy(abort_wi_sii) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
 #tidying for dot and whisker plot
-abort_wiquint_sii <- abort_wiquint_sii %>% filter(row_number() %in% c(2))
-abort_wiquint_sii$term[abort_wiquint_sii$term=="wi_quint"] <- "Abortion"
+#abort_wiquint_sii <- abort_wiquint_sii %>% filter(row_number() %in% c(2))
+#abort_wiquint_sii$term[abort_wiquint_sii$term=="wi_quint"] <- "Abortion"
 #abort_wiquint_sii$term[abort_wiquint_sii$term=="outcome_year"] <- "Abortion year only"
 #abort_wiquint_sii$term[abort_wiquint_sii$term=="wi_quint:outcome_year"] <- "Interaction of wealth quintile and year"
 
 
-abort_wiquint_rii <- svyglm(abort ~ wi_quint +  outcome_year + age + as.factor(state), design = design, family = quasipoisson())
-abort_wiquint_rii <- abort_wiquint_rii %>% tidy(conf.int = TRUE)
+abort_wiquint_rii <- svyglm(abort ~wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson())
+#abort_wiquint_rii <- abort_wiquint_rii %>% tidy(conf.int = TRUE)
 #abortwi_rii <- abort_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
 #abortwi_rii_conflow <- abort_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 #abortwi_rii_confhigh <- abort_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
 
+abort_wi_rii <- avg_comparisons(abort_wiquint_rii, 
+                             variables = list(wi_perc_rank = c(0,1)), 
+                             by = "year_bin", transform_pre = "lnratioavg",
+                             transform_post = exp)
+
+#adding in term column
+abort_wi_rii$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortwirii <- tidy(abort_wi_rii) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
 #tidying for dot and whisker plot
-abort_wiquint_rii <- abort_wiquint_rii %>% filter(row_number() %in% c(2))
-abort_wiquint_exp_rii <- exp(abort_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
-abort_wiquint_exp_rii$term <- "Abortion" #creating term since exponentiating values removes labels
+#abort_wiquint_rii <- abort_wiquint_rii %>% filter(row_number() %in% c(2))
+#abort_wiquint_exp_rii <- exp(abort_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
+#abort_wiquint_exp_rii$term <- "Abortion" #creating term since exponentiating values removes labels
 #abort_wiquint_rii$term[abort_wiquint_rii$term=="wi_quint"] <- "Abortion wealth quintile"
 #abort_wiquint_rii$term[abort_wiquint_rii$term=="outcome_year"] <- "Abortion year only"
 #abort_wiquint_rii$term[abort_wiquint_rii$term=="wi_quint:outcome_year"] <- "Interaction of wealth quintile and year"
 
 
 
-miscarriage_wiquint_sii <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design)
-miscarriage_wiquint_sii <- miscarriage_wiquint_sii %>% tidy(conf.int = TRUE) 
+miscarriage_wiquint_sii <- svyglm(miscarriage ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
+#miscarriage_wiquint_sii <- miscarriage_wiquint_sii %>% tidy(conf.int = TRUE) 
 #miscarriagewi_sii <- miscarriage_wiquint_sii$estimate[2] * 1000
 #miscarriagewi_sii <- round_half_up(miscarriagewi_sii, digits = 2)
 #miscarriagewi_sii_conf.low <- (miscarriage_wiquint_sii$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #miscarriagewi_sii_conf.high <- (miscarriage_wiquint_sii$conf.high[2]*1000) %>% round_half_up(digits = 2)
 
+miscarriage_wi_sii <- avg_comparisons(miscarriage_wiquint_sii, 
+                                variables = list(wi_perc_rank = c(0,1)), 
+                                by = "year_bin")
+
+#adding in term column
+miscarriage_wi_sii$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagewisii <- tidy(miscarriage_wi_sii) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
 #tidying for dot and whisker plot
-miscarriage_wiquint_sii <- miscarriage_wiquint_sii %>% filter(row_number() %in% c(2))
-miscarriage_wiquint_sii$term[miscarriage_wiquint_sii$term=="wi_quint"] <- "Miscarriage"
+#miscarriage_wiquint_sii <- miscarriage_wiquint_sii %>% filter(row_number() %in% c(2))
+#miscarriage_wiquint_sii$term[miscarriage_wiquint_sii$term=="wi_quint"] <- "Miscarriage"
 
 
 #calculating RII. 
-miscarriage_wiquint_rii <- svyglm(miscarriage ~ wi_quint + age + outcome_year + as.factor(state), design = design, family = quasipoisson())
-miscarriage_wiquint_rii <- miscarriage_wiquint_rii %>% tidy(conf.int = TRUE)
+miscarriage_wiquint_rii <- svyglm(miscarriage ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson())
+#miscarriage_wiquint_rii <- miscarriage_wiquint_rii %>% tidy(conf.int = TRUE)
 #miscarriagewi_rii <- miscarriage_wiquint_rii$estimate[2] %>% round_half_up(digits = 2)
 #miscarriagewi_rii_conflow <- miscarriage_wiquint_rii$conf.low[2] %>% round_half_up(digits = 2)
 #miscarriagewi_rii_confhigh <- miscarriage_wiquint_rii$conf.high[2]  %>% round_half_up(digits = 2)
 
-miscarriage_wiquint_rii <- miscarriage_wiquint_rii %>% filter(row_number() %in% c(2))
-miscarriage_wiquint_exp_rii <- exp(miscarriage_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
-miscarriage_wiquint_exp_rii$term <- "Miscarriage" #creating term since exponentiating values removes labels
+miscarriage_wi_rii <- avg_comparisons(miscarriage_wiquint_rii, 
+                                variables = list(wi_perc_rank = c(0,1)), 
+                                by = "year_bin", transform_pre = "lnratioavg",
+                                transform_post = exp)
 
-sii <- rbind(sb_wiquint_sii, abort_wiquint_sii, miscarriage_wiquint_sii)
+#adding in term column
+miscarriage_wi_rii$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagewirii <- tidy(miscarriage_wi_rii) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+
+#miscarriage_wiquint_rii <- miscarriage_wiquint_rii %>% filter(row_number() %in% c(2))
+#miscarriage_wiquint_exp_rii <- exp(miscarriage_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
+#miscarriage_wiquint_exp_rii$term <- "Miscarriage" #creating term since exponentiating values removes labels
+
+sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
+sii <- sii %>% group_by(year_bin)
 
 #putting on scale of thousand pregnancies
 sii$estimate <- sii$estimate*1000
@@ -850,75 +920,99 @@ sii$std.error <- sii$std.error*1000
 sii$conf.low <- sii$conf.low*1000
 sii$conf.high <- sii$conf.high*1000
 
-dwsii <- dwplot(sii) +
-  theme_bw() + xlab("Slope Index of Inequality per 1,000 pregnancies") + ylab("") + 
-  scale_x_continuous(breaks = seq(from = -5, to = 20, by = 1)) +
-  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
+sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors)+
+  ylab("Slope Index of Inequality")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+#dwsii <- dwplot(sii) +
+#  theme_bw() + xlab("Slope Index of Inequality per 1,000 pregnancies") + ylab("") + 
+#  scale_x_continuous(breaks = seq(from = -5, to = 20, by = 1)) +
+#  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
   #ggtitle("Impact of Extended Leave on Probability of Holding a Paid Job") +
-  theme_cowplot(12)+
-  theme(legend.position = "none")
+#  theme_cowplot(12)+
+#  theme(legend.position = "none")
 
-rii <- rbind(sb_wiquint_exp_rii, abort_wiquint_exp_rii, miscarriage_wiquint_exp_rii)
+rii <- rbind(sbwirii, abortwirii, miscarriagewirii)
 
-dwrii <- dwplot(rii) +
-  theme_bw() + xlab("Relative Index of Inequality") + ylab("") + 
-  scale_x_continuous(breaks = seq(from = 0, to = 3, by = 0.5)) +
-  geom_vline(xintercept = 1, colour = "grey60", linetype = 2) +
-  theme_cowplot(12)+
-  theme(legend.position = "none")
+rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors)+
+  scale_y_continuous(name="Relative Index of Inequality", breaks = seq(-1.5, 5, by = 1))+
+  #ylab("Relative Index of Inequality")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
 
-sii_estimates <- rbind(sbwi_sii, sbwi_sii_group_a, sbwi_sii_group_b,
-                       abortwi_sii, abortwi_sii_group_a, abortwi_sii_group_b,
-                       miscarriagewi_sii, miscarriagewi_sii_group_a, miscarriagewi_sii_group_b)
 
-sii_conf.low <- rbind(sbwi_sii_conf.low, sbwi_sii_group_a_conf.low, sbwi_sii_group_b_conf.low,
-                      abortwi_sii_conf.low, abortwi_sii_group_a_conf.low, abortwi_sii_group_b_conf.low,
-                      miscarriagewi_sii_conf.low, miscarriagewi_sii_group_a_conf.low, miscarriagewi_sii_group_b_conf.low)
+#dwrii <- dwplot(rii) +
+#  theme_bw() + xlab("Relative Index of Inequality") + ylab("") + 
+#  scale_x_continuous(breaks = seq(from = 0, to = 3, by = 0.5)) +
+#  geom_vline(xintercept = 1, colour = "grey60", linetype = 2) +
+#  theme_cowplot(12)+
+#  theme(legend.position = "none")
 
-sii_conf.high <- rbind(sbwi_sii_conf.high, sbwi_sii_group_a_conf.high, sbwi_sii_group_b_conf.high,
-                       abortwi_sii_conf.high, abortwi_sii_group_a_conf.high, abortwi_sii_group_b_conf.high,
-                       miscarriagewi_sii_conf.high, miscarriagewi_sii_group_a_conf.high, miscarriagewi_sii_group_b_conf.high)
+#sii_estimates <- rbind(sbwi_sii, sbwi_sii_group_a, sbwi_sii_group_b,
+#                       abortwi_sii, abortwi_sii_group_a, abortwi_sii_group_b,
+#                       miscarriagewi_sii, miscarriagewi_sii_group_a, miscarriagewi_sii_group_b)
 
-rii_estimates <- rbind(sbwi_rii, sbwi_rii_group_a, sbwi_rii_group_b,
-                       abortwi_rii, abortwi_rii_group_a, abortwi_rii_group_b,
-                       miscarriagewi_rii, miscarriagewi_rii_group_a, miscarriagewi_rii_group_b)
+#sii_conf.low <- rbind(sbwi_sii_conf.low, sbwi_sii_group_a_conf.low, sbwi_sii_group_b_conf.low,
+#                      abortwi_sii_conf.low, abortwi_sii_group_a_conf.low, abortwi_sii_group_b_conf.low,
+#                      miscarriagewi_sii_conf.low, miscarriagewi_sii_group_a_conf.low, miscarriagewi_sii_group_b_conf.low)
 
-rii_conf.low <- rbind(sbwi_rii_conflow, sbwi_rii_group_a_conflow, sbwi_rii_group_b_conflow,
-                      abortwi_rii_conflow, abortwi_rii_group_a_conflow, abortwi_rii_group_b_conflow,
-                      miscarriagewi_rii_conflow, miscarriagewi_rii_group_a_conflow, miscarriagewi_rii_group_b_conflow)
+#sii_conf.high <- rbind(sbwi_sii_conf.high, sbwi_sii_group_a_conf.high, sbwi_sii_group_b_conf.high,
+#                       abortwi_sii_conf.high, abortwi_sii_group_a_conf.high, abortwi_sii_group_b_conf.high,
+#                       miscarriagewi_sii_conf.high, miscarriagewi_sii_group_a_conf.high, miscarriagewi_sii_group_b_conf.high)
 
-rii_conf.high <- rbind(sbwi_rii_confhigh, sbwi_rii_group_a_confhigh, sbwi_rii_group_b_confhigh,
-                       abortwi_rii_confhigh, abortwi_rii_group_a_confhigh, abortwi_rii_group_b_confhigh,
-                       miscarriagewi_rii_confhigh, miscarriagewi_rii_group_a_confhigh, miscarriagewi_rii_group_b_confhigh)
+#rii_estimates <- rbind(sbwi_rii, sbwi_rii_group_a, sbwi_rii_group_b,
+#                       abortwi_rii, abortwi_rii_group_a, abortwi_rii_group_b,
+#                       miscarriagewi_rii, miscarriagewi_rii_group_a, miscarriagewi_rii_group_b)
 
-sii <- cbind(sii_estimates, sii_conf.low, sii_conf.high)
-sii <- as.data.frame(sii)
-sii <- sii %>% rename(SII = V1, Conf.Low = V2, Conf.High = V3)
-sii$Outcome <- c("Stillbirth All Years", "Stillbirth 2004-2009", "Stillbirth 2010-2019",
-                 "Abortion All Years", "Abortion 2004-2009", "Abortion 2010-2019",
-                 "Miscarriage All Years", "Miscarriage 2004-2009", "Miscarriage 2010-2019")
-sii <- sii %>% relocate(Outcome, .before = SII)
+#rii_conf.low <- rbind(sbwi_rii_conflow, sbwi_rii_group_a_conflow, sbwi_rii_group_b_conflow,
+#                      abortwi_rii_conflow, abortwi_rii_group_a_conflow, abortwi_rii_group_b_conflow,
+#                      miscarriagewi_rii_conflow, miscarriagewi_rii_group_a_conflow, miscarriagewi_rii_group_b_conflow)
 
-rii <- cbind(rii_estimates, rii_conf.low, rii_conf.high)
-rii <- as.data.frame(rii)
-rii <- rii %>% rename(RII = V1, RIIConf.Low = V2, RIIConf.High = V3)
+#rii_conf.high <- rbind(sbwi_rii_confhigh, sbwi_rii_group_a_confhigh, sbwi_rii_group_b_confhigh,
+#                       abortwi_rii_confhigh, abortwi_rii_group_a_confhigh, abortwi_rii_group_b_confhigh,
+#                       miscarriagewi_rii_confhigh, miscarriagewi_rii_group_a_confhigh, miscarriagewi_rii_group_b_confhigh)
 
-table2 <- cbind(sii, rii)
+#sii <- cbind(sii_estimates, sii_conf.low, sii_conf.high)
+#sii <- as.data.frame(sii)
+#sii <- sii %>% rename(SII = V1, Conf.Low = V2, Conf.High = V3)
+#sii$Outcome <- c("Stillbirth All Years", "Stillbirth 2004-2009", "Stillbirth 2010-2019",
+#                 "Abortion All Years", "Abortion 2004-2009", "Abortion 2010-2019",
+#                 "Miscarriage All Years", "Miscarriage 2004-2009", "Miscarriage 2010-2019")
+#sii <- sii %>% relocate(Outcome, .before = SII)
 
-library(flextable)
-require(gdtools)
-fontname <- "Times New Roman"
-border_style = officer::fp_border(color="black", width=1)
+#rii <- cbind(rii_estimates, rii_conf.low, rii_conf.high)
+#rii <- as.data.frame(rii)
+#rii <- rii %>% rename(RII = V1, RIIConf.Low = V2, RIIConf.High = V3)
 
-theme_vanilla()  %>% 
+#table2 <- cbind(sii, rii)
+
+#library(flextable)
+#require(gdtools)
+#fontname <- "Times New Roman"
+#border_style = officer::fp_border(color="black", width=1)
+
+#theme_vanilla()  %>% 
   
-flextable(sii) %>% vline(part = "all", j = 1, border = border_style)  #%>% theme_vanilla()
-flexsii  <- flextable(sii)
-flexsii %>% vline(part = "all", j = 1, border = border_style)
-flexsii %>% bold(i = 1, bold = TRUE, part = "header")
+#flextable(sii) %>% vline(part = "all", j = 1, border = border_style)  #%>% theme_vanilla()
+#flexsii  <- flextable(sii)
+#flexsii %>% vline(part = "all", j = 1, border = border_style)
+#flexsii %>% bold(i = 1, bold = TRUE, part = "header")
 
-tab2 <- flextable(table2) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
-print(tab2, preview = "docx")
+#tab2 <- flextable(table2) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
+#print(tab2, preview = "docx")
 
 
 
@@ -930,89 +1024,164 @@ print(tab2, preview = "docx")
 
 #RD: family = quasibinomial(link = "identity") OR family = gaussian(link = "identity")
 
-sb_prim_rr <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-sb_prim_rr <- sb_prim_rr %>% tidy(conf.int = TRUE) 
-sb_prim_rr 
+sb_prim_rr <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
+#sb_prim_rr <- sb_prim_rr %>% tidy(conf.int = TRUE) 
+#sb_prim_rr 
+
+sb_prim_rr <- avg_comparisons(sb_prim_rr, 
+                variables = "primary", 
+                by = "year_bin", transform_pre = "lnratioavg",
+                transform_post = exp)
+
+#adding in term column
+sb_prim_rr$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbprimrr <- tidy(sb_prim_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
 
 #tidying for dot and whisker plot
-sb_prim_rr <- sb_prim_rr %>% filter(row_number() %in% c(2))
-sb_prim_rr$term[sb_prim_rr$term=="primary"] <- "Stillbirth"
+#sb_prim_rr <- sb_prim_rr %>% filter(row_number() %in% c(2))
+#sb_prim_rr$term[sb_prim_rr$term=="primary"] <- "Stillbirth"
 
 
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-sb_prim_exp_rr <- exp(sb_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
-sb_prim_exp_conflow <- exp(sb_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
-sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+#sb_prim_exp_rr <- exp(sb_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+#sb_prim_exp_conflow <- exp(sb_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+#sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-
-sb_prim_rd <- svyglm(sb ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
+sb_prim_rd <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+#sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
 #sbprim_rd <- (sb_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #sbprim_rd_conflow <- (sb_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #sbprim_rd_confhigh <- (sb_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
+sb_prim_rd <- avg_comparisons(sb_prim_rd, 
+                              variables = list(primary = c(0,1)), 
+                              by = "year_bin")
+
+#adding in term column
+sb_prim_rd$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbprimrd <- tidy(sb_prim_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
 #tidying for dot and whisker plot
-sb_prim_rd <- sb_prim_rd %>% filter(row_number() %in% c(2))
-sb_prim_rd$term[sb_prim_rd$term=="primary"] <- "Stillbirth All Years"
+#sb_prim_rd <- sb_prim_rd %>% filter(row_number() %in% c(2))
+#sb_prim_rd$term[sb_prim_rd$term=="primary"] <- "Stillbirth All Years"
 
 
 
-abort_prim_rr <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-abort_prim_rr <- abort_prim_rr %>% tidy(conf.int = TRUE) 
-abort_prim_rr 
+abort_prim_rr <- svyglm(abort ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
+
+abort_prim_rr <- avg_comparisons(abort_prim_rr, 
+                              variables = "primary", 
+                              by = "year_bin", transform_pre = "lnratioavg",
+                              transform_post = exp)
+
+#adding in term column
+abort_prim_rr$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortprimrr <- tidy(abort_prim_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+#abort_prim_rr <- abort_prim_rr %>% tidy(conf.int = TRUE) 
+#abort_prim_rr 
 
 #tidying for dot and whisker plot
-abort_prim_rr <- abort_prim_rr %>% filter(row_number() %in% c(2))
-abort_prim_rr$term[abort_prim_rr$term=="primary"] <- "Abortion"
+#abort_prim_rr <- abort_prim_rr %>% filter(row_number() %in% c(2))
+#abort_prim_rr$term[abort_prim_rr$term=="primary"] <- "Abortion"
 
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-abort_prim_exp_rr <- exp(abort_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
-abort_prim_exp_conflow <- exp(abort_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
-abort_prim_exp_confhigh <- exp(abort_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+#abort_prim_exp_rr <- exp(abort_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+#abort_prim_exp_conflow <- exp(abort_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+#abort_prim_exp_confhigh <- exp(abort_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
-abort_prim_rd <- svyglm(abort ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-abort_prim_rd <- abort_prim_rd %>% tidy(conf.int = TRUE)
-abortprim_rd <- (abort_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
-abortprim_rd_conflow <- (abort_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
-abortprim_rd_confhigh <- (abort_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+abort_prim_rd <- svyglm(abort ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+
+abort_prim_rd <- avg_comparisons(abort_prim_rd, 
+                              variables = list(primary = c(0,1)), 
+                              by = "year_bin")
+
+#adding in term column
+abort_prim_rd$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortprimrd <- tidy(abort_prim_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
+#abort_prim_rd <- abort_prim_rd %>% tidy(conf.int = TRUE)
+#abortprim_rd <- (abort_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+#abortprim_rd_conflow <- (abort_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+#abortprim_rd_confhigh <- (abort_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
 #tidying for dot and whisker plot
-abort_prim_rd <- abort_prim_rd %>% filter(row_number() %in% c(2))
-abort_prim_rd$term[abort_prim_rd$term=="primary"] <- "Abortion"
+#abort_prim_rd <- abort_prim_rd %>% filter(row_number() %in% c(2))
+#abort_prim_rd$term[abort_prim_rd$term=="primary"] <- "Abortion"
+
+miscarriage_prim_rr <- svyglm(miscarriage ~ primary*year_bin + age +  as.factor(state) + rural_urban, 
+                              design = design, family = quasipoisson(link = "log"))
+
+miscarriage_prim_rr <- avg_comparisons(miscarriage_prim_rr, 
+                                 variables = "primary", 
+                                 by = "year_bin", transform_pre = "lnratioavg",
+                                 transform_post = exp)
+
+#adding in term column
+miscarriage_prim_rr$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriageprimrr <- tidy(miscarriage_prim_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
 
 
-miscarriage_prim_rr <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-miscarriage_prim_rr <- miscarriage_prim_rr %>% tidy(conf.int = TRUE) 
-miscarriage_prim_rr 
+#miscarriage_prim_rr <- miscarriage_prim_rr %>% tidy(conf.int = TRUE) 
+#miscarriage_prim_rr 
 
 #tidying for dot and whisker plot
-miscarriage_prim_rr <- miscarriage_prim_rr %>% filter(row_number() %in% c(2))
-miscarriage_prim_rr$term[miscarriage_prim_rr$term=="primary"] <- "Miscarriage"
+#miscarriage_prim_rr <- miscarriage_prim_rr %>% filter(row_number() %in% c(2))
+#miscarriage_prim_rr$term[miscarriage_prim_rr$term=="primary"] <- "Miscarriage"
 
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-miscarriage_prim_exp_rr <- exp(miscarriage_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
-miscarriage_prim_exp_conflow <- exp(miscarriage_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
-miscarriage_prim_exp_confhigh <- exp(miscarriage_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
+#miscarriage_prim_exp_rr <- exp(miscarriage_prim_rr$estimate[2]) %>% round_half_up(digits = 2)
+#miscarriage_prim_exp_conflow <- exp(miscarriage_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
+#miscarriage_prim_exp_confhigh <- exp(miscarriage_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-miscarriage_prim_rd <- svyglm(miscarriage ~ primary + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-miscarriage_prim_rd <- miscarriage_prim_rd %>% tidy(conf.int = TRUE)
-miscarriageprim_rd <- (miscarriage_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
-miscarriageprim_rd_conflow <- (miscarriage_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
-miscarriageprim_rd_confhigh <- (miscarriage_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
+miscarriage_prim_rd <- svyglm(miscarriage ~ primary*year_bin + age +  as.factor(state) + rural_urban, 
+                              design = design, family = gaussian(link = "identity"))
+
+miscarriage_prim_rd <- avg_comparisons(miscarriage_prim_rd, 
+                                 variables = list(primary = c(0,1)), 
+                                 by = "year_bin")
+
+#adding in term column
+miscarriage_prim_rd$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriageprimrd <- tidy(miscarriage_prim_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
+
+#miscarriage_prim_rd <- miscarriage_prim_rd %>% tidy(conf.int = TRUE)
+#miscarriageprim_rd <- (miscarriage_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
+#miscarriageprim_rd_conflow <- (miscarriage_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
+#miscarriageprim_rd_confhigh <- (miscarriage_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
 #tidying for dot and whisker plot
-miscarriage_prim_rd <- miscarriage_prim_rd %>% filter(row_number() %in% c(2))
-miscarriage_prim_rd$term[miscarriage_prim_rd$term=="primary"] <- "Miscarriage"
+#miscarriage_prim_rd <- miscarriage_prim_rd %>% filter(row_number() %in% c(2))
+#miscarriage_prim_rd$term[miscarriage_prim_rd$term=="primary"] <- "Miscarriage"
 
 
-rd_primary <- rbind(sb_prim_rd, abort_prim_rd, miscarriage_prim_rd)
+rd_primary <- rbind(sbprimrd, abortprimrd, miscarriageprimrd)
 
 #putting in scale per 1,000 pregancies
 rd_primary$estimate <- rd_primary$estimate*1000
@@ -1020,67 +1189,95 @@ rd_primary$std.error <- rd_primary$std.error*1000
 rd_primary$conf.low <- rd_primary$conf.low*1000
 rd_primary$conf.high <- rd_primary$conf.high*1000
 
-dw_rd_primary <- dwplot(rd_primary) +
-  theme_bw() + xlab("Risk Difference of Primary Education per 1,000 pregnancies") + ylab("") + 
-  scale_x_continuous(breaks = seq(from = -5, to = 10, by = 2)) +
-  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
-  theme_cowplot(12)+
-  theme(legend.position = "none")
 
+rd_primary_plot <- ggplot(data = rd_primary, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors)+
+  ylab("Risk Difference")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
 
 #rr_primary
-rr_primary <- rbind(sb_prim_rr, abort_prim_rr,miscarriage_prim_rr)
+rr_primary <- rbind(sbprimrr, abortprimrr, miscarriageprimrr)
+
+
+rr_primary_plot <- ggplot(data = rr_primary, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors)+
+  scale_y_continuous(name="Risk Ratio", breaks = seq(-2, 4, by = 0.5))+
+  #ylab("Risk Ratio")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+#dw_rd_primary <- dwplot(rd_primary) +
+#  theme_bw() + xlab("Risk Difference of Primary Education per 1,000 pregnancies") + ylab("") + 
+#  scale_x_continuous(breaks = seq(from = -5, to = 10, by = 2)) +
+#  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
+#  theme_cowplot(12)+
+#  theme(legend.position = "none")
+
+
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-rr_primary$estimate <- exp(rr_primary$estimate)
-rr_primary$std.error <- exp(rr_primary$std.error)
-rr_primary$conf.low <- exp(rr_primary$conf.low) 
-rr_primary$conf.high <- exp(rr_primary$conf.high)
+#rr_primary$estimate <- exp(rr_primary$estimate)
+#rr_primary$std.error <- exp(rr_primary$std.error)
+#rr_primary$conf.low <- exp(rr_primary$conf.low) 
+#rr_primary$conf.high <- exp(rr_primary$conf.high)
 
 
-dw_rr_primary <- dwplot(rr_primary) +
-  theme_bw() + xlab("Risk Ratio of Primary Educaiton") + ylab("") + 
-  scale_x_continuous(breaks = seq(from = 0, to = 2, by = 0.10)) +
-  geom_vline(xintercept = 1, colour = "grey60", linetype = 2) +
-  theme_cowplot(12)+
-  theme(legend.position = "none")
-
-
-
+#dw_rr_primary <- dwplot(rr_primary) +
+#  theme_bw() + xlab("Risk Ratio of Primary Educaiton") + ylab("") + 
+#  scale_x_continuous(breaks = seq(from = 0, to = 2, by = 0.10)) +
+#  geom_vline(xintercept = 1, colour = "grey60", linetype = 2) +
+#  theme_cowplot(12)+
+#  theme(legend.position = "none")
 
 
 
 
-rr_prim_estimates <- rbind(sb_prim_exp_rr, sb_prim_exp_rr_group_a, sb_prim_exp_rr_group_b,
-                           abort_prim_exp_rr, abort_prim_exp_rr_group_a, abort_prim_exp_rr_group_b,
-                           miscarriage_prim_exp_rr, miscarriage_prim_exp_rr_group_a, miscarriage_prim_exp_rr_group_b)
 
 
 
-rr_prim_conf.low <- rbind(sb_prim_exp_conflow, abort_prim_exp_conflow, miscarriage_prim_exp_conflow)
+#rr_prim_estimates <- rbind(sb_prim_exp_rr, sb_prim_exp_rr_group_a, sb_prim_exp_rr_group_b,
+#                           abort_prim_exp_rr, abort_prim_exp_rr_group_a, abort_prim_exp_rr_group_b,
+#                           miscarriage_prim_exp_rr, miscarriage_prim_exp_rr_group_a, miscarriage_prim_exp_rr_group_b)
 
 
-rr_prim_conf.high <- rbind(sb_prim_exp_confhigh, abort_prim_exp_confhigh, miscarriage_prim_exp_confhigh)
 
-rd_prim_estimates <- rbind(sbprim_rd, abortprim_rd, miscarriageprim_rd)
-rd_prim_conf.low <- rbind(sbprim_rd_conflow, abortprim_rd_conflow, miscarriageprim_rd_conflow)
-rd_prim_conf.high <- rbind(sbprim_rd_confhigh, abortprim_rd_confhigh, miscarriageprim_rd_confhigh)
+#rr_prim_conf.low <- rbind(sb_prim_exp_conflow, abort_prim_exp_conflow, miscarriage_prim_exp_conflow)
 
-rr_prim <- cbind(rr_prim_estimates, rr_prim_conf.low, rr_prim_conf.high)
-rr_prim <- as.data.frame(rr_prim)
-rr_prim <- rr_prim %>% rename(RR = V1, Conf.Low = V2, Conf.High = V3)
-rr_prim$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
-rr_prim <- rr_prim %>% relocate(Outcome, .before = RR)
 
-rd_prim <- cbind(rd_prim_estimates, rd_prim_conf.low, rd_prim_conf.high)
-rd_prim <- as.data.frame(rd_prim)
-rd_prim <- rd_prim %>% rename(RD = V1, RDConf.Low = V2, RDConf.High = V3)
+#rr_prim_conf.high <- rbind(sb_prim_exp_confhigh, abort_prim_exp_confhigh, miscarriage_prim_exp_confhigh)
 
-table3 <- cbind(rr_prim, rd_prim)
+#rd_prim_estimates <- rbind(sbprim_rd, abortprim_rd, miscarriageprim_rd)
+#rd_prim_conf.low <- rbind(sbprim_rd_conflow, abortprim_rd_conflow, miscarriageprim_rd_conflow)
+#rd_prim_conf.high <- rbind(sbprim_rd_confhigh, abortprim_rd_confhigh, miscarriageprim_rd_confhigh)
 
-tab3 <- flextable(table3) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
-print(tab3, preview = "docx")
+#rr_prim <- cbind(rr_prim_estimates, rr_prim_conf.low, rr_prim_conf.high)
+#rr_prim <- as.data.frame(rr_prim)
+#rr_prim <- rr_prim %>% rename(RR = V1, Conf.Low = V2, Conf.High = V3)
+#rr_prim$Outcome <- c("Stillbirth", "Abortion", "Miscarriage")
+#rr_prim <- rr_prim %>% relocate(Outcome, .before = RR)
+
+#rd_prim <- cbind(rd_prim_estimates, rd_prim_conf.low, rd_prim_conf.high)
+#rd_prim <- as.data.frame(rd_prim)
+#rd_prim <- rd_prim %>% rename(RD = V1, RDConf.Low = V2, RDConf.High = V3)
+
+#table3 <- cbind(rr_prim, rd_prim)
+
+#tab3 <- flextable(table3) %>% vline(part="all", j = 1, border = border_style) %>% vline(part="all", j = 4, border = border_style)
+#print(tab3, preview = "docx")
 
 
 
@@ -1089,13 +1286,26 @@ print(tab3, preview = "docx")
 
 #RD: family = quasibinomial(link = "identity") OR family = gaussian(link = "identity")
 
-sb_caste_rr <- svyglm(sb ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-sb_caste_rr <- sb_caste_rr %>% tidy(conf.int = TRUE) 
-sb_caste_rr 
+sb_caste_rr <- svyglm(sb ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
+
+sb_caste_rr <- avg_comparisons(sb_caste_rr, 
+                              variables = "scheduled", 
+                              by = "year_bin", transform_pre = "lnratioavg",
+                              transform_post = exp)
+
+#adding in term column
+sb_caste_rr$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbcasterr <- tidy(sb_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+#sb_caste_rr <- sb_caste_rr %>% tidy(conf.int = TRUE) 
+#sb_caste_rr 
 
 #tidying for dot and whisker plot
-sb_caste_rr <- sb_caste_rr %>% filter(row_number() %in% c(2))
-sb_caste_rr$term[sb_caste_rr$term=="scheduled"] <- "Stillbirth"
+#sb_caste_rr <- sb_caste_rr %>% filter(row_number() %in% c(2))
+#sb_caste_rr$term[sb_caste_rr$term=="scheduled"] <- "Stillbirth"
 
 
 #NOW EXPONENTIATE THE COEFFICIENT
@@ -1105,46 +1315,97 @@ sb_caste_rr$term[sb_caste_rr$term=="scheduled"] <- "Stillbirth"
 #sb_caste_exp_confhigh <- exp(sb_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
-sb_caste_rd <- svyglm(sb ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-sb_caste_rd <- sb_caste_rd %>% tidy(conf.int = TRUE)
+sb_caste_rd <- svyglm(sb ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+
+sb_caste_rd <- avg_comparisons(sb_caste_rd, 
+                              variables = list(scheduled = c(0,1)), 
+                              by = "year_bin")
+
+#adding in term column
+sb_caste_rd$outcome <- c("Stillbirth")
+
+sbcasterd <- tidy(sb_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
+#sb_caste_rd <- sb_caste_rd %>% tidy(conf.int = TRUE)
 #sbcaste_rd <- (sb_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #sbcaste_rd_conflow <- (sb_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #sbcaste_rd_confhigh <- (sb_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
 
 #tidying for dot and whisker plot
-sb_caste_rd <- sb_caste_rd %>% filter(row_number() %in% c(2))
-sb_caste_rd$term[sb_caste_rd$term=="scheduled"] <- "Stillbirth"
+#sb_caste_rd <- sb_caste_rd %>% filter(row_number() %in% c(2))
+#sb_caste_rd$term[sb_caste_rd$term=="scheduled"] <- "Stillbirth"
 
 
-abort_caste_rr <- svyglm(abort ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-abort_caste_rr <- abort_caste_rr %>% tidy(conf.int = TRUE) 
-abort_caste_rr 
+abort_caste_rr <- svyglm(abort ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
 
-abort_caste_rr <- abort_caste_rr %>% filter(row_number() %in% c(2))
-abort_caste_rr$term[abort_caste_rr$term == "scheduled"] <- "Abortion"
+abort_caste_rr <- avg_comparisons(abort_caste_rr, 
+                               variables = "scheduled", 
+                               by = "year_bin", transform_pre = "lnratioavg",
+                               transform_post = exp)
+
+#adding in term column
+abort_caste_rr$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortcasterr <- tidy(abort_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+#abort_caste_rr <- abort_caste_rr %>% tidy(conf.int = TRUE) 
+#abort_caste_rr 
+
+#abort_caste_rr <- abort_caste_rr %>% filter(row_number() %in% c(2))
+#abort_caste_rr$term[abort_caste_rr$term == "scheduled"] <- "Abortion"
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-abort_caste_exp_rr <- exp(abort_caste_rr$estimate[2]) %>% round_half_up(digits = 2)
-abort_caste_exp_conflow <- exp(abort_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
-abort_caste_exp_confhigh <- exp(abort_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
+#abort_caste_exp_rr <- exp(abort_caste_rr$estimate[2]) %>% round_half_up(digits = 2)
+#abort_caste_exp_conflow <- exp(abort_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
+#abort_caste_exp_confhigh <- exp(abort_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
-abort_caste_rd <- svyglm(abort ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-abort_caste_rd <- abort_caste_rd %>% tidy(conf.int = TRUE)
+abort_caste_rd <- svyglm(abort ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+
+abort_caste_rd <- avg_comparisons(abort_caste_rd, 
+                               variables = list(scheduled = c(0,1)), 
+                               by = "year_bin")
+
+#adding in term column
+abort_caste_rd$outcome <- c("Abortion")
+
+abortcasterd <- tidy(abort_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
+
+#abort_caste_rd <- abort_caste_rd %>% tidy(conf.int = TRUE)
 #abortcaste_rd <- (abort_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #abortcaste_rd_conflow <- (abort_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #abortcaste_rd_confhigh <- (abort_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-abort_caste_rd <- abort_caste_rd %>% filter(row_number() %in% c(2))
-abort_caste_rd$term[abort_caste_rd$term == "scheduled"] <- "Abortion"
+#abort_caste_rd <- abort_caste_rd %>% filter(row_number() %in% c(2))
+#abort_caste_rd$term[abort_caste_rd$term == "scheduled"] <- "Abortion"
 
 
 
-miscarriage_caste_rr <- svyglm(miscarriage ~ scheduled + age + outcome_year + as.factor(state), design = design, family = quasipoisson(link = "log"))
-miscarriage_caste_rr <- miscarriage_caste_rr %>% tidy(conf.int = TRUE) 
-miscarriage_caste_rr 
+miscarriage_caste_rr <- svyglm(miscarriage ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, 
+                               design = design, family = quasipoisson(link = "log"))
+
+
+miscarriage_caste_rr <- avg_comparisons(miscarriage_caste_rr, 
+                                  variables = "scheduled", 
+                                  by = "year_bin", transform_pre = "lnratioavg",
+                                  transform_post = exp)
+
+#adding in term column
+miscarriage_caste_rr$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagecasterr <- tidy(miscarriage_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+#miscarriage_caste_rr <- miscarriage_caste_rr %>% tidy(conf.int = TRUE) 
+#miscarriage_caste_rr 
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
@@ -1152,21 +1413,36 @@ miscarriage_caste_rr
 #miscarriage_caste_exp_conflow <- exp(miscarriage_caste_rr$conf.low[2]) %>% round_half_up(digits = 2)
 #miscarriage_caste_exp_confhigh <- exp(miscarriage_caste_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-miscarriage_caste_rr <- miscarriage_caste_rr %>% filter(row_number() %in% c(2))
-miscarriage_caste_rr$term[miscarriage_caste_rr$term == "scheduled"] <- "Miscarriage"
+#miscarriage_caste_rr <- miscarriage_caste_rr %>% filter(row_number() %in% c(2))
+#miscarriage_caste_rr$term[miscarriage_caste_rr$term == "scheduled"] <- "Miscarriage"
 
 
-miscarriage_caste_rd <- svyglm(miscarriage ~ scheduled + age + outcome_year + as.factor(state), design = design, family = gaussian(link = "identity"))
-miscarriage_caste_rd <- miscarriage_caste_rd %>% tidy(conf.int = TRUE)
+miscarriage_caste_rd <- svyglm(miscarriage ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, 
+                               design = design, family = gaussian(link = "identity"))
+
+
+miscarriage_caste_rd <- avg_comparisons(miscarriage_caste_rd, 
+                                  variables = list(scheduled = c(0,1)), 
+                                  by = "year_bin")
+
+#adding in term column
+miscarriage_caste_rd$outcome <- c("Miscarriage")
+
+miscarriagecasterd <- tidy(miscarriage_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
+
+
+
+#miscarriage_caste_rd <- miscarriage_caste_rd %>% tidy(conf.int = TRUE)
 #miscarriagecaste_rd <- (miscarriage_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #miscarriagecaste_rd_conflow <- (miscarriage_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
 #miscarriagecaste_rd_confhigh <- (miscarriage_caste_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
-miscarriage_caste_rd <- miscarriage_caste_rd %>% filter(row_number() %in% c(2))
-miscarriage_caste_rd$term[miscarriage_caste_rd$term == "scheduled"] <- "Miscarriage"
+#miscarriage_caste_rd <- miscarriage_caste_rd %>% filter(row_number() %in% c(2))
+#miscarriage_caste_rd$term[miscarriage_caste_rd$term == "scheduled"] <- "Miscarriage"
 
 
-rd_caste <- rbind(sb_caste_rd, abort_caste_rd, miscarriage_caste_rd)
+rd_caste_v1 <- rbind(sbcasterd, abortcasterd)
+rd_caste <- rbind(rd_caste_v1, miscarriagecasterd)
 
 #putting in scale per 1,000 pregancies
 rd_caste$estimate <- rd_caste$estimate*1000
@@ -1174,22 +1450,52 @@ rd_caste$std.error <- rd_caste$std.error*1000
 rd_caste$conf.low <- rd_caste$conf.low*1000
 rd_caste$conf.high <- rd_caste$conf.high*1000
 
-dw_rd_caste <- dwplot(rd_caste) +
-  theme_bw() + xlab("Risk Difference by Caste") + ylab("") + 
-  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
-  theme_cowplot(12)+
-  theme(legend.position = "none")
+rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
+                     breaks = c(-15, -10, -5, 0, 5, 10, 15))+
+  scale_color_manual(values = mycolors)+
+  #ylab("Risk Difference")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+#dw_rd_caste <- dwplot(rd_caste) +
+#  theme_bw() + xlab("Risk Difference by Caste") + ylab("") + 
+#  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
+#  theme_cowplot(12)+
+#  theme(legend.position = "none")
 
 
 #rr_primary
-rr_caste <- rbind(sb_caste_rr, abort_caste_rr,miscarriage_caste_rr)
+rr_caste_v1 <- rbind(sbcasterr, abortcasterr)
+rr_caste <- rbind(rr_caste_v1, miscarriagecasterr)
+
+rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  #scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
+  #                   breaks = c(-15, -10, -5, 0, 5, 10, 15))+
+  scale_color_manual(values = mycolors)+
+  ylab("Risk Ratio")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
 
 #NOW EXPONENTIATE THE COEFFICIENT
 
-rr_caste$estimate <- exp(rr_caste$estimate)
-rr_caste$std.error <- exp(rr_caste$std.error)
-rr_caste$conf.low <- exp(rr_caste$conf.low) 
-rr_caste$conf.high <- exp(rr_caste$conf.high)
+#rr_caste$estimate <- exp(rr_caste$estimate)
+#rr_caste$std.error <- exp(rr_caste$std.error)
+#rr_caste$conf.low <- exp(rr_caste$conf.low) 
+#rr_caste$conf.high <- exp(rr_caste$conf.high)
 
 
 dw_rr_caste <- dwplot(rr_caste) +

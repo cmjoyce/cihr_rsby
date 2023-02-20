@@ -220,6 +220,7 @@ table(df$strat_rurb)
 
 
 library(survey)
+library(NatParksPalettes)
 
 design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
@@ -266,9 +267,9 @@ mycolors <- carto_pal(11, "Safe")[4:9]
 
 stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + ylim(0,25)+
-  scale_color_manual(values = mycolors,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
@@ -304,8 +305,8 @@ sb_prim_year_rate$ci_u_per1000 <- sb_prim_year_rate$ci_u*1000
 
 stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + ylim(0,25)+
-  scale_color_manual(values =mycolors,  name = "Completed Primary School", breaks =c("0", "1"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values =natparks.pals("Triglav"),  name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -333,8 +334,8 @@ sb_caste_year_rate$ci_u_per1000 <- sb_caste_year_rate$ci_u*1000
 
 stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + ylim(0, 15)+
-  scale_color_manual(values = mycolors,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -356,9 +357,9 @@ abort_wi_year_rate$ci_u_per1000 <- abort_wi_year_rate$ci_u*1000
 
 abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() +
-  scale_color_manual(values = mycolors,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
@@ -376,8 +377,8 @@ abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y =
 
 abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() +
-  scale_color_manual(values = mycolors, name = "Completed Primary School", breaks =c("0", "1"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"), name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
@@ -392,8 +393,8 @@ abort_caste_year_rate$ci_u_per1000 <- abort_caste_year_rate$ci_u*1000
 
 abort_caste <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + 
-  scale_color_manual(values = mycolors,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of abortion per 1000 pregnancies") +
   labs(x = "Year")+
@@ -414,17 +415,17 @@ miscarriage_wi_year_rate$ci_u_per1000 <- miscarriage_wi_year_rate$ci_u*1000
 
 miscarriage_wi <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() +
-  scale_color_manual(values = mycolors,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
-                     labels = c("0.2", "0.4", "0.6", "0.8", "1.0"))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of miscarriage per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
 
 miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + 
-  scale_color_manual(values = mycolors,name = "Completed Primary School", breaks =c("0", "1"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of miscarriage per 1000 pregnancies") +
   labs(x = "Year")+
@@ -438,8 +439,8 @@ miscarriage_caste_year_rate$ci_u_per1000 <- miscarriage_caste_year_rate$ci_u*100
 
 miscarriage_caste <-  ggplot(data = miscarriage_caste_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
-  geom_line() + 
-  scale_color_manual(values = mycolors,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of miscarriageion per 1000 pregnancies") +
   labs(x = "Year")+
@@ -911,7 +912,10 @@ miscarriagewirii <- tidy(miscarriage_wi_rii) %>% select(c(year_bin, estimate, co
 #miscarriage_wiquint_exp_rii <- exp(miscarriage_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
 #miscarriage_wiquint_exp_rii$term <- "Miscarriage" #creating term since exponentiating values removes labels
 
-sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
+colors_outcomes <- NatParksPalettes$Triglav[4:6]
+
+sii_v1 <- rbind(sbwisii, abortwisii)
+sii <- rbind(sii_v1, miscarriagewisii)
 sii <- sii %>% group_by(year_bin)
 
 #putting on scale of thousand pregnancies
@@ -925,7 +929,7 @@ sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color =
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   ylab("Slope Index of Inequality")+
   xlab("Year") +
   theme_cowplot()+
@@ -946,7 +950,7 @@ rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color =
   geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   scale_y_continuous(name="Relative Index of Inequality", breaks = seq(-1.5, 5, by = 1))+
   #ylab("Relative Index of Inequality")+
   xlab("Year") +
@@ -999,14 +1003,20 @@ rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color =
 
 #table2 <- cbind(sii, rii)
 
-#library(flextable)
-#require(gdtools)
-#fontname <- "Times New Roman"
-#border_style = officer::fp_border(color="black", width=1)
+library(flextable)
+require(gdtools)
+fontname <- "Times New Roman"
+border_style = officer::fp_border(color="black", width=1)
 
 #theme_vanilla()  %>% 
   
-#flextable(sii) %>% vline(part = "all", j = 1, border = border_style)  #%>% theme_vanilla()
+flextable(sii) %>% vline(part = "all", j = 1, border = border_style)%>% theme_vanilla()
+flextable(rii) %>% vline(part = "all", j = 1, border = border_style)%>% theme_vanilla()
+
+sii_flextable <- flextable(sii)
+save_as_docx(sii_flextable, path = "file.docx")
+rii_flextable <- flextable(rii)
+save_as_docx(rii_flextable, path = "rii_flex.docx")
 #flexsii  <- flextable(sii)
 #flexsii %>% vline(part = "all", j = 1, border = border_style)
 #flexsii %>% bold(i = 1, bold = TRUE, part = "header")
@@ -1180,8 +1190,8 @@ miscarriageprimrd <- tidy(miscarriage_prim_rd) %>% select(c(year_bin, estimate, 
 #miscarriage_prim_rd <- miscarriage_prim_rd %>% filter(row_number() %in% c(2))
 #miscarriage_prim_rd$term[miscarriage_prim_rd$term=="primary"] <- "Miscarriage"
 
-
-rd_primary <- rbind(sbprimrd, abortprimrd, miscarriageprimrd)
+rd_prim_v1 <- rbind(sbprimrd, abortprimrd)
+rd_primary <- rbind(rd_prim_v1, miscarriageprimrd)
 
 #putting in scale per 1,000 pregancies
 rd_primary$estimate <- rd_primary$estimate*1000
@@ -1196,7 +1206,7 @@ rd_primary_plot <- ggplot(data = rd_primary, mapping = aes(x = year_bin, y = est
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   ylab("Risk Difference")+
   xlab("Year") +
   theme_cowplot()+
@@ -1212,12 +1222,19 @@ rr_primary_plot <- ggplot(data = rr_primary, mapping = aes(x = year_bin, y = est
   geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   scale_y_continuous(name="Risk Ratio", breaks = seq(-2, 4, by = 0.5))+
   #ylab("Risk Ratio")+
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rd_prim_flex <- flextable(rd_primary)
+save_as_docx(rd_prim_flex, path = "rd_prim_tab.docx")
+
+rr_prim_flex <- flextable(rr_primary)
+save_as_docx(rr_prim_flex, path = "rr_prim_tab.docx")
+
 
 #dw_rd_primary <- dwplot(rd_primary) +
 #  theme_bw() + xlab("Risk Difference of Primary Education per 1,000 pregnancies") + ylab("") + 
@@ -1442,7 +1459,7 @@ miscarriagecasterd <- tidy(miscarriage_caste_rd) %>% select(c(year_bin, estimate
 
 
 rd_caste_v1 <- rbind(sbcasterd, abortcasterd)
-rd_caste <- rbind(rd_caste_v1, miscarriagecasterd)
+rd_caste <- rbind(sbcasterd, abortcasterd, miscarriagecasterd)
 
 #putting in scale per 1,000 pregancies
 rd_caste$estimate <- rd_caste$estimate*1000
@@ -1458,7 +1475,7 @@ rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimat
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
   scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
                      breaks = c(-15, -10, -5, 0, 5, 10, 15))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   #ylab("Risk Difference")+
   xlab("Year") +
   theme_cowplot()+
@@ -1473,7 +1490,7 @@ rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimat
 
 #rr_primary
 rr_caste_v1 <- rbind(sbcasterr, abortcasterr)
-rr_caste <- rbind(rr_caste_v1, miscarriagecasterr)
+rr_caste <- rbind(sbcasterr, abortcasterr, miscarriagecasterr)
 
 rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
   geom_point(position=position_dodge(width=0.5)) + 
@@ -1483,11 +1500,19 @@ rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimat
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
   #scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
   #                   breaks = c(-15, -10, -5, 0, 5, 10, 15))+
-  scale_color_manual(values = mycolors)+
+  scale_color_manual(values = colors_outcomes)+
   ylab("Risk Ratio")+
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
+
+rd_caste_flex <- flextable(rd_caste)
+save_as_docx(rd_caste_flex, path = "rd_caste_tab.docx")
+
+rr_caste_flex <- flextable(rr_caste)
+save_as_docx(rr_caste_flex, path = "rr_caste_tab.docx")
+
 
 
 #NOW EXPONENTIATE THE COEFFICIENT

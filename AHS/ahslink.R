@@ -288,10 +288,6 @@ wps_preg <- wps_preg %>% add_count(caseid)
 
 #wpssb <- wpssb %>% mutate(maxoutcome = max(outcome_year))
 
-#mutate(marital_status = c7[femaleheadspouse == 1L])
-
-
-
 # Limiting to most recent outcome -----------------------------------------
 
 ahs_preg <- ahs_preg %>% arrange(desc(outcome_year)) %>% slice(1)
@@ -996,7 +992,7 @@ df <- df %>% mutate(toilet_share = case_when(survey == "DLHS4" & toilet_shared <
 df <- df %>% select(-c(toilet_shared))
 
 #matching cooking fuel variable
-#NFHS4, NFHS5, and DLHS3 all have matching items. AHS matches DLHS4 and both will therefore be recoded to match
+#NFHS5 and DLHS3have matching items. AHS matches DLHS4 and both will therefore be recoded to match
 
 #CORRECT CODING:
 #ELECTRICITY 01 
@@ -1010,6 +1006,36 @@ df <- df %>% select(-c(toilet_shared))
 #AGRICULTURAL CROP WASTE 09 
 #DUNG CAKES 10
 #OTHER  96
+
+#NFHS4 is missing option 3 and is as follows:
+#1   electricity
+#2   lpg, natural gas
+#4   biogas
+#5   kerosene
+#6   coal, lignite
+#7   charcoal
+#8   wood
+#9   straw/shrubs/grass
+#10   agricultural crop
+#11   animal dung
+#95   no food cooked in house
+#96   other
+#97   not a de jure resident
+
+
+
+#subtracting nfhs4 items under 11 by 1 to match nfhs5 and dlhs3
+df$cook_fuel_check <- ifelse(df$survey == "NFHS4" & df$cook_fuel > 2 & df$cook_fuel < 12, (df$cook_fuel - 1), df$cook_fuel)
+df$cook_fuel <- df$cook_fuel_check
+df <- df %>% select(-c(cook_fuel_check))
+
+#NFHS5 option 3 (natural gas) seems to be lumped into 2 (npg), subtracting all above 2 and less than 12 to match. Option 3 is empty.
+
+df$cook_fuel_check <- ifelse(df$survey == "NFHS5" & df$cook_fuel > 2 & df$cook_fuel < 12, (df$cook_fuel - 1), df$cook_fuel)
+
+df$cook_fuel <- df$cook_fuel_check
+df <- df %>% select(-c(cook_fuel_check))
+
 
 # In DLHS4 and AHS the coding is as follows: 
 #firewood 01
@@ -1043,56 +1069,56 @@ df <- df %>% select(-c(toilet_shared))
 
 df$cooking_fuel <- df$cook_fuel
 
-df <- df %>% mutate(cooking_fuel = case_when(survey == "DLHS3" & cook_fuel == 5 ~ 6,
-                                             survey == "DLHS3" & cook_fuel == 8 ~ 9,
+df <- df %>% mutate(cooking_fuel = case_when(survey == "DLHS3" & cook_fuel == 5 ~ 5,
+                                             survey == "DLHS3" & cook_fuel == 8 ~ 7,
                                              survey == "DLHS3" & cook_fuel == 1 ~ 1,
                                              survey == "DLHS3" & cook_fuel == 2 ~ 2,
                                              survey == "DLHS3" & cook_fuel == 3 ~ 3,
                                              survey == "DLHS3" & cook_fuel == 4 ~ 4,
-                                             survey == "DLHS3" & cook_fuel == 6 ~ 6,
-                                             survey == "DLHS3" & cook_fuel == 7 ~ 7,
-                                             survey == "DLHS3" & cook_fuel == 9 ~ 9,
-                                             survey == "DLHS3" & cook_fuel == 10 ~ 10,
+                                             survey == "DLHS3" & cook_fuel == 6 ~ 5,
+                                             survey == "DLHS3" & cook_fuel == 7 ~ 6,
+                                             survey == "DLHS3" & cook_fuel == 9 ~ 7,
+                                             survey == "DLHS3" & cook_fuel == 10 ~ 8,
                                              survey == "DLHS3" & cook_fuel == 96 ~ 96,
-                                             survey == "NFHS4" & cook_fuel == 5 ~ 6,
-                                             survey == "NFHS4" & cook_fuel == 8 ~ 9,
+                                             survey == "NFHS4" & cook_fuel == 5 ~ 5,
+                                             survey == "NFHS4" & cook_fuel == 8 ~ 7,
                                              survey == "NFHS4" & cook_fuel == 1 ~ 1,
                                              survey == "NFHS4" & cook_fuel == 2 ~ 2,
                                              survey == "NFHS4" & cook_fuel == 3 ~ 3,
                                              survey == "NFHS4" & cook_fuel == 4 ~ 4,
-                                             survey == "NFHS4" & cook_fuel == 6 ~ 6,
-                                             survey == "NFHS4" & cook_fuel == 7 ~ 7,
-                                             survey == "NFHS4" & cook_fuel == 9 ~ 9,
-                                             survey == "NFHS4" & cook_fuel == 10 ~ 10,
+                                             survey == "NFHS4" & cook_fuel == 6 ~ 5,
+                                             survey == "NFHS4" & cook_fuel == 7 ~ 6,
+                                             survey == "NFHS4" & cook_fuel == 9 ~ 7,
+                                             survey == "NFHS4" & cook_fuel == 10 ~ 8,
                                              survey == "NFHS4" & cook_fuel == 96 ~ 96,
-                                             survey == "NFHS5" & cook_fuel == 5 ~ 6,
-                                             survey == "NFHS5" & cook_fuel == 8 ~ 9,
+                                             survey == "NFHS5" & cook_fuel == 5 ~ 5,
+                                             survey == "NFHS5" & cook_fuel == 8 ~ 7,
                                              survey == "NFHS5" & cook_fuel == 1 ~ 1,
                                              survey == "NFHS5" & cook_fuel == 2 ~ 2,
                                              survey == "NFHS5" & cook_fuel == 3 ~ 3,
                                              survey == "NFHS5" & cook_fuel == 4 ~ 4,
-                                             survey == "NFHS5" & cook_fuel == 6 ~ 6,
-                                             survey == "NFHS5" & cook_fuel == 7 ~ 7,
-                                             survey == "NFHS5" & cook_fuel == 9 ~ 9,
-                                             survey == "NFHS5" & cook_fuel == 10 ~ 10,
+                                             survey == "NFHS5" & cook_fuel == 6 ~ 5,
+                                             survey == "NFHS5" & cook_fuel == 7 ~ 6,
+                                             survey == "NFHS5" & cook_fuel == 9 ~ 7,
+                                             survey == "NFHS5" & cook_fuel == 10 ~ 8,
                                              survey == "NFHS5" & cook_fuel == 96 ~ 96,
                                              survey == "DLHS4" & cook_fuel == 7 ~ 1,
                                              survey == "DLHS4" & cook_fuel == 6 ~ 2,
                                              survey == "DLHS4" & cook_fuel == 8 ~ 3,
                                              survey == "DLHS4" & cook_fuel == 5 ~ 4,
-                                             survey == "DLHS4" & cook_fuel == 4 ~ 6,
-                                             survey == "DLHS4" & cook_fuel == 1 ~ 7,
-                                             survey == "DLHS4" & cook_fuel == 2 ~ 9,
-                                             survey == "DLHS4" & cook_fuel == 3 ~ 10,
+                                             survey == "DLHS4" & cook_fuel == 4 ~ 5,
+                                             survey == "DLHS4" & cook_fuel == 1 ~ 6,
+                                             survey == "DLHS4" & cook_fuel == 2 ~ 7,
+                                             survey == "DLHS4" & cook_fuel == 3 ~ 8,
                                              survey == "DLHS4" & cook_fuel == 96 ~ 96,
                                              survey == "AHS" & cook_fuel == 7 ~ 1,
                                              survey == "AHS" & cook_fuel == 6 ~ 2,
                                              survey == "AHS" & cook_fuel == 8 ~ 3,
                                              survey == "AHS" & cook_fuel == 5 ~ 4,
-                                             survey == "AHS" & cook_fuel == 4 ~ 6,
-                                             survey == "AHS" & cook_fuel == 1 ~ 7,
-                                             survey == "AHS" & cook_fuel == 2 ~ 9,
-                                             survey == "AHS" & cook_fuel == 3 ~ 10,
+                                             survey == "AHS" & cook_fuel == 4 ~ 5,
+                                             survey == "AHS" & cook_fuel == 1 ~ 6,
+                                             survey == "AHS" & cook_fuel == 2 ~ 7,
+                                             survey == "AHS" & cook_fuel == 3 ~ 8,
                                              survey == "AHS" & cook_fuel == 9 ~ 96,
                                              TRUE ~ NA_real_))
 
@@ -1100,13 +1126,14 @@ table(df$survey, df$cook_fuel)
 table(df$survey, df$cooking_fuel)
 
 #fixing numbering
-df$cooking_fuel <- ifelse(df$cooking_fuel > 4, df$cooking_fuel - 1, df$cooking_fuel)
-df$cooking_fuel <- ifelse(df$cooking_fuel > 6, df$cooking_fuel - 1, df$cooking_fuel)
-df$cooking_fuel <- ifelse(df$cooking_fuel == 94, 96, df$cooking_fuel)
+#df$cooking_fuel <- ifelse(df$cooking_fuel > 4, df$cooking_fuel - 1, df$cooking_fuel)
+#df$cooking_fuel <- ifelse(df$cooking_fuel > 6, df$cooking_fuel - 1, df$cooking_fuel)
+#df$cooking_fuel <- ifelse(df$cooking_fuel == 94, 96, df$cooking_fuel)
 
 
 #removing old cook_fuel label
 df <- df %>% select(-c(cook_fuel))
+
 
 #now looking at radio variable
 # 1 is yes across all surveys. Harmonizing to this.

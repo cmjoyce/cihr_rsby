@@ -103,11 +103,12 @@ smc
 
 #drop variables with less than 0.05 -- explain less than 5% of variance. In this case bike, radio and animal car, and improved water
 
-asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, mobile_phone, #telephone_land_line, 
+asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, mobile_phone, telephone_land_line, 
                                 fridge, motorcycle, 
                          car,
                          toilet_rev, toilet_share, 
-                         cooking_fuel, has_computer))
+                         cooking_fuel, 
+                         has_computer))
 
 
 #not enough responses for type of water filter
@@ -127,18 +128,21 @@ library(psych)
 #asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
 
 
-prn<-psych::principal(asset_smc[,3:11], rotate="none", nfactors=2, cor = "mixed", 
+prn<-psych::principal(asset_smc[,3:12], rotate="none", nfactors=2, cor = "mixed", 
                       covar=T, scores=TRUE, missing = TRUE)
 
-index <- prn$scores[,2]
+#creating scree plot of asset index eigenvalues
+scree(asset_smc[,3:11], factors = FALSE, pc = TRUE)
+
+index <- prn$scores[,1] + prn$scores[,2]
 
 
-Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
+Assets.indexed<-mutate(asset,wi_quartile=as.factor(ntile(index,4)),
                        wi_continuous = index, wi_rank = row_number(index), wi_perc_rank = percent_rank(index),
                        wi_cume_rank = cume_dist(index))
 
 
-ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
+ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quartile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
   ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
 
 #adding continuous and quintile household wealth variables into full 
@@ -259,6 +263,14 @@ sb_wi_year_rate$sb_per1000 <- sb_wi_year_rate$sb*1000
 sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
 sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
 sb_wi_year_rate$se_per1000 <- sb_wi_year_rate$se*1000
+
+sb_wi_year_rate_cont <- svyby(~sb, ~outcome_year*~wi_perc_rank, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_wi_year_rate_cont$sb_per1000 <- sb_wi_year_rate_cont$sb*1000
+sb_wi_year_rate_cont$ci_l_per1000 <- sb_wi_year_rate_cont$ci_l*1000
+sb_wi_year_rate_cont$ci_u_per1000 <- sb_wi_year_rate_cont$ci_u*1000
+sb_wi_year_rate_cont$se_per1000 <- sb_wi_year_rate_cont$se*1000
+
 
 
 library(cowplot)

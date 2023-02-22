@@ -92,26 +92,51 @@ df <- df %>% mutate(
 )
 
 
-asset <- df %>% select(c(caseid, rural_urban, water_treat, radio, mobile_phone, telephone_land_line, fridge, bike, motorcycle, 
+#making missing binary into 0s
+length(which(is.na(df$water_treat)))
+df$water_treat<- ifelse(is.na(df$water_treat), 0, df$water_treat)
+
+length(which(is.na(df$radio)))
+df$radio <- ifelse(is.na(df$radio), 0, df$radio)
+
+length(which(is.na(df$mobile_phone)))
+#NFHS-5 is misisng most mobile phone data. Not using.
+#df$mobile_phone <- ifelse(is.na(df$mobile_phone), 0, df$mobile_phone)
+
+
+#df$telephone_land_line <- ifelse(is.na(df$telephone_land_line), 0, df$telephone_land_line)
+
+#also not using land line for consistency
+
+df$fridge <- ifelse(is.na(df$fridge), 0, df$fridge)
+df$bike <- ifelse(is.na(df$bike), 0, df$bike)
+df$motorcycle <- ifelse(is.na(df$motorcycle), 0, df$motorcycle)
+df$animal_cart <- ifelse(is.na(df$animal_cart), 0, df$animal_cart)
+df$car <- ifelse(is.na(df$car), 0, df$car)
+#no toilet share missing
+df$has_computer <- ifelse(is.na(df$has_computer), 0, df$has_computer)
+ 
+
+asset <- df %>% select(c(caseid, rural_urban, water_treat, radio, fridge, bike, motorcycle, 
                          animal_cart, car, #type_water_filter, 
                         improved_water, toilet_rev, toilet_share, 
                          cooking_fuel, has_computer))
 
 #examining for squared multiple correlations
-smc <- psych::smc(asset[,3:16])
+smc <- psych::smc(asset[,3:14])
 smc
 
-#drop variables with less than 0.05 -- explain less than 5% of variance. In this case bike, radio and animal car, and improved water
+#drop variables with less than 0.05 -- explain less than 5% of variance. In this case animal cart, and improved water
 
-asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, mobile_phone, telephone_land_line, 
-                                fridge, motorcycle, 
+asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, radio, 
+                                fridge, bike, motorcycle, 
                          car,
                          toilet_rev, toilet_share, 
                          cooking_fuel, 
                          has_computer))
 
 
-#not enough responses for type of water filter
+#not enough responses for type of water filter. AHS missing 80% of data
 
 #asset$type_water_filter <- as.factor(asset$type_water_filter)
 #asset$water_source <- as.factor(asset$water_source)
@@ -129,21 +154,22 @@ library(psych)
 
 
 prn<-psych::principal(asset_smc[,3:12], rotate="none", nfactors=2, cor = "mixed", 
-                      covar=T, scores=TRUE, missing = TRUE)
+                      covar=T, scores=TRUE, missing = TRUE, impute = "mean")
 
 #creating scree plot of asset index eigenvalues
-scree(asset_smc[,3:11], factors = FALSE, pc = TRUE)
+scree(asset_smc[,3:12], factors = FALSE, pc = TRUE)
 
 index <- prn$scores[,1] + prn$scores[,2]
 
 
-Assets.indexed<-mutate(asset,wi_quartile=as.factor(ntile(index,4)),
+Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
                        wi_continuous = index, wi_rank = row_number(index), wi_perc_rank = percent_rank(index),
                        wi_cume_rank = cume_dist(index))
 
 
-ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quartile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
-  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
+
+#ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
+#  ylab("Percentage")+ggtitle("Wealth by Rural/Urban")
 
 #adding continuous and quintile household wealth variables into full 
 
@@ -228,33 +254,30 @@ library(NatParksPalettes)
 
 design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
-sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
+#sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
 
-sb_year_rate$sb_per1000 <- sb_year_rate$sb*1000
-sb_year_rate$ci_l_per1000 <- sb_year_rate$ci_l*1000
-sb_year_rate$ci_u_per1000 <- sb_year_rate$ci_u*1000
-sb_year_rate$se_per1000 <- sb_year_rate$se*1000
+#sb_year_rate$sb_per1000 <- sb_year_rate$sb*1000
+#sb_year_rate$ci_l_per1000 <- sb_year_rate$ci_l*1000
+#sb_year_rate$ci_u_per1000 <- sb_year_rate$ci_u*1000
+#sb_year_rate$se_per1000 <- sb_year_rate$se*1000
 
-ms_year_rate$ms_per1000 <- ms_year_rate$miscarriage*1000
-ms_year_rate$ci_l_per1000 <- ms_year_rate$ci_l*1000
-ms_year_rate$ci_u_per1000 <- ms_year_rate$ci_u*1000
-ms_year_rate$se_per1000 <- ms_year_rate$se*1000
-
-
-sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-ms_wi_rate <- svyby(~miscarriage, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-abort_wi_rate <- svyby(~abort, ~wi_quintile, design, svymean, vartype = c("se", "ci"))
+#ms_year_rate$ms_per1000 <- ms_year_rate$miscarriage*1000
+#ms_year_rate$ci_l_per1000 <- ms_year_rate$ci_l*1000
+#ms_year_rate$ci_u_per1000 <- ms_year_rate$ci_u*1000
+#ms_year_rate$se_per1000 <- ms_year_rate$se*1000
 
 
-sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-sb_wi_rate$sb_per1000 <- sb_wi_rate$sb*1000
-sb_wi_rate$ci_l_per1000 <- sb_wi_rate$ci_l*1000
-sb_wi_rate$ci_u_per1000 <- sb_wi_rate$ci_u*1000
+#sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#ms_wi_rate <- svyby(~miscarriage, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#abort_wi_rate <- svyby(~abort, ~wi_quintile, design, svymean, vartype = c("se", "ci"))
 
 
-
+#sb_wi_rate <- svyby(~sb, ~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#sb_wi_rate$sb_per1000 <- sb_wi_rate$sb*1000
+#sb_wi_rate$ci_l_per1000 <- sb_wi_rate$ci_l*1000
+#sb_wi_rate$ci_u_per1000 <- sb_wi_rate$ci_u*1000
 
 
 sb_wi_year_rate <- svyby(~sb, ~outcome_year*~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -264,12 +287,12 @@ sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
 sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
 sb_wi_year_rate$se_per1000 <- sb_wi_year_rate$se*1000
 
-sb_wi_year_rate_cont <- svyby(~sb, ~outcome_year*~wi_perc_rank, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#sb_wi_year_rate_cont <- svyby(~sb, ~outcome_year*~wi_perc_rank, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
-sb_wi_year_rate_cont$sb_per1000 <- sb_wi_year_rate_cont$sb*1000
-sb_wi_year_rate_cont$ci_l_per1000 <- sb_wi_year_rate_cont$ci_l*1000
-sb_wi_year_rate_cont$ci_u_per1000 <- sb_wi_year_rate_cont$ci_u*1000
-sb_wi_year_rate_cont$se_per1000 <- sb_wi_year_rate_cont$se*1000
+#sb_wi_year_rate_cont$sb_per1000 <- sb_wi_year_rate_cont$sb*1000
+#sb_wi_year_rate_cont$ci_l_per1000 <- sb_wi_year_rate_cont$ci_l*1000
+#sb_wi_year_rate_cont$ci_u_per1000 <- sb_wi_year_rate_cont$ci_u*1000
+#sb_wi_year_rate_cont$se_per1000 <- sb_wi_year_rate_cont$se*1000
 
 
 
@@ -507,41 +530,6 @@ design_noweight <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, nest 
 
 #making two groups to compare RII and SII. 2004 - 2010 
 
-#binarizing caste or tribe?
-
-df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
-
-#redoing design to account for binarized variable
-design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
-
-
-#creating age categories
-#df <- df %>% mutate(agecat = case_when(age < 20 ~ 1,
-#                                       age >= 20 & age < 25 ~ 2,
-#                                       age >= 25 & age < 30 ~ 3,
-#                                       age >= 30 & age < 35 ~ 4,
-#                                       age >= 35 & age < 40 ~ 5,
-#                                       age >= 40 & age < 45 ~ 6,
-#                                       age >= 45 ~ 7,
-#                                       TRUE ~ NA_real_))
-
-
-#creating year bins
-table(df$outcome_year)
-df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
-                                                outcome_year > 2005 & outcome_year < 2008 ~ 2,
-                                                outcome_year > 2007 & outcome_year < 2010 ~ 3,
-                                                outcome_year > 2009 & outcome_year < 2012 ~ 4,
-                                                outcome_year > 2011 & outcome_year < 2014 ~ 5,
-                                                outcome_year > 2013 & outcome_year < 2016 ~ 6,
-                                                outcome_year > 2015 & outcome_year < 2018 ~ 7,
-                                                outcome_year > 2017 ~ 8,
-                                                TRUE ~ NA_real_)))
-
-df$year_bin <- as.factor(df$year_bin)
-
-#redoing design
-design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 
 # NFHS only rates ---------------------------------------------------------
@@ -776,6 +764,30 @@ library(dotwhisker)
 library(splines)
 library(broom)
 library(marginaleffects)
+
+#binarizing caste or tribe?
+
+df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
+
+#creating year bins
+table(df$outcome_year)
+df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
+                                          outcome_year > 2005 & outcome_year < 2008 ~ 2,
+                                          outcome_year > 2007 & outcome_year < 2010 ~ 3,
+                                          outcome_year > 2009 & outcome_year < 2012 ~ 4,
+                                          outcome_year > 2011 & outcome_year < 2014 ~ 5,
+                                          outcome_year > 2013 & outcome_year < 2016 ~ 6,
+                                          outcome_year > 2015 & outcome_year < 2018 ~ 7,
+                                          outcome_year > 2017 ~ 8,
+                                          TRUE ~ NA_real_)))
+
+df$year_bin <- as.factor(df$year_bin)
+
+#redoing design
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+#write.csv(df, "df_for_cluster.csv")
+
 sb_wiquint_sii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
 #sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
 
@@ -924,10 +936,10 @@ miscarriagewirii <- tidy(miscarriage_wi_rii) %>% select(c(year_bin, estimate, co
 #miscarriage_wiquint_exp_rii <- exp(miscarriage_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
 #miscarriage_wiquint_exp_rii$term <- "Miscarriage" #creating term since exponentiating values removes labels
 
-colors_outcomes <- NatParksPalettes$Triglav[4:6]
+colors_outcomes <- natparks.pals("Triglav")[4:6]
 
 sii_v1 <- rbind(sbwisii, abortwisii)
-sii <- rbind(sii_v1, miscarriagewisii)
+sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
 sii <- sii %>% group_by(year_bin)
 
 #putting on scale of thousand pregnancies
@@ -1026,9 +1038,9 @@ flextable(sii) %>% vline(part = "all", j = 1, border = border_style)%>% theme_va
 flextable(rii) %>% vline(part = "all", j = 1, border = border_style)%>% theme_vanilla()
 
 sii_flextable <- flextable(sii)
-save_as_docx(sii_flextable, path = "file.docx")
+save_as_docx(sii_flextable, path = "sii_flex_tab.docx")
 rii_flextable <- flextable(rii)
-save_as_docx(rii_flextable, path = "rii_flex.docx")
+save_as_docx(rii_flextable, path = "rii_flex_tab.docx")
 #flexsii  <- flextable(sii)
 #flexsii %>% vline(part = "all", j = 1, border = border_style)
 #flexsii %>% bold(i = 1, bold = TRUE, part = "header")

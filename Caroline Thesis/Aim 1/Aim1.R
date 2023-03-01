@@ -48,7 +48,45 @@ table(df$state, df$outcome_year)
 
 df <- df %>% filter(state != 1, state != 7, state != 13, state != 24, state != 25, state != 30)
 
+#calculating weights. For NFHS surveys weights must be divided by 1000000
 
+
+df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
+                                       survey == "NFHS5" ~ wt/1000000,
+                                       survey == "DLHS3" ~ wt,
+                                       survey == "DLHS4" ~ wt,
+                                       survey == "AHS" ~ wt,
+                                       TRUE ~ NA_real_))
+
+
+#making PSUs into new value that is state + psu combined
+df$psu2 <- paste(df$state, df$psu, sep = "")
+
+#weight adjusted. De-normalizing weights from "sampled dataset.
+#using closest census to outcome year. Only DLHS3 will use census 2001. Will calculate proportion for both 2001 and 2011, outcome year
+#will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 2001. 2006-2008 will use 2011.
+
+#load in sampled from weight denormalization file
+
+sampled <- read.csv("sampled_prop_by_state.csv")
+
+df <- left_join(df, sampled, by = "state")
+
+df <- df %>% select(-c(EM_2001, EM_2011, nfhs4_sampled, nfhs5_sampled, dlhs3_sampled, dlhs4_sampled, ahs_sampled))
+
+#dropping sampled and census 
+
+df <- df %>% mutate(weight_adj = case_when(survey == "NFHS4" ~ (weight * nfhs4_prop),
+                                           survey == "DLHS3" & outcome_year < 2006 ~ (weight * dlhs3_prop_2001),
+                                           survey == "DLHS3" & outcome_year > 2005 ~ (weight * dlhs3_prop_2011),
+                                           survey == "DLHS4" ~ (weight * dlhs4_prop),
+                                           survey == "NFHS5" ~ (weight * nfhs5_prop),
+                                           survey == "AHS" ~ (weight * ahs_prop),
+                                           TRUE ~ NA_real_))
+
+
+
+#writing new csv
 
 # Creating asset index ----------------------------------------------------
 
@@ -153,19 +191,20 @@ library(psych)
 #asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
 
 
-prn<-psych::principal(asset_smc[,3:12], rotate="none", nfactors=2, cor = "mixed", 
+prn<-psych::principal(asset_smc[,3:12], rotate="none", #nfactors=2, 
+                      cor = "mixed", 
                       covar=T, scores=TRUE, missing = TRUE, impute = "mean")
 
 #creating scree plot of asset index eigenvalues
 scree(asset_smc[,3:12], factors = FALSE, pc = TRUE)
 
-index <- prn$scores[,1] + prn$scores[,2]
+index <- prn$scores[,1] #+ prn$scores[,2]
 
 
 Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
                        wi_continuous = index, wi_rank = row_number(index), wi_perc_rank = percent_rank(index),
-                       wi_cume_rank = cume_dist(index))
-
+                       wi_cume_rank = cume_dist(index), wicutQuintile = cut(index, breaks=quantile(index, seq(0, 1, by=1/5)),
+                                                                          include.lowest=T, label=1:5))
 
 
 #ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
@@ -174,6 +213,10 @@ Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
 #adding continuous and quintile household wealth variables into full 
 
 df_w_wi <- left_join(df, Assets.indexed)
+
+library(dineq)
+#creating weighted wealth quintile variable
+df_w_wi$wiquint_weight <- ntiles.wtd(df_w_wi$wi_perc_rank, n = 5, weights = df$weight_adj)
 
 #renaming
 
@@ -199,60 +242,57 @@ df <- df %>% mutate(insurance = case_when(esis == 1 ~ 1,
 
 # analyses ----------------------------------------------------------------
 
-#calculating weights. For NFHS surveys weights must be divided by 1000000
 
-
-df <- df %>% mutate(weight = case_when(survey == "NFHS4" ~ wt/1000000,
-                                       survey == "NFHS5" ~ wt/1000000,
-                                       survey == "DLHS3" ~ wt,
-                                       survey == "DLHS4" ~ wt,
-                                       survey == "AHS" ~ wt,
-                                       TRUE ~ NA_real_))
-
-
-#making PSUs into new value that is state + psu combined
-df$psu2 <- paste(df$state, df$psu, sep = "")
-
-#weight adjusted. De-normalizing weights from "sampled dataset.
-#using closest census to outcome year. Only DLHS3 will use census 2001. Will calculate proportion for both 2001 and 2011, outcome year
-#will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 2001. 2006-2008 will use 2011.
-
-#load in sampled from weight denormalization file
-
-sampled <- read.csv("sampled_prop_by_state.csv")
-
-df <- left_join(df, sampled, by = "state")
-
-df <- df %>% select(-c(EM_2001, EM_2011, nfhs4_sampled, nfhs5_sampled, dlhs3_sampled, dlhs4_sampled, ahs_sampled))
-
-#dropping sampled and census 
-
-df <- df %>% mutate(weight_adj = case_when(survey == "NFHS4" ~ (weight * nfhs4_prop),
-                                           survey == "DLHS3" & outcome_year < 2006 ~ (weight * dlhs3_prop_2001),
-                                           survey == "DLHS3" & outcome_year > 2005 ~ (weight * dlhs3_prop_2011),
-                                           survey == "DLHS4" ~ (weight * dlhs4_prop),
-                                           survey == "NFHS5" ~ (weight * nfhs5_prop),
-                                           survey == "AHS" ~ (weight * ahs_prop),
-                                           TRUE ~ NA_real_))
-
-
-
-#writing new csv
 #write.csv(df, "df_socioeconomic.csv")
 
 df <- read.csv("df_socioeconomic.csv")
 
 # calculating rates per year ----------------------------------------------
+library(Redmonder)
+library(survey)
+library(NatParksPalettes)
+
 
 #making strata variable from rural/urban
 df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
 table(df$strat_rurb)
 
+#making reverse coded categories
+df <- df %>% mutate(wi_quint_rev = case_when(wi_quintile == 1 ~ 5,
+                                             wi_quintile == 2 ~ 4,
+                                             wi_quintile == 3 ~ 3,
+                                             wi_quintile == 4 ~ 2,
+                                             wi_quintile == 5 ~ 1))
 
-library(survey)
-library(NatParksPalettes)
 
+#binarizing caste and tribe
+
+df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
+
+#reverse-coding scheduled caste and tribe
+df$scheduled_rev <- ifelse(df$scheduled == 1, 0, 1) ### CHECK THIS THOUGH, as it includes don't knows!!
+
+#reverse coding education
+df$primary_rev <- ifelse(df$primary == 1, 0, 1)
+
+
+#creating year bins
+table(df$outcome_year)
+df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
+                                          outcome_year > 2005 & outcome_year < 2008 ~ 2,
+                                          outcome_year > 2007 & outcome_year < 2010 ~ 3,
+                                          outcome_year > 2009 & outcome_year < 2012 ~ 4,
+                                          outcome_year > 2011 & outcome_year < 2014 ~ 5,
+                                          outcome_year > 2013 & outcome_year < 2016 ~ 6,
+                                          outcome_year > 2015 & outcome_year < 2018 ~ 7,
+                                          outcome_year > 2017 ~ 8,
+                                          TRUE ~ NA_real_)))
+
+df$year_bin <- as.factor(df$year_bin)
+
+#redoing design
 design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
 
 #sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 #ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
@@ -348,6 +388,25 @@ stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_yea
   theme_cowplot(11)
 
 
+# now doing primary REVERSE
+
+#sb_primREV_year_rate <- svyby(~sb, ~outcome_year*~primary_rev, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+#sb_primREV_year_rate$sb_per1000 <- sb_primREV_year_rate$sb*1000
+#sb_primREV_year_rate$ci_l_per1000 <- sb_primREV_year_rate$ci_l*1000
+#sb_primREV_year_rate$ci_u_per1000 <- sb_primREV_year_rate$ci_u*1000
+
+
+
+#stillbirth_primREV <- ggplot(data = sb_primREV_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary_rev))) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+#  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+#  scale_color_manual(values =natparks.pals("Triglav"),  name = "Completed Primary School", breaks =c("0", "1"), 
+#                     labels = c("Yes", "No"))+
+#  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+#  labs(x = "Year")+
+#  theme_cowplot(11)
+
 #ggplot(data=sb_prim_year_rate, aes(x=outcome_year, y=sb_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000, 
 #                                   fill=as.factor(primary), linetype=as.factor(primary))) + 
   #geom_point() +     
@@ -375,6 +434,23 @@ stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot()
+
+
+#caste reverse
+#sb_caste_rev_year_rate <- svyby(~sb, ~outcome_year*caste_rev_group, design, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
+
+#sb_caste_rev_year_rate$sb_per1000 <- sb_caste_rev_year_rate$sb*1000
+#sb_caste_rev_year_rate$ci_l_per1000 <- sb_caste_rev_year_rate$ci_l*1000
+#sb_caste_rev_year_rate$ci_u_per1000 <- sb_caste_rev_year_rate$ci_u*1000
+
+#stillbirth_caste_rev <-  ggplot(data = sb_caste_rev_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_rev_group))) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+#  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+#  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+                     labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
+#  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+#  labs(x = "Year")+
+#  theme_cowplot()
 
 
 #now looking at abortion
@@ -765,26 +841,6 @@ library(splines)
 library(broom)
 library(marginaleffects)
 
-#binarizing caste or tribe?
-
-df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
-
-#creating year bins
-table(df$outcome_year)
-df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
-                                          outcome_year > 2005 & outcome_year < 2008 ~ 2,
-                                          outcome_year > 2007 & outcome_year < 2010 ~ 3,
-                                          outcome_year > 2009 & outcome_year < 2012 ~ 4,
-                                          outcome_year > 2011 & outcome_year < 2014 ~ 5,
-                                          outcome_year > 2013 & outcome_year < 2016 ~ 6,
-                                          outcome_year > 2015 & outcome_year < 2018 ~ 7,
-                                          outcome_year > 2017 ~ 8,
-                                          TRUE ~ NA_real_)))
-
-df$year_bin <- as.factor(df$year_bin)
-
-#redoing design
-design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 #write.csv(df, "df_for_cluster.csv")
 
@@ -936,7 +992,11 @@ miscarriagewirii <- tidy(miscarriage_wi_rii) %>% select(c(year_bin, estimate, co
 #miscarriage_wiquint_exp_rii <- exp(miscarriage_wiquint_rii %>% select(2:3, 6:7)) %>% round_half_up(digits = 1)
 #miscarriage_wiquint_exp_rii$term <- "Miscarriage" #creating term since exponentiating values removes labels
 
-colors_outcomes <- natparks.pals("Triglav")[4:6]
+#colors_outcomes <- natparks.pals("Triglav")[1:3]
+
+colors_outcomes_check <- redmonder.pal(8, "qMSOBuWarm")[2:4]
+
+colors_try <- ['#024b7a', '#44b7c2', '#e67e00']
 
 sii_v1 <- rbind(sbwisii, abortwisii)
 sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
@@ -953,11 +1013,12 @@ sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color =
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = colors_outcomes_check, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   ylab("Slope Index of Inequality")+
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
 
 #dwsii <- dwplot(sii) +
 #  theme_bw() + xlab("Slope Index of Inequality per 1,000 pregnancies") + ylab("") + 
@@ -967,14 +1028,15 @@ sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color =
 #  theme_cowplot(12)+
 #  theme(legend.position = "none")
 
-rii <- rbind(sbwirii, abortwirii, miscarriagewirii)
+rii_v1 <- rbind(sbwirii, abortwirii)
+rii <- rbind(rii_v1, miscarriagewirii)
 
 rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + geom_point(position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = colors_outcomes_check, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   scale_y_continuous(name="Relative Index of Inequality", breaks = seq(-1.5, 5, by = 1))+
   #ylab("Relative Index of Inequality")+
   xlab("Year") +

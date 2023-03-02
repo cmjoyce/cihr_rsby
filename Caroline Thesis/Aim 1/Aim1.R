@@ -338,12 +338,16 @@ sb_wi_year_rate$se_per1000 <- sb_wi_year_rate$se*1000
 
 library(cowplot)
 library(rcartocolor)
-mycolors <- carto_pal(11, "Safe")[4:9]
+library(nord)
+#mycolors_check <- nord(palette = "")
+#mycolors <- carto_pal(11, "Safe")[4:9]
+
+mycolors_descriptive <- c("#024b7a", "#e67e00", "#44b7c2", "#901f57", "#458e48")
 
 stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+  scale_color_manual(values = mycolors_descriptive,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -381,7 +385,7 @@ sb_prim_year_rate$ci_u_per1000 <- sb_prim_year_rate$ci_u*1000
 stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values =natparks.pals("Triglav"),  name = "Completed Primary School", breaks =c("0", "1"), 
+  scale_color_manual(values =mycolors_descriptive,  name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -429,7 +433,7 @@ sb_caste_year_rate$ci_u_per1000 <- sb_caste_year_rate$ci_u*1000
 stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  scale_color_manual(values =c("#e67e00", "#44b7c2", "#024b7a"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -469,7 +473,7 @@ abort_wi_year_rate$ci_u_per1000 <- abort_wi_year_rate$ci_u*1000
 abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+  scale_color_manual(values = mycolors_descriptive,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
@@ -489,7 +493,7 @@ abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y =
 abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"), name = "Completed Primary School", breaks =c("0", "1"), 
+  scale_color_manual(values = mycolors_descriptive, name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
@@ -996,7 +1000,7 @@ miscarriagewirii <- tidy(miscarriage_wi_rii) %>% select(c(year_bin, estimate, co
 
 colors_outcomes_check <- redmonder.pal(8, "qMSOBuWarm")[2:4]
 
-colors_try <- ['#024b7a', '#44b7c2', '#e67e00']
+mycolors_outcomes <- c("#024b7a", "#e67e00", "#44b7c2")
 
 sii_v1 <- rbind(sbwisii, abortwisii)
 sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
@@ -1008,12 +1012,13 @@ sii$std.error <- sii$std.error*1000
 sii$conf.low <- sii$conf.low*1000
 sii$conf.high <- sii$conf.high*1000
 
-sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + geom_point(position=position_dodge(width=0.5)) + 
+sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes_check, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   ylab("Slope Index of Inequality")+
   xlab("Year") +
   theme_cowplot()+
@@ -1031,12 +1036,13 @@ sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color =
 rii_v1 <- rbind(sbwirii, abortwirii)
 rii <- rbind(rii_v1, miscarriagewirii)
 
-rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + geom_point(position=position_dodge(width=0.5)) + 
+rii_plot <- ggplot(data = rii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes_check, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   scale_y_continuous(name="Relative Index of Inequality", breaks = seq(-1.5, 5, by = 1))+
   #ylab("Relative Index of Inequality")+
   xlab("Year") +
@@ -1285,30 +1291,32 @@ rd_primary$std.error <- rd_primary$std.error*1000
 rd_primary$conf.low <- rd_primary$conf.low*1000
 rd_primary$conf.high <- rd_primary$conf.high*1000
 
+mycolors_outcomes <- c("#024b7a", "#e67e00", "#44b7c2")
 
 rd_primary_plot <- ggplot(data = rd_primary, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
-  geom_point(position=position_dodge(width=0.5)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   ylab("Risk Difference")+
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
 
 #rr_primary
-rr_primary <- rbind(sbprimrr, abortprimrr, miscarriageprimrr)
+rr_primary_v1 <- rbind(sbprimrr, abortprimrr)
+rr_primary <- rbind(rr_primary_v1, miscarriageprimrr)
 
 
 rr_primary_plot <- ggplot(data = rr_primary, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
-  geom_point(position=position_dodge(width=0.5)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   scale_y_continuous(name="Risk Ratio", breaks = seq(-2, 4, by = 0.5))+
   #ylab("Risk Ratio")+
   xlab("Year") +
@@ -1545,7 +1553,7 @@ miscarriagecasterd <- tidy(miscarriage_caste_rd) %>% select(c(year_bin, estimate
 
 
 rd_caste_v1 <- rbind(sbcasterd, abortcasterd)
-rd_caste <- rbind(sbcasterd, abortcasterd, miscarriagecasterd)
+rd_caste <- rbind(rd_caste_v1, miscarriagecasterd)
 
 #putting in scale per 1,000 pregancies
 rd_caste$estimate <- rd_caste$estimate*1000
@@ -1554,14 +1562,14 @@ rd_caste$conf.low <- rd_caste$conf.low*1000
 rd_caste$conf.high <- rd_caste$conf.high*1000
 
 rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
-  geom_point(position=position_dodge(width=0.5)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
   scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
   scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
                      breaks = c(-15, -10, -5, 0, 5, 10, 15))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   #ylab("Risk Difference")+
   xlab("Year") +
   theme_cowplot()+
@@ -1576,7 +1584,7 @@ rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimat
 
 #rr_primary
 rr_caste_v1 <- rbind(sbcasterr, abortcasterr)
-rr_caste <- rbind(sbcasterr, abortcasterr, miscarriagecasterr)
+rr_caste <- rbind(rr_caste_v1, miscarriagecasterr)
 
 rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
   geom_point(position=position_dodge(width=0.5)) + 
@@ -1586,7 +1594,7 @@ rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimat
                                                            "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
   #scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
   #                   breaks = c(-15, -10, -5, 0, 5, 10, 15))+
-  scale_color_manual(values = colors_outcomes)+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   ylab("Risk Ratio")+
   xlab("Year") +
   theme_cowplot()+

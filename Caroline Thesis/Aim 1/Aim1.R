@@ -342,12 +342,14 @@ library(nord)
 #mycolors_check <- nord(palette = "")
 #mycolors <- carto_pal(11, "Safe")[4:9]
 
-mycolors_descriptive <- c("#024b7a", "#e67e00", "#44b7c2", "#901f57", "#458e48")
+mycolors_wi <- c("#024b7a", "#44b7c2", "#5ddf6c", "#458e48", "#e67e00")
+mycolors_prim <- c("#e67e00", "#024b7a")
+mycolors_caste <- c("#e67e00", "#44b7c2", "#024b7a")
 
 stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = mycolors_descriptive,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -385,7 +387,7 @@ sb_prim_year_rate$ci_u_per1000 <- sb_prim_year_rate$ci_u*1000
 stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values =mycolors_descriptive,  name = "Completed Primary School", breaks =c("0", "1"), 
+  scale_color_manual(values = mycolors_prim,  name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -433,7 +435,7 @@ sb_caste_year_rate$ci_u_per1000 <- sb_caste_year_rate$ci_u*1000
 stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values =c("#e67e00", "#44b7c2", "#024b7a"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  scale_color_manual(values = mycolors_caste,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
@@ -451,7 +453,7 @@ stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
 #  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
 #  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
-                     labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
+#                     labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
 #  labs(y = "Rate of stillbirths per 1000 pregnancies") +
 #  labs(x = "Year")+
 #  theme_cowplot()
@@ -473,7 +475,7 @@ abort_wi_year_rate$ci_u_per1000 <- abort_wi_year_rate$ci_u*1000
 abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = mycolors_descriptive,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
@@ -493,7 +495,7 @@ abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y =
 abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = mycolors_descriptive, name = "Completed Primary School", breaks =c("0", "1"), 
+  scale_color_manual(values = mycolors_prim, name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of abortions per 1000 pregnancies") +
   labs(x = "Year")+
@@ -509,7 +511,7 @@ abort_caste_year_rate$ci_u_per1000 <- abort_caste_year_rate$ci_u*1000
 abort_caste <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  scale_color_manual(values = mycolors_caste,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of abortion per 1000 pregnancies") +
   labs(x = "Year")+
@@ -531,7 +533,7 @@ miscarriage_wi_year_rate$ci_u_per1000 <- miscarriage_wi_year_rate$ci_u*1000
 miscarriage_wi <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
                      labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
   labs(y = "Rate of miscarriage per 1000 pregnancies") +
   labs(x = "Year")+
@@ -540,7 +542,7 @@ miscarriage_wi <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outco
 miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),name = "Completed Primary School", breaks =c("0", "1"), 
+  scale_color_manual(values = mycolors_prim,name = "Completed Primary School", breaks =c("0", "1"), 
                      labels = c("No", "Yes"))+
   labs(y = "Rate of miscarriage per 1000 pregnancies") +
   labs(x = "Year")+
@@ -555,7 +557,7 @@ miscarriage_caste_year_rate$ci_u_per1000 <- miscarriage_caste_year_rate$ci_u*100
 miscarriage_caste <-  ggplot(data = miscarriage_caste_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(caste_group))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
-  scale_color_manual(values = natparks.pals("Triglav"),  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
+  scale_color_manual(values = mycolors_caste,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
                      labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of miscarriageion per 1000 pregnancies") +
   labs(x = "Year")+
@@ -617,38 +619,106 @@ design_noweight <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, nest 
 
 nfhs <- df %>% filter(survey == "NFHS4" | survey == "NFHS5")
 
+#dropping 2010 as many states missing observaitons
+nfhs <- nfhs %>% filter(outcome_year > 2010)
+
+library(haven)
+library(data.table)
+
+#need NFHS stratification variable. reading in NFHS4 and NFHS5
+nfhs4 <- read_dta("IAIR73FL_DC.DTA", col_select = c(1:30))
+nfhs5 <- fread("IAIR7AFL.csv", select = c(1:30))
+
+#making state + v022 into strata. 
+nfhs4$strat_state <- paste(nfhs4$v024, nfhs4$v023, sep = "")
+nfhs5$strat_state <- paste(nfhs5$v024, nfhs5$v023, sep = "")
+
+nfhs4 <- nfhs4 %>% select(c(caseid, v007, v023, strat_state))
+nfhs5 <- nfhs5 %>% select(c(caseid, v007, v023, strat_state))
+
+nfhs_strat <- bind_rows(nfhs4, nfhs5)
+nfhs_strat <- nfhs_strat %>% rename(year_of_intr = v007)
+
+nfhs <- left_join(nfhs, nfhs_strat, by = c("caseid", "year_of_intr"))
+
+options(survey.lonely.psu = "adjust")
+
+nfhs$state <- factor(nfhs$state, 
+                     levels = c(2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27, 
+                                28, 29, 31, 32, 33, 34),
+                     labels = c("HP", "Punjab", "Chandigarh", "Uttarakhand", "Haryana",
+                                "Rajasthan", "UP", "Bihar", "Sikkim", "Arunachal Pradesh", "Manipur", "Mizoram",
+                                "Tripura", "Meghalaya", "Assam", "WB", "Jharkhand", "Odisha",
+                                "Chhattisgarh", "MP", "Maharashtra", "Andhra Pradesh","Karnataka", "Goa", "Kerala", "TN", "Puducherry",
+                                "Andaman & Nicobar"))
+
+nfhs_design <- svydesign(data = nfhs, ids = nfhs$psu2, strata = nfhs$strat_state, weights = ~weight_adj, nest = TRUE)
 
 
-nfhs_design <- svydesign(data = nfhs, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
-
-sb_year_rate_nfhs <- svyby(~sb, ~outcome_year*wi_quint, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+#sb_year_rate_nfhs <- svyby(~sb, ~outcome_year*wi_quintile, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 ms_year_rate_nfhs <- svyby(~miscarriage, ~outcome_year, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
-abort_year_rate_nfhs <- svyby(~abort, ~outcome_year, nfhs_design, svymean, vartype = c("se", "ci"))
+#abort_year_rate_nfhs <- svyby(~abort, ~outcome_year, nfhs_design, svymean, vartype = c("se", "ci"))
 
-ms_year_rate_age_nfhs <- svyby(~miscarriage, ~outcome_year+agecat, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_rurb_nfhs <- svyby(~miscarriage, ~outcome_year+strat_rurb, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
-sb_year_rate_nfhs$sb_per1000 <- sb_year_rate_nfhs$sb*1000
-sb_year_rate_nfhs$ci_l_per1000 <- sb_year_rate_nfhs$ci_l*1000
-sb_year_rate_nfhs$ci_u_per1000 <- sb_year_rate_nfhs$ci_u*1000
-sb_year_rate_nfhs$se_per1000 <- sb_year_rate_nfhs$se*1000
+#ms_year_rate_age_nfhs <- svyby(~miscarriage, ~outcome_year+agecat, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate_state_nfhs <- svyby(~miscarriage, ~outcome_year+state, nfhs_design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+
+#sb_year_rate_nfhs$sb_per1000 <- sb_year_rate_nfhs$sb*1000
+#sb_year_rate_nfhs$ci_l_per1000 <- sb_year_rate_nfhs$ci_l*1000
+#sb_year_rate_nfhs$ci_u_per1000 <- sb_year_rate_nfhs$ci_u*1000
+#sb_year_rate_nfhs$se_per1000 <- sb_year_rate_nfhs$se*1000
 
 ms_year_rate_nfhs$ms_per1000 <- ms_year_rate_nfhs$miscarriage*1000
 ms_year_rate_nfhs$ci_l_per1000 <- ms_year_rate_nfhs$ci_l*1000
 ms_year_rate_nfhs$ci_u_per1000 <- ms_year_rate_nfhs$ci_u*1000
 ms_year_rate_nfhs$se_per1000 <- ms_year_rate_nfhs$se*1000
 
-ms_year_rate_age_nfhs$ms_per1000 <- ms_year_rate_age_nfhs$miscarriage*1000
-ms_year_rate_age_nfhs$ci_l_per1000 <- ms_year_rate_age_nfhs$ci_l*1000
-ms_year_rate_age_nfhs$ci_u_per1000 <- ms_year_rate_age_nfhs$ci_u*1000
-ms_year_rate_age_nfhs$se_per1000 <- ms_year_rate_age_nfhs$se*1000
+ms_year_rate_state_nfhs$ms_per1000 <- ms_year_rate_state_nfhs$miscarriage*1000
+ms_year_rate_state_nfhs$ci_l_per1000 <- ms_year_rate_state_nfhs$ci_l*1000
+ms_year_rate_state_nfhs$ci_u_per1000 <- ms_year_rate_state_nfhs$ci_u*1000
+ms_year_rate_state_nfhs$se_per1000 <- ms_year_rate_state_nfhs$se*1000
+
+ms_year_rate_rurb_nfhs$ms_per1000 <- ms_year_rate_rurb_nfhs$miscarriage*1000
+ms_year_rate_rurb_nfhs$ci_l_per1000 <- ms_year_rate_rurb_nfhs$ci_l*1000
+ms_year_rate_rurb_nfhs$ci_u_per1000 <- ms_year_rate_rurb_nfhs$ci_u*1000
+ms_year_rate_rurb_nfhs$se_per1000 <- ms_year_rate_rurb_nfhs$se*1000
 
 
-ms_rate_nfhs <- ggplot(data = ms_year_rate_nfhs, mapping = aes(x= outcome_year, y = ms_per1000)) + 
+
+#ms_year_rate_age_nfhs$ms_per1000 <- ms_year_rate_age_nfhs$miscarriage*1000
+#ms_year_rate_age_nfhs$ci_l_per1000 <- ms_year_rate_age_nfhs$ci_l*1000
+#ms_year_rate_age_nfhs$ci_u_per1000 <- ms_year_rate_age_nfhs$ci_u*1000
+#ms_year_rate_age_nfhs$se_per1000 <- ms_year_rate_age_nfhs$se*1000
+
+
+ms_rate_nfhs <- ggplot(data = ms_year_rate_nfhs, mapping = aes(x= outcome_year, y = ms_per1000, color = )) + 
   geom_point() + 
   geom_line() + ylim(0,100)+
   labs(y = "Rate of miscarriages per 1000 pregnancies") +
   labs(x = "Year")+
-  theme_cowplot(11)
+  theme_cowplot(11)+
+  scale_x_continuous(breaks = seq(2010, 2019, by = 1))
+
+ms_rate_rurb_nfhs <- ggplot(data = ms_year_rate_rurb_nfhs, mapping = aes(x= outcome_year, y = ms_per1000, color = as.factor(strat_rurb))) + 
+  geom_point() + 
+  geom_line() + 
+  #geom_line(aes(y = ms_per1000)) +
+  ylim(0,100)+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)+
+  scale_x_continuous(breaks = seq(2010, 2019, by = 1))
+
+ms_rate_state <- ggplot(data = ms_year_rate_state_nfhs, mapping = aes(x=outcome_year, y = ms_per1000)) +
+  geom_point()+
+  geom_line()+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)+
+  facet_wrap(~state) +
+  scale_x_continuous(breaks = seq(2010, 2019, by = 2))
 
 ms_rate_age_nfhs <- ggplot(data = ms_year_rate_age_nfhs, mapping = aes(x= outcome_year, y = ms_per1000, color = as.factor(agecat))) + 
   #geom_point() + 

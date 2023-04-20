@@ -355,6 +355,15 @@ stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y
   labs(x = "Year")+
   theme_cowplot(11)
 
+stillbirth_wi_poster <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + 
+  geom_point(size = 2.5) + 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
+
 
 #Jan 11 using stillbirth_wi_rate below + forest plot
 #sbwirate <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + 
@@ -369,7 +378,7 @@ stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y
 #sb rate only. No wealth quintile.
 
 #stillbirth_rate <- ggplot(data = sb_year_rate, mapping = aes(x= outcome_year, y = sb_per1000)) + geom_point() + 
-#geom_line() + ylim(0,20)+
+#geom_line() + ylim(0,22)+
 #labs(y = "Rate of stillbirths per 1000 pregnancies") +
 #  labs(x = "Year")+
 #  theme_cowplot(11)
@@ -392,6 +401,16 @@ stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_yea
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
+
+stillbirth_prim_poster <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + 
+  geom_point(size = 2.5) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_prim,  name = "Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
 
 
 # now doing primary REVERSE
@@ -441,6 +460,17 @@ stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_
   labs(x = "Year")+
   theme_cowplot()
 
+stillbirth_caste_poster <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(caste_group))) + 
+  geom_point(size = 2.5) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_caste,  name = "Caste Group", breaks =c("0", "1", "2"), 
+                     labels = c("None", "SC", "ST"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
+
+
 
 #caste reverse
 #sb_caste_rev_year_rate <- svyby(~sb, ~outcome_year*caste_rev_group, design, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
@@ -481,6 +511,16 @@ abort_wi <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y =
   labs(x = "Year")+
   theme_cowplot(11)
 
+abort_wi_poster <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(wi_quintile))) + 
+  geom_point(size = 2.5) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
+  labs(y = "Rate of abortions per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
+
 
 #ggplot(data=abort_wi_year_rate, aes(x=outcome_year, y=abort_per1000, ymin=ci_l_per1000, ymax=ci_u_per1000, fill=wi_quintile, linetype=wi_quintile)) + 
   #geom_point() +     
@@ -501,6 +541,17 @@ abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year,
   labs(x = "Year")+
   theme_cowplot(11)
 
+abort_prim_poster <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + 
+  geom_point(size = 2.5) + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_prim, name = "Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of abortions per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
+
+
 #now looking at scheduled caste and tribe
 abort_caste_year_rate <- svyby(~abort, ~outcome_year*caste_group, design, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
 
@@ -516,6 +567,15 @@ abort_caste <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= outcome_ye
   labs(y = "Rate of abortion per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot()
+
+abort_caste_poster <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(caste_group))) + 
+  geom_point(size = 2.5) + 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_caste,  name = "Caste Group", breaks =c("0", "1", "2"), 
+                     labels = c("None", "SC", "ST"))+
+  labs(y = "Rate of abortion per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
 
 
 #now looking at miscarriage
@@ -539,6 +599,15 @@ miscarriage_wi <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outco
   labs(x = "Year")+
   theme_cowplot(11)
 
+miscarriage_wi_poster <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(wi_quintile))) +
+  geom_point(size = 2.5) + 
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
+  labs(y = "Rate of miscarriage per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
+
 miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
@@ -547,6 +616,15 @@ miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= o
   labs(y = "Rate of miscarriage per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
+
+miscarriage_prim_poster <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) +
+  geom_point(size = 2.5) +
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_prim,name = "Primary School", breaks =c("0", "1"), 
+                     labels = c("No", "Yes"))+
+  labs(y = "Rate of miscarriage per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
 
 miscarriage_caste_year_rate <- svyby(~miscarriage, ~outcome_year*caste_group, design, svymean, vartype = c("se", "ci"), na.rm.all = TRUE)
 
@@ -563,19 +641,46 @@ miscarriage_caste <-  ggplot(data = miscarriage_caste_year_rate, mapping = aes(x
   labs(x = "Year")+
   theme_cowplot()
 
+
+miscarriage_caste_poster <-  ggplot(data = miscarriage_caste_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(caste_group))) + 
+  geom_point(size = 2.5) +
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_caste,  name = "Caste Group", breaks =c("0", "1", "2"), 
+                     labels = c("None", "SC", "ST"))+
+  labs(y = "Rate of miscarriageion per 1000 pregnancies") +
+  labs(x = "Year")+ 
+  theme_classic(22) + theme(axis.text = element_text(face="bold", colour = "black")) 
+
+
 library(ggpubr)
 #grouping plots so there is one for wealth quintile, one for education, and one for primary school
 fig1 <- ggarrange(stillbirth_wi, abort_wi, miscarriage_wi,
                   #labels = c("A", "B", "C"),
                   ncol = 3, nrow = 1, common.legend = TRUE, legend = "right")
 
+fig1_poster <- ggarrange(stillbirth_wi_poster, abort_wi_poster, miscarriage_wi_poster,
+                  #labels = c("A", "B", "C"),
+                  ncol = 3, nrow = 1, common.legend = TRUE, legend = "top")
+
+
 fig2 <- ggarrange(stillbirth_prim, abort_prim, miscarriage_prim,
                   ncol = 3, nrow = 1,
                   common.legend = TRUE, legend = "right")
 
+#save_plot("fig1_check.jpg",fig1_poster, ncol = 3, base_height = 10)
+
+fig2_poster <- ggarrange(stillbirth_prim_poster, abort_prim_poster, miscarriage_prim_poster,
+                  ncol = 3, nrow = 1,
+                  common.legend = TRUE, legend = "top")
+#save_plot("fig1_check.jpg",fig1_poster, ncol = 3, base_height = 10)
+
 fig3 <- ggarrange(stillbirth_caste, abort_caste, miscarriage_caste,
                   ncol = 3, nrow = 1,
                   common.legend = TRUE, legend = "right")
+
+fig3_poster <- ggarrange(stillbirth_caste_poster, abort_caste_poster, miscarriage_caste_poster,
+                  ncol = 3, nrow = 1,
+                  common.legend = TRUE, legend = "top")
 
 
 #complex model run on cluster. Code below copied over
@@ -685,6 +790,19 @@ ms_year_rate_rurb_nfhs$ci_l_per1000 <- ms_year_rate_rurb_nfhs$ci_l*1000
 ms_year_rate_rurb_nfhs$ci_u_per1000 <- ms_year_rate_rurb_nfhs$ci_u*1000
 ms_year_rate_rurb_nfhs$se_per1000 <- ms_year_rate_rurb_nfhs$se*1000
 
+#making rates by year and state table
+ms_year_rate_state_nfhs <- as_tibble(ms_year_rate_state_nfhs)
+
+ms_year_rate_state_nfhs_long <- ms_year_rate_state_nfhs %>% select(c(outcome_year, state, ms_per1000, ci_l_per1000, ci_u_per1000))
+ms_year_rate_state_nfhs_wide <- ms_year_rate_state_nfhs_long %>% pivot_wider(names_from = outcome_year, 
+                                                                        values_from = c(ms_per1000, ci_l_per1000, ci_u_per1000))
+
+ms_year_rate_state_nfhs_wide <- ms_year_rate_state_nfhs_wide %>%  mutate(across(where(~ is.numeric(.)), ~ round_half_up(., 1)))
+
+nfhs_state_flextable <- flextable(ms_year_rate_state_nfhs_wide)
+save_as_docx(nfhs_state_flextable, path = "nfhs_state_ms_tab.docx")
+
+
 
 
 #ms_year_rate_age_nfhs$ms_per1000 <- ms_year_rate_age_nfhs$miscarriage*1000
@@ -705,6 +823,8 @@ ms_rate_rurb_nfhs <- ggplot(data = ms_year_rate_rurb_nfhs, mapping = aes(x= outc
   geom_point() + 
   geom_line() + 
   #geom_line(aes(y = ms_per1000)) +
+  scale_color_brewer(palette = "Paired",name = "Urbanicity", breaks =c("1", "2"), 
+                     labels = c("Urban", "Rural"))+
   ylim(0,100)+
   labs(y = "Rate of miscarriages per 1000 pregnancies") +
   labs(x = "Year")+
@@ -741,6 +861,47 @@ ms_rate_urban_nfhs <- ggplot(data = ms_year_rate_urban_nfhs, mapping = aes(x= ou
   labs(y = "rate_age of miscarriages per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot(11)
+
+#table 1 creation for ms short paper
+nfhs$rural_urban <- factor(nfhs$strat_rurb, 
+                         levels = c(1, 2),
+                         labels = c("Urban", "Rural"))
+
+nfhs$scheduled_c_t <- factor(nfhs$caste_group,
+                           levels = c(0,1,2),
+                           labels = c("None", "Scheduled Caste", "Scheduled Tribe"))
+
+
+library(gtsummary)
+nfhs %>% 
+  select(age, rural_urban, scheduled_c_t, primary) %>% 
+  tbl_summary(
+    label = list(
+      age ~ "Age",
+      rural_urban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary ~ "Completed Primary School"),
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman")
+
+t1_strat <- nfhs %>% 
+  select(age, rural_urban, scheduled_c_t, primary) %>% 
+  mutate(rural_urban = paste("Urbanicity -", rural_urban)) %>%
+  tbl_strata(
+    strata = rural_urban,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(label = 
+                    list(
+                      age ~ "Age",
+                      #rural_urban ~ "Rural / Urban",
+                      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+                      primary ~ "Completed Primary School"),
+                  statistic = list(all_continuous() ~ "{mean} ({sd})"),
+                  missing_text =  "Missing")
+  ) %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman")
 
 #trying SII and RII in NFHS Only 
 #redoing wi_rank ofr nfhs only
@@ -919,6 +1080,8 @@ library(marginaleffects)
 #write.csv(df, "df_for_cluster.csv")
 
 sb_wiquint_sii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
+
+sb_intsig <- svyglm(sb ~ wi_perc_rank*outcome_year + age +  as.factor(state) + rural_urban, design = design)
 #sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
 
 sb_wi_sii <- avg_comparisons(sb_wiquint_sii, 
@@ -944,6 +1107,7 @@ sbwisii <- tidy(sb_wi_sii) %>% select(c(year_bin, estimate, std.error, conf.low,
 #calculating RII. quasipoisson glm
 sb_wiquint_rii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson())
 #sb_wiquint_rii <- sb_wiquint_rii %>% tidy(conf.int = TRUE)
+
 
 sb_wi_rii <- avg_comparisons(sb_wiquint_rii, 
                 variables = list(wi_perc_rank = c(0,1)), 
@@ -976,6 +1140,9 @@ abort_wiquint_sii <- svyglm(abort ~ wi_perc_rank*year_bin + age +  as.factor(sta
 abort_wi_sii <- avg_comparisons(abort_wiquint_sii, 
                              variables = list(wi_perc_rank = c(0,1)), 
                              by = "year_bin")
+
+abort_intsig <- svyglm(abort ~ wi_perc_rank*outcome_year + age +  as.factor(state) + rural_urban, design = design)
+summary(abort_intsig)
 
 #adding in term column
 abort_wi_sii$outcome <- c("Abortion")
@@ -1020,6 +1187,9 @@ abortwirii <- tidy(abort_wi_rii) %>% select(c(year_bin, estimate, conf.low, conf
 
 
 miscarriage_wiquint_sii <- svyglm(miscarriage ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
+
+ms_intsig <- svyglm(miscarriage ~ wi_perc_rank*outcome_year + age +  as.factor(state) + rural_urban, design = design)
+summary(ms_intsig)
 #miscarriage_wiquint_sii <- miscarriage_wiquint_sii %>% tidy(conf.int = TRUE) 
 #miscarriagewi_sii <- miscarriage_wiquint_sii$estimate[2] * 1000
 #miscarriagewi_sii <- round_half_up(miscarriagewi_sii, digits = 2)
@@ -1093,6 +1263,20 @@ sii_plot <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color =
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
+sii_plot_poster <- ggplot(data = sii, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 3, position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  ylab("Slope Index of Inequality")+
+  xlab("Year") +
+  theme_classic(22)+
+  theme(axis.text.x=element_text(angle=45,hjust=1), axis.text = element_text(face="bold", colour = "black")) +
+  theme(legend.position="top")
+
 
 
 #dwsii <- dwplot(sii) +
@@ -1200,6 +1384,8 @@ sb_prim_rr <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urb
 #sb_prim_rr <- sb_prim_rr %>% tidy(conf.int = TRUE) 
 #sb_prim_rr 
 
+
+
 sb_prim_rr <- avg_comparisons(sb_prim_rr, 
                 variables = "primary", 
                 by = "year_bin", transform_pre = "lnratioavg",
@@ -1226,6 +1412,9 @@ sbprimrr <- tidy(sb_prim_rr) %>% select(c(year_bin, estimate, conf.low, conf.hig
 #sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 sb_prim_rd <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+
+sb_prim_intsig <- svyglm(sb ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(sb_prim_intsig)
 #sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
 #sbprim_rd <- (sb_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #sbprim_rd_conflow <- (sb_prim_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
@@ -1283,6 +1472,8 @@ abort_prim_rd <- avg_comparisons(abort_prim_rd,
                               variables = list(primary = c(0,1)), 
                               by = "year_bin")
 
+abort_prim_intsig <- svyglm(abort ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(abort_prim_intsig)
 #adding in term column
 abort_prim_rd$outcome <- c("Abortion")
 
@@ -1335,6 +1526,9 @@ miscarriage_prim_rd <- avg_comparisons(miscarriage_prim_rd,
                                  variables = list(primary = c(0,1)), 
                                  by = "year_bin")
 
+ms_prim_intsig <- svyglm(miscarriage ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(ms_prim_intsig)
+
 #adding in term column
 miscarriage_prim_rd$outcome <- c("Miscarriage")
 
@@ -1374,6 +1568,19 @@ rd_primary_plot <- ggplot(data = rd_primary, mapping = aes(x = year_bin, y = est
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rd_primary_plot_poster <- ggplot(data = rd_primary, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 3, position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  ylab("Risk Difference")+
+  xlab("Year") +
+  theme_classic(22)+
+  theme(axis.text.x=element_text(angle=45,hjust=1), axis.text = element_text(face="bold", colour = "black")) +
+  theme(legend.position="top")
 
 #rr_primary
 rr_primary_v1 <- rbind(sbprimrr, abortprimrr)
@@ -1502,6 +1709,9 @@ sb_caste_rd <- avg_comparisons(sb_caste_rd,
                               variables = list(scheduled = c(0,1)), 
                               by = "year_bin")
 
+sb_caste_intsig <- svyglm(sb ~ scheduled*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(sb_caste_intsig)
+
 #adding in term column
 sb_caste_rd$outcome <- c("Stillbirth")
 
@@ -1551,6 +1761,9 @@ abort_caste_rd <- svyglm(abort ~ scheduled*year_bin + age +  as.factor(state) + 
 abort_caste_rd <- avg_comparisons(abort_caste_rd, 
                                variables = list(scheduled = c(0,1)), 
                                by = "year_bin")
+
+abort_caste_intsig <- svyglm(abort ~ scheduled*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(abort_caste_intsig)
 
 #adding in term column
 abort_caste_rd$outcome <- c("Abortion")
@@ -1606,6 +1819,10 @@ miscarriage_caste_rd <- avg_comparisons(miscarriage_caste_rd,
                                   variables = list(scheduled = c(0,1)), 
                                   by = "year_bin")
 
+
+miscarriage_caste_intsig <- svyglm(miscarriage ~ scheduled*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+summary(miscarriage_caste_intsig)
+
 #adding in term column
 miscarriage_caste_rd$outcome <- c("Miscarriage")
 
@@ -1644,6 +1861,21 @@ rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimat
   xlab("Year") +
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rd_caste_plot_poster <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 3, position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_y_continuous(name="Risk Difference", limits = c(-18, 15),
+                     breaks = c(-15, -10, -5, 0, 5, 10, 15))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  #ylab("Risk Difference")+
+  xlab("Year") +
+  theme_classic(22)+
+  theme(axis.text.x=element_text(angle=45,hjust=1), axis.text = element_text(face="bold", colour = "black")) +
+  theme(legend.position="top")
 
 #dw_rd_caste <- dwplot(rd_caste) +
 #  theme_bw() + xlab("Risk Difference by Caste") + ylab("") + 
@@ -1838,7 +2070,21 @@ df %>%
     primary ~ "Completed Primary School"),
   statistic = list(all_continuous() ~ "{mean} ({sd})"),
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
-  gt::tab_options(table.font.names = "Times New Roman")
+  gt::tab_options(table.font.weight = "bold", table.font.names = "Times New Roman", table.font.size = 22)
+
+t1_poster <- df %>% 
+  select(age, rural_urban, scheduled_c_t, primary) %>% 
+  tbl_summary(
+    label = list(
+      age ~ "Age",
+      rural_urban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary ~ "Completed Primary School"),
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.weight = "bold", table.font.names = "Times New Roman", table.font.size = 22, 
+                  column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
+                  table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
 
 
 t1_strat <- df %>% 

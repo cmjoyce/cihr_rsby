@@ -85,6 +85,18 @@ df <- df %>% mutate(weight_adj = case_when(survey == "NFHS4" ~ (weight * nfhs4_p
                                            TRUE ~ NA_real_))
 
 
+#creating year bins
+table(df$outcome_year)
+df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
+                                          outcome_year > 2005 & outcome_year < 2008 ~ 2,
+                                          outcome_year > 2007 & outcome_year < 2010 ~ 3,
+                                          outcome_year > 2009 & outcome_year < 2012 ~ 4,
+                                          outcome_year > 2011 & outcome_year < 2014 ~ 5,
+                                          outcome_year > 2013 & outcome_year < 2016 ~ 6,
+                                          outcome_year > 2015 & outcome_year < 2018 ~ 7,
+                                          outcome_year > 2017 ~ 8,
+                                          TRUE ~ NA_real_)))
+
 
 #writing new csv
 
@@ -155,18 +167,18 @@ df$car <- ifelse(is.na(df$car), 0, df$car)
 df$has_computer <- ifelse(is.na(df$has_computer), 0, df$has_computer)
  
 
-asset <- df %>% select(c(caseid, rural_urban, water_treat, radio, fridge, bike, motorcycle, 
+asset <- df %>% select(c(caseid, year_of_intr, rural_urban, water_treat, radio, fridge, bike, motorcycle, 
                          animal_cart, car, #type_water_filter, 
                         improved_water, toilet_rev, toilet_share, 
                          cooking_fuel, has_computer))
 
 #examining for squared multiple correlations
-smc <- psych::smc(asset[,3:14])
+smc <- psych::smc(asset[,4:15])
 smc
 
 #drop variables with less than 0.05 -- explain less than 5% of variance. In this case animal cart, and improved water
 
-asset_smc <- asset %>% select(c(caseid, rural_urban, water_treat, radio, 
+asset_smc <- asset %>% select(c(caseid, year_of_intr, rural_urban, water_treat, radio, 
                                 fridge, bike, motorcycle, 
                          car,
                          toilet_rev, toilet_share, 
@@ -191,20 +203,31 @@ library(psych)
 #asset.pca.factors <- factoextra::get_pca(asset.pca, "var")
 
 
-prn<-psych::principal(asset_smc[,3:12], rotate="none", #nfactors=2, 
+prn<-psych::principal(asset_smc[,4:13], rotate="none", #nfactors=2, 
                       cor = "mixed", 
                       covar=T, scores=TRUE, missing = TRUE, impute = "mean")
 
 #creating scree plot of asset index eigenvalues
-scree(asset_smc[,3:12], factors = FALSE, pc = TRUE)
+scree(asset_smc[,4:13], factors = FALSE, pc = TRUE)
 
 index <- prn$scores[,1] #+ prn$scores[,2]
 
+assets_index <- mutate(asset, index)
 
-Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
-                       wi_continuous = index, wi_rank = row_number(index), wi_perc_rank = percent_rank(index),
-                       wi_cume_rank = cume_dist(index), wicutQuintile = cut(index, breaks=quantile(index, seq(0, 1, by=1/5)),
-                                                                          include.lowest=T, label=1:5))
+# asset index now relative to year bin grouping
+Assets.indexed <- assets_index %>%
+  group_by(year_of_intr) %>%
+  mutate(
+    wi_quintile=(ntile(index,5)), 
+    wi_perc_rank = percent_rank(index))
+
+
+#Assets.indexed<-mutate(asset,wi_quintile=as.factor(ntile(index,5)),
+#                       wi_continuous = index, wi_rank = row_number(index), wi_perc_rank = percent_rank(index),
+#                       wi_cume_rank = cume_dist(index), wicutQuintile = cut(index, breaks=quantile(index, seq(0, 1, by=1/5)),
+#                                                                          include.lowest=T, label=1:5))
+
+
 
 
 #ggplot(na.omit(Assets.indexed), aes(as.factor(rural_urban))) + geom_bar(aes(fill = wi_quintile), position = "fill")+ xlab("Rural (0) & Urban (1)")+
@@ -216,7 +239,7 @@ df_w_wi <- left_join(df, Assets.indexed)
 
 library(dineq)
 #creating weighted wealth quintile variable
-df_w_wi$wiquint_weight <- ntiles.wtd(df_w_wi$wi_perc_rank, n = 5, weights = df$weight_adj)
+#df_w_wi$wiquint_weight <- ntiles.wtd(df_w_wi$wi_perc_rank, n = 5, weights = df$weight_adj)
 
 #renaming
 
@@ -243,15 +266,23 @@ df <- df %>% mutate(insurance = case_when(esis == 1 ~ 1,
 # analyses ----------------------------------------------------------------
 
 
-#write.csv(df, "df_socioeconomic.csv")
+write.csv(df, "df_socioeconomic.csv")
 
-df <- read.csv("df_socioeconomic.csv")
+#df <- read.csv("df_socioeconomic.csv")
 
 # calculating rates per year ----------------------------------------------
 library(Redmonder)
 library(survey)
 library(NatParksPalettes)
 
+
+#making mother's age at birth
+df$diff_years_event <- (df$year_of_intr) - (df$outcome_year)
+
+#making -1 into 0. Same year, must be error.
+df$diff_years_event <- ifelse(df$diff_years_event == -1, 0, df$diff_years_event)
+
+df$age_at_birth <- df$age - df$diff_years_event
 
 #making strata variable from rural/urban
 df$strat_rurb <- ifelse(df$rural_urban == 0, 2, 1)
@@ -276,17 +307,6 @@ df$scheduled_rev <- ifelse(df$scheduled == 1, 0, 1) ### CHECK THIS THOUGH, as it
 df$primary_rev <- ifelse(df$primary == 1, 0, 1)
 
 
-#creating year bins
-table(df$outcome_year)
-df <- df %>% mutate(year_bin = (case_when(outcome_year < 2006 ~ 1,
-                                          outcome_year > 2005 & outcome_year < 2008 ~ 2,
-                                          outcome_year > 2007 & outcome_year < 2010 ~ 3,
-                                          outcome_year > 2009 & outcome_year < 2012 ~ 4,
-                                          outcome_year > 2011 & outcome_year < 2014 ~ 5,
-                                          outcome_year > 2013 & outcome_year < 2016 ~ 6,
-                                          outcome_year > 2015 & outcome_year < 2018 ~ 7,
-                                          outcome_year > 2017 ~ 8,
-                                          TRUE ~ NA_real_)))
 
 df$year_bin <- as.factor(df$year_bin)
 
@@ -327,6 +347,13 @@ sb_wi_year_rate$ci_l_per1000 <- sb_wi_year_rate$ci_l*1000
 sb_wi_year_rate$ci_u_per1000 <- sb_wi_year_rate$ci_u*1000
 sb_wi_year_rate$se_per1000 <- sb_wi_year_rate$se*1000
 
+sb_wi_year_bin_rate <- svyby(~sb, ~year_bin*~wi_quintile, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+sb_wi_year_bin_rate$sb_per1000 <- sb_wi_year_bin_rate$sb*1000
+sb_wi_year_bin_rate$ci_l_per1000 <- sb_wi_year_bin_rate$ci_l*1000
+sb_wi_year_bin_rate$ci_u_per1000 <- sb_wi_year_bin_rate$ci_u*1000
+sb_wi_year_bin_rate$se_per1000 <- sb_wi_year_bin_rate$se*1000
+
 #sb_wi_year_rate_cont <- svyby(~sb, ~outcome_year*~wi_perc_rank, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
 #sb_wi_year_rate_cont$sb_per1000 <- sb_wi_year_rate_cont$sb*1000
@@ -347,6 +374,15 @@ mycolors_prim <- c("#e67e00", "#024b7a")
 mycolors_caste <- c("#e67e00", "#44b7c2", "#024b7a")
 
 stillbirth_wi <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
+                     labels = c("0.2 (Poorest)", "0.4", "0.6", "0.8", "1.0 (Richest)"))+
+  labs(y = "Rate of stillbirths per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
+
+stillbirth_wi_year_bin <- ggplot(data = sb_wi_year_bin_rate, mapping = aes(x= year_bin, y = sb_per1000, color = as.factor(wi_quintile))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_wi,name = "Wealth Quintile", breaks =c("1", "2", "3", "4", "5"), 
@@ -1080,6 +1116,8 @@ library(marginaleffects)
 #write.csv(df, "df_for_cluster.csv")
 
 sb_wiquint_sii <- svyglm(sb ~ wi_perc_rank*year_bin + age +  as.factor(state) + rural_urban, design = design)
+
+#sb_wiquint_sii_age_birth <- svyglm(sb ~ wi_perc_rank*year_bin + age_at_birth +  as.factor(state) + rural_urban, design = design)
 
 sb_intsig <- svyglm(sb ~ wi_perc_rank*outcome_year + age +  as.factor(state) + rural_urban, design = design)
 #sb_wiquint_sii <- sb_wiquint_sii %>% tidy(conf.int = TRUE) 
@@ -2060,17 +2098,38 @@ df$scheduled_c_t <- factor(df$caste_group,
                            labels = c("None", "Scheduled Caste", "Scheduled Tribe"))
 
 
+#redoing design
+design_tab <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
 df %>% 
-  select(age, rural_urban, scheduled_c_t, primary) %>% 
+  select(age_at_birth, rural_urban, scheduled_c_t, primary) %>% 
   tbl_summary(
   label = list(
-    age ~ "Age",
+    age_at_birth ~ "Age",
     rural_urban ~ "Rural / Urban",
     scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
     primary ~ "Completed Primary School"),
   statistic = list(all_continuous() ~ "{mean} ({sd})"),
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
-  gt::tab_options(table.font.weight = "bold", table.font.names = "Times New Roman", table.font.size = 22)
+  gt::tab_options(#table.font.weight = "bold", 
+                  table.font.names = "Times New Roman", table.font.size = 22)
+
+design_tab %>% 
+  tbl_svysummary(
+    include = c(age, age_at_birth,rural_urban, scheduled_c_t, primary),
+    label = list(
+      age ~ "Age",
+      age_at_birth ~ "Age at Preg Outcome",
+      rural_urban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary ~ "Completed Primary School"),
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(#table.font.weight = "bold", 
+                  table.font.names = "Times New Roman", table.font.size = 22)
+
+
 
 t1_poster <- df %>% 
   select(age, rural_urban, scheduled_c_t, primary) %>% 

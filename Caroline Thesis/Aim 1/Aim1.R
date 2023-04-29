@@ -266,9 +266,32 @@ df <- df %>% mutate(insurance = case_when(esis == 1 ~ 1,
 # analyses ----------------------------------------------------------------
 
 
-write.csv(df, "df_socioeconomic.csv")
+#write.csv(df, "df_socioeconomic.csv")
 
-#df <- read.csv("df_socioeconomic.csv")
+df <- read.csv("df_socioeconomic.csv")
+
+#adding in fixed ahs_preg variable. This is a patch fix. Use new ahs_preg.csv dataset and use *just*
+#education variable 
+
+ahs_preg$survey <- c("AHS")
+ahs_preg$primary <- ifelse(ahs_preg$highest_qualification > 2, 1, 0)
+
+df$primary_fix <- c(NA)
+
+ahs_preg_educ_only <- ahs_preg %>% select(caseid, survey, primary)
+ahs_preg_educ_only <- ahs_preg_educ_only %>% rename(primary_fix = primary)
+
+df_check <- left_join(df, ahs_preg_educ_only, by = c("caseid", "survey"))
+
+#dropping new primary_fix.x variable
+df_check <- df_check %>% select(-c(primary_fix.x))
+
+df_check$primary_new <- ifelse(df_check$survey != "AHS", df_check$primary, df_check$primary_fix.y)
+df_check <- df_check %>% rename(primary_school = primary_new)
+df_check <- df_check %>% select(-c(primary))
+df <- df_check
+
+#write.csv(df, "df_updated_primary_w_socioeconomic.csv")
 
 # calculating rates per year ----------------------------------------------
 library(Redmonder)
@@ -304,7 +327,7 @@ df$scheduled <- ifelse(df$caste_group > 0, 1, df$caste_group)
 df$scheduled_rev <- ifelse(df$scheduled == 1, 0, 1) ### CHECK THIS THOUGH, as it includes don't knows!!
 
 #reverse coding education
-df$primary_rev <- ifelse(df$primary == 1, 0, 1)
+df$primary_rev <- ifelse(df$primary_school == 1, 0, 1)
 
 
 
@@ -421,7 +444,8 @@ stillbirth_wi_poster <- ggplot(data = sb_wi_year_rate, mapping = aes(x= outcome_
 
 
 # now looking at primary school
-sb_prim_year_rate <- svyby(~sb, ~outcome_year*~primary, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_prim_year_rate <- svyby(~sb, ~outcome_year*~primary_school, 
+                           design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
 sb_prim_year_rate$sb_per1000 <- sb_prim_year_rate$sb*1000
 sb_prim_year_rate$ci_l_per1000 <- sb_prim_year_rate$ci_l*1000
@@ -429,7 +453,7 @@ sb_prim_year_rate$ci_u_per1000 <- sb_prim_year_rate$ci_u*1000
 
 
 
-stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary))) + geom_point() + 
+stillbirth_prim <- ggplot(data = sb_prim_year_rate, mapping = aes(x= outcome_year, y = sb_per1000, color = as.factor(primary_school))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_prim,  name = "Completed Primary School", breaks =c("0", "1"), 
@@ -526,7 +550,7 @@ stillbirth_caste_poster <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= o
 
 
 #now looking at abortion
-abort_prim_year_rate <- svyby(~abort, ~outcome_year*~primary, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_prim_year_rate <- svyby(~abort, ~outcome_year*~primary_school, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
 abort_prim_year_rate$abort_per1000 <- abort_prim_year_rate$abort*1000
 abort_prim_year_rate$ci_l_per1000 <- abort_prim_year_rate$ci_l*1000
@@ -568,7 +592,7 @@ abort_wi_poster <- ggplot(data = abort_wi_year_rate, mapping = aes(x= outcome_ye
 #  labs(x = "Year")+
 #  theme_cowplot()
 
-abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary))) + geom_point() + 
+abort_prim <- ggplot(data = abort_prim_year_rate, mapping = aes(x= outcome_year, y = abort_per1000, color = as.factor(primary_school))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_prim, name = "Completed Primary School", breaks =c("0", "1"), 
@@ -615,7 +639,7 @@ abort_caste_poster <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= out
 
 
 #now looking at miscarriage
-miscarriage_prim_year_rate <- svyby(~miscarriage, ~outcome_year*~primary, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+miscarriage_prim_year_rate <- svyby(~miscarriage, ~outcome_year*~primary_school, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
 miscarriage_prim_year_rate$miscarriage_per1000 <- miscarriage_prim_year_rate$miscarriage*1000
 miscarriage_prim_year_rate$ci_l_per1000 <- miscarriage_prim_year_rate$ci_l*1000
@@ -644,7 +668,7 @@ miscarriage_wi_poster <- ggplot(data = miscarriage_wi_year_rate, mapping = aes(x
   labs(x = "Year")+
   theme_classic(22)+ theme(axis.text = element_text(face="bold", colour = "black")) 
 
-miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary))) + geom_point() + 
+miscarriage_prim <- ggplot(data = miscarriage_prim_year_rate, mapping = aes(x= outcome_year, y = miscarriage_per1000, color = as.factor(primary_school))) + geom_point() + 
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_prim,name = "Completed Primary School", breaks =c("0", "1"), 
@@ -1281,7 +1305,7 @@ colors_outcomes_check <- redmonder.pal(8, "qMSOBuWarm")[2:4]
 mycolors_outcomes <- c("#024b7a", "#e67e00", "#44b7c2")
 
 sii_v1 <- rbind(sbwisii, abortwisii)
-sii <- rbind(sbwisii, abortwisii, miscarriagewisii)
+sii <- rbind(sii_v1, miscarriagewisii)
 sii <- sii %>% group_by(year_bin)
 
 #putting on scale of thousand pregnancies
@@ -1418,14 +1442,14 @@ save_as_docx(rii_flextable, path = "rii_flex_tab.docx")
 
 #RD: family = quasibinomial(link = "identity") OR family = gaussian(link = "identity")
 
-sb_prim_rr <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
+sb_prim_rr <- svyglm(sb ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
 #sb_prim_rr <- sb_prim_rr %>% tidy(conf.int = TRUE) 
 #sb_prim_rr 
 
 
 
 sb_prim_rr <- avg_comparisons(sb_prim_rr, 
-                variables = "primary", 
+                variables = "primary_school", 
                 by = "year_bin", transform_pre = "lnratioavg",
                 transform_post = exp)
 
@@ -1449,9 +1473,9 @@ sbprimrr <- tidy(sb_prim_rr) %>% select(c(year_bin, estimate, conf.low, conf.hig
 #sb_prim_exp_conflow <- exp(sb_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
 #sb_prim_exp_confhigh <- exp(sb_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-sb_prim_rd <- svyglm(sb ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+sb_prim_rd <- svyglm(sb ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
 
-sb_prim_intsig <- svyglm(sb ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+sb_prim_intsig <- svyglm(sb ~ primary_school*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
 summary(sb_prim_intsig)
 #sb_prim_rd <- sb_prim_rd %>% tidy(conf.int = TRUE)
 #sbprim_rd <- (sb_prim_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
@@ -1459,7 +1483,7 @@ summary(sb_prim_intsig)
 #sbprim_rd_confhigh <- (sb_prim_rd$conf.high[2]*1000)  %>% round_half_up(digits = 2)
 
 sb_prim_rd <- avg_comparisons(sb_prim_rd, 
-                              variables = list(primary = c(0,1)), 
+                              variables = list(primary_school = c(0,1)), 
                               by = "year_bin")
 
 #adding in term column
@@ -1475,10 +1499,10 @@ sbprimrd <- tidy(sb_prim_rd) %>% select(c(year_bin, estimate, std.error, conf.lo
 
 
 
-abort_prim_rr <- svyglm(abort ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
+abort_prim_rr <- svyglm(abort ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
 
 abort_prim_rr <- avg_comparisons(abort_prim_rr, 
-                              variables = "primary", 
+                              variables = "primary_school", 
                               by = "year_bin", transform_pre = "lnratioavg",
                               transform_post = exp)
 
@@ -1504,10 +1528,10 @@ abortprimrr <- tidy(abort_prim_rr) %>% select(c(year_bin, estimate, conf.low, co
 #abort_prim_exp_confhigh <- exp(abort_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
 
-abort_prim_rd <- svyglm(abort ~ primary*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+abort_prim_rd <- svyglm(abort ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
 
 abort_prim_rd <- avg_comparisons(abort_prim_rd, 
-                              variables = list(primary = c(0,1)), 
+                              variables = list(primary_school = c(0,1)), 
                               by = "year_bin")
 
 abort_prim_intsig <- svyglm(abort ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
@@ -1528,11 +1552,11 @@ abortprimrd <- tidy(abort_prim_rd) %>% select(c(year_bin, estimate, std.error, c
 #abort_prim_rd <- abort_prim_rd %>% filter(row_number() %in% c(2))
 #abort_prim_rd$term[abort_prim_rd$term=="primary"] <- "Abortion"
 
-miscarriage_prim_rr <- svyglm(miscarriage ~ primary*year_bin + age +  as.factor(state) + rural_urban, 
+miscarriage_prim_rr <- svyglm(miscarriage ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, 
                               design = design, family = quasipoisson(link = "log"))
 
 miscarriage_prim_rr <- avg_comparisons(miscarriage_prim_rr, 
-                                 variables = "primary", 
+                                 variables = "primary_school", 
                                  by = "year_bin", transform_pre = "lnratioavg",
                                  transform_post = exp)
 
@@ -1557,14 +1581,14 @@ miscarriageprimrr <- tidy(miscarriage_prim_rr) %>% select(c(year_bin, estimate, 
 #miscarriage_prim_exp_conflow <- exp(miscarriage_prim_rr$conf.low[2]) %>% round_half_up(digits = 2)
 #miscarriage_prim_exp_confhigh <- exp(miscarriage_prim_rr$conf.high[2]) %>% round_half_up(digits = 2)
 
-miscarriage_prim_rd <- svyglm(miscarriage ~ primary*year_bin + age +  as.factor(state) + rural_urban, 
+miscarriage_prim_rd <- svyglm(miscarriage ~ primary_school*year_bin + age +  as.factor(state) + rural_urban, 
                               design = design, family = gaussian(link = "identity"))
 
 miscarriage_prim_rd <- avg_comparisons(miscarriage_prim_rd, 
-                                 variables = list(primary = c(0,1)), 
+                                 variables = list(primary_school = c(0,1)), 
                                  by = "year_bin")
 
-ms_prim_intsig <- svyglm(miscarriage ~ primary*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
+ms_prim_intsig <- svyglm(miscarriage ~ primary_school*outcome_year + age +  as.factor(state) + rural_urban, design = design, family = gaussian(link = "identity"))
 summary(ms_prim_intsig)
 
 #adding in term column
@@ -1638,6 +1662,7 @@ rr_primary_plot <- ggplot(data = rr_primary, mapping = aes(x = year_bin, y = est
   theme_cowplot()+
   theme(axis.text.x=element_text(angle=45,hjust=1))
 
+library(flextable)
 rd_prim_flex <- flextable(rd_primary)
 save_as_docx(rd_prim_flex, path = "rd_prim_tab.docx")
 
@@ -2103,13 +2128,13 @@ design_tab <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = 
 
 
 df %>% 
-  select(age_at_birth, rural_urban, scheduled_c_t, primary) %>% 
+  select(age_at_birth, rural_urban, scheduled_c_t, primary_school) %>% 
   tbl_summary(
   label = list(
     age_at_birth ~ "Age",
     rural_urban ~ "Rural / Urban",
     scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
-    primary ~ "Completed Primary School"),
+    primary_school ~ "Completed Primary School"),
   statistic = list(all_continuous() ~ "{mean} ({sd})"),
   missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(#table.font.weight = "bold", 

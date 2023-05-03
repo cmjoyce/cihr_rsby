@@ -109,7 +109,7 @@ dlhsnfhs <- dlhsnfhs %>% select(-c(X))
 names(ahs)
 
 #dropping stratum code
-ahs <- ahs %>% select(-c(stratum_code))
+#ahs <- ahs %>% select(-c(stratum_code))
 
 #dropping id variables
 ahs <- ahs %>% select(-c(house_no, house_hold_no, hhld_id, identifcation_code, member_identity))
@@ -276,12 +276,14 @@ wps_preg <- wps_preg %>% mutate(previous_sb = case_when(maxyearsb < outcome_year
                                                         TRUE ~ 0))
 
 #write.csv(wps_preg, "wps_preg.csv")
-wps_preg <- read.csv("ahs_preg.csv")
+wps_preg <- read.csv("wps_preg.csv")
+
+ahs_preg <- wps_preg
 
 #grouping by caseid
 
-wps_preg <- wps_preg %>% group_by(caseid)
-wps_preg <- wps_preg %>% add_count(caseid)
+ahs_preg <- ahs_preg %>% group_by(caseid)
+ahs_preg <- ahs_preg %>% add_count(caseid)
 
 #wpssb <- wps_full %>% filter(stillbirths > 0)
 #wpssb <- wpssb %>% mutate(checkmax = max(stillbirth_year, na.rm = TRUE))
@@ -292,7 +294,7 @@ wps_preg <- wps_preg %>% add_count(caseid)
 
 ahs_preg <- ahs_preg %>% arrange(desc(outcome_year)) %>% slice(1)
 
-#write.csv(ahs_preg, "ahs_preg.csv")
+write.csv(ahs_preg, "ahs_preg.csv")
 ahs_preg <- read.csv("ahs_preg.csv")
 
 # Combining with dlhs_nfhs_preg -------------------------------------------
@@ -311,18 +313,18 @@ dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% relocate(state, .before =
 ahs_preg$survey <- c("ahs")
 
 #adding in education variable from full WPS dataset. Matching and merging.
-wps_educ <- wps %>% select(c(caseid, state, district, rural, stratum_code, psu, date_of_intr, month_of_intr, year_of_intr, round, age, marital_status,
-                             ever_conceived, no_of_times_conceived, age_at_first_conception, delivered_any_baby, born_alive_total, 
-                             surviving_total, mother_age_when_baby_was_born, outcome_pregnancy, preg_flag, out_come_of_preg, month_of_abortion,
-                             year_of_abortion, abortion_month, anc_status, ultrsound_status, abortion_performed, abortion_performed_by,
-                             reason_for_abortion, kind_of_birth, previous_current_diff, dob, mob, yob, birth_yrmo, gender, no_of_anc, 
-                             no_of_months_first_anc, source_of_anc, where_del_took_place, who_conducted_del_at_home, check_up_with_48_hours_of_del,
-                             is_any_fp_methos_used, fp_method_used, sex, usual_residance, date_of_birth, month_of_birth, year_of_birth, mom_birth_yrmo,
-                             religion, social_group_code, highest_qualification, house_structure, owner_status, drinking_water_source,
-                             is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 
-                             is_television, is_computer, is_telephone, is_refrigerator, is_bicycle, is_scooter, is_car, cart,
-                             land_possessed, iscoveredbyhealthscheme, healthscheme_1, healthscheme_2,
-                             wt, as, as_binned, nfhs4_census2011_district_id))
+#wps_educ <- wps %>% select(c(caseid, state, district, rural, stratum_code, psu, date_of_intr, month_of_intr, year_of_intr, round, age, marital_status,
+#                             ever_conceived, no_of_times_conceived, age_at_first_conception, delivered_any_baby, born_alive_total, 
+#                             surviving_total, mother_age_when_baby_was_born, outcome_pregnancy, preg_flag, out_come_of_preg, month_of_abortion,
+#                             year_of_abortion, abortion_month, anc_status, ultrsound_status, abortion_performed, abortion_performed_by,
+#                             reason_for_abortion, kind_of_birth, previous_current_diff, dob, mob, yob, birth_yrmo, gender, no_of_anc, 
+#                             no_of_months_first_anc, source_of_anc, where_del_took_place, who_conducted_del_at_home, check_up_with_48_hours_of_del,
+#                             is_any_fp_methos_used, fp_method_used, sex, usual_residance, date_of_birth, month_of_birth, year_of_birth, mom_birth_yrmo,
+#                             religion, social_group_code, highest_qualification, house_structure, owner_status, drinking_water_source,
+#                             is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 
+#                             is_television, is_computer, is_telephone, is_refrigerator, is_bicycle, is_scooter, is_car, cart,
+#                             land_possessed, iscoveredbyhealthscheme, healthscheme_1, healthscheme_2,
+#                             wt, as, as_binned, nfhs4_census2011_district_id))
 
 
 ahs_preg$state <- str_pad(ahs_preg$state, 2, "left", "0")
@@ -333,23 +335,39 @@ ahs_preg$district <- str_pad(ahs_preg$district, 2, "left", "0")
 #making psu 3 numbers
 ahs_preg$psu <- str_pad(ahs_preg$psu, 3, "left", "0")
 
+#ahs$rural <- as.numeric(ahs$rural)
+#ahs$stratum_code <- as.numeric(ahs$stratum_code)
+#ahs$wt <- as.numeric(ahs$wt)
+#ahs$date_of_intr <- as.numeric(ahs$date_of_intr)
+#ahs$month_of_intr <- as.numeric(ahs$month_of_intr)
+#ahs$year_of_intr <- as.numeric(ahs$year_of_intr)
+#ahs$intvw_yrmo <- as.numeric(ahs$intvw_yrmo)
+#ahs$round <- as.numeric(ahs$round)
+#ahs$marital_status <- as.numeric(ahs$marital_status)
 
 
-ahs_preg_educ <- left_join(
-  ahs_preg,
-  wps_educ
-)
+#ahs_preg_educ <- left_join(
+#  ahs_preg,
+#  wps_educ,
+#)
 
+
+#try <- left_join(ahs_preg, wps_full,
+#                 by = c("caseid", "state", "district", "rural", 
+#                        "stratum_code", "psu", "date_of_intr", "month_of_intr", "year_of_intr", "intvw_yrmo",
+#                        "round", "wt",
+#                        "age", "marital_status", "as"))
 
 #picking out distinct (some duplicates in wps that we removed when picking most recent outcome. Duplicates seem to be mostly round 1 and 2)
-nrow(ahs_preg)
-nrow(ahs_preg_educ)
-nrow(distinct(ahs_preg_educ))
+#nrow(ahs_preg)
+#nrow(ahs_preg_educ)
+#nrow(distinct(ahs_preg_educ))
 
-ahs_preg_educ <- distinct(ahs_preg_educ)
+#ahs_preg_educ <- distinct(ahs_preg_educ)
 
 
-ahs_preg_match <- ahs_preg_educ %>% select(c(caseid, state, district, psu, out_come_of_preg, previous_sb, survey, year_of_abortion, yob, wt, year_of_intr, age,
+ahs_preg_match <- ahs_preg %>% select(c(caseid, state, district, psu, out_come_of_preg, #previous_sb, 
+                                        survey, year_of_abortion, yob, wt, year_of_intr, age,
                                   rural, religion, social_group_code, highest_qualification,
                                   drinking_water_source,
                                   is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 

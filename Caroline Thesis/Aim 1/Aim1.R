@@ -293,6 +293,8 @@ df <- df_check
 
 #write.csv(df, "df_updated_primary_w_socioeconomic.csv")
 
+df <- read.csv("df_updated_primary_w_socioeconomic.csv")
+
 # calculating rates per year ----------------------------------------------
 library(Redmonder)
 library(survey)
@@ -515,7 +517,7 @@ stillbirth_caste <-  ggplot(data = sb_caste_year_rate, mapping = aes(x= outcome_
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_caste,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
-                     labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
+                     labels = c("Not SC or ST", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of stillbirths per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot()
@@ -623,7 +625,7 @@ abort_caste <-  ggplot(data = abort_caste_year_rate, mapping = aes(x= outcome_ye
   #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
   geom_line() + scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
   scale_color_manual(values = mycolors_caste,  name = "Scheduled Caste or Scheduled Tribe", breaks =c("0", "1", "2"), 
-                     labels = c("None", "Scheduled Caste", "Scheduled Tribe"))+
+                     labels = c("Not SC or ST", "Scheduled Caste", "Scheduled Tribe"))+
   labs(y = "Rate of abortion per 1000 pregnancies") +
   labs(x = "Year")+
   theme_cowplot()
@@ -777,6 +779,28 @@ design_noweight <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, nest 
 
 #making two groups to compare RII and SII. 2004 - 2010 
 
+#urban vs. rural plots
+
+ms_year_rate_rurb <- svyby(~miscarriage, ~outcome_year+strat_rurb+age, 
+                           design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+ms_year_rate_rurb$ms_per1000 <- ms_year_rate_rurb$miscarriage*1000
+ms_year_rate_rurb$ci_l_per1000 <- ms_year_rate_rurb$ci_l*1000
+ms_year_rate_rurb$ci_u_per1000 <- ms_year_rate_rurb$ci_u*1000
+ms_year_rate_rurb$se_per1000 <- ms_year_rate_rurb$se*1000
+
+
+ms_rate_rurb <- ggplot(data = ms_year_rate_rurb, mapping = aes(x= outcome_year, y = ms_per1000, color = as.factor(strat_rurb))) + 
+  geom_point() + 
+  geom_line() + 
+  #geom_line(aes(y = ms_per1000)) +
+  scale_color_brewer(palette = "Paired",name = "Urbanicity", breaks =c("1", "2"), 
+                     labels = c("Urban", "Rural"))+
+  ylim(0,100)+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11) +
+  scale_x_continuous(breaks = seq(2004, 2019, by = 1))
 
 
 # NFHS only rates ---------------------------------------------------------
@@ -1737,6 +1761,24 @@ save_as_docx(rr_prim_flex, path = "rr_prim_tab.docx")
 
 #RD: family = quasibinomial(link = "identity") OR family = gaussian(link = "identity")
 
+####### MAY 2 2023 Re-running to be SC vs. None and ST vs. None
+
+#making SC dataset. Dropping ST. 
+table(df$caste_group) #2 is ST. Keeping 0 and 1.
+df_sc <- df %>% filter(caste_group != 2)
+table(df_sc$caste_group)
+
+#remaking design variable
+design_sc <- svydesign(data = df_sc, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+#now ST  
+df_st <- df %>% filter(caste_group != 1)
+table(df_st$caste_group)
+
+#remaking design variable
+design_st <- svydesign(data = df_st, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
 sb_caste_rr <- svyglm(sb ~ scheduled*year_bin + age +  as.factor(state) + rural_urban, design = design, family = quasipoisson(link = "log"))
 
 sb_caste_rr <- avg_comparisons(sb_caste_rr, 
@@ -1749,6 +1791,37 @@ sb_caste_rr$outcome <- c("Stillbirth")
 
 #keeping only columns care about to plot soon
 sbcasterr <- tidy(sb_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+## Now running it SC vs. None
+sb_sc_rr <- svyglm(sb ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_sc, family = quasipoisson(link = "log"))
+
+sb_sc_rr <- avg_comparisons(sb_sc_rr, 
+                               variables = "caste_group", 
+                               by = "year_bin", transform_pre = "lnratioavg",
+                               transform_post = exp)
+
+#adding in term column
+sb_sc_rr$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbscrr <- tidy(sb_sc_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+sb_st_rr <- svyglm(sb ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_st, family = quasipoisson(link = "log"))
+
+sb_st_rr <- avg_comparisons(sb_st_rr, 
+                            variables = "caste_group", 
+                            by = "year_bin", transform_pre = "lnratioavg",
+                            transform_post = exp)
+
+#adding in term column
+sb_st_rr$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbstrr <- tidy(sb_st_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
 
 
 #sb_caste_rr <- sb_caste_rr %>% tidy(conf.int = TRUE) 
@@ -1781,6 +1854,37 @@ sb_caste_rd$outcome <- c("Stillbirth")
 sbcasterd <- tidy(sb_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
 
 
+## Now running it SC vs. None
+sb_sc_rd <- svyglm(sb ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_sc, family = gaussian(link = "identity"))
+
+sb_sc_rd <- avg_comparisons(sb_sc_rd, 
+                            variables = list(caste_group = c(0,1)),  
+                            by = "year_bin")
+
+#adding in term column
+sb_sc_rd$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbscrd <- tidy(sb_sc_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+sb_st_rd <- svyglm(sb ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_st, family = gaussian(link = "identity"))
+
+sb_st_rd <- avg_comparisons(sb_st_rd, 
+                            variables = list(caste_group = c(0,1)),
+                            by = "year_bin")
+
+#adding in term column
+sb_st_rd$outcome <- c("Stillbirth")
+
+#keeping only columns care about to plot soon
+sbstrd <- tidy(sb_st_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+
+
 #sb_caste_rd <- sb_caste_rd %>% tidy(conf.int = TRUE)
 #sbcaste_rd <- (sb_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
 #sbcaste_rd_conflow <- (sb_caste_rd$conf.low[2]*1000) %>% round_half_up(digits = 2)
@@ -1804,6 +1908,37 @@ abort_caste_rr$outcome <- c("Abortion")
 
 #keeping only columns care about to plot soon
 abortcasterr <- tidy(abort_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+
+## Now running it SC vs. None
+abort_sc_rr <- svyglm(abort ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_sc, family = quasipoisson(link = "log"))
+
+abort_sc_rr <- avg_comparisons(abort_sc_rr, 
+                            variables = "caste_group", 
+                            by = "year_bin", transform_pre = "lnratioavg",
+                            transform_post = exp)
+
+#adding in term column
+abort_sc_rr$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortscrr <- tidy(abort_sc_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+abort_st_rr <- svyglm(abort ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_st, family = quasipoisson(link = "log"))
+
+abort_st_rr <- avg_comparisons(abort_st_rr, 
+                            variables = "caste_group", 
+                            by = "year_bin", transform_pre = "lnratioavg",
+                            transform_post = exp)
+
+#adding in term column
+abort_st_rr$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortstrr <- tidy(abort_st_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
 
 
 #abort_caste_rr <- abort_caste_rr %>% tidy(conf.int = TRUE) 
@@ -1834,6 +1969,34 @@ abort_caste_rd$outcome <- c("Abortion")
 abortcasterd <- tidy(abort_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
 
 
+## Now running it SC vs. None
+abort_sc_rd <- svyglm(abort ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_sc, family = gaussian(link = "identity"))
+
+abort_sc_rd <- avg_comparisons(abort_sc_rd, 
+                            variables = list(caste_group = c(0,1)),  
+                            by = "year_bin")
+
+#adding in term column
+abort_sc_rd$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortscrd <- tidy(abort_sc_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+abort_st_rd <- svyglm(abort ~ caste_group*year_bin + age +  
+                     as.factor(state) + rural_urban, design = design_st, family = gaussian(link = "identity"))
+
+abort_st_rd <- avg_comparisons(abort_st_rd, 
+                            variables = list(caste_group = c(0,1)),
+                            by = "year_bin")
+
+#adding in term column
+abort_st_rd$outcome <- c("Abortion")
+
+#keeping only columns care about to plot soon
+abortstrd <- tidy(abort_st_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
 
 #abort_caste_rd <- abort_caste_rd %>% tidy(conf.int = TRUE)
 #abortcaste_rd <- (abort_caste_rd$estimate[2]*1000) %>% round_half_up(digits = 2)
@@ -1859,6 +2022,36 @@ miscarriage_caste_rr$outcome <- c("Miscarriage")
 
 #keeping only columns care about to plot soon
 miscarriagecasterr <- tidy(miscarriage_caste_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+## Now running it SC vs. None
+miscarriage_sc_rr <- svyglm(miscarriage ~ caste_group*year_bin + age +  
+                        as.factor(state) + rural_urban, design = design_sc, family = quasipoisson(link = "log"))
+
+miscarriage_sc_rr <- avg_comparisons(miscarriage_sc_rr, 
+                               variables = "caste_group", 
+                               by = "year_bin", transform_pre = "lnratioavg",
+                               transform_post = exp)
+
+#adding in term column
+miscarriage_sc_rr$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagescrr <- tidy(miscarriage_sc_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+miscarriage_st_rr <- svyglm(miscarriage ~ caste_group*year_bin + age +  
+                        as.factor(state) + rural_urban, design = design_st, family = quasipoisson(link = "log"))
+
+miscarriage_st_rr <- avg_comparisons(miscarriage_st_rr, 
+                               variables = "caste_group", 
+                               by = "year_bin", transform_pre = "lnratioavg",
+                               transform_post = exp)
+
+#adding in term column
+miscarriage_st_rr$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagestrr <- tidy(miscarriage_st_rr) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
 
 
 #miscarriage_caste_rr <- miscarriage_caste_rr %>% tidy(conf.int = TRUE) 
@@ -1891,6 +2084,33 @@ miscarriage_caste_rd$outcome <- c("Miscarriage")
 
 miscarriagecasterd <- tidy(miscarriage_caste_rd) %>% select(c(year_bin, estimate, std.error, conf.low, conf.high, outcome))
 
+## Now running it SC vs. None
+miscarriage_sc_rd <- svyglm(miscarriage ~ caste_group*year_bin + age +  
+                        as.factor(state) + rural_urban, design = design_sc, family = gaussian(link = "identity"))
+
+miscarriage_sc_rd <- avg_comparisons(miscarriage_sc_rd, 
+                               variables = list(caste_group = c(0,1)),  
+                               by = "year_bin")
+
+#adding in term column
+miscarriage_sc_rd$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagescrd <- tidy(miscarriage_sc_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
+
+#now ST
+miscarriage_st_rd <- svyglm(miscarriage ~ caste_group*year_bin + age +  
+                        as.factor(state) + rural_urban, design = design_st, family = gaussian(link = "identity"))
+
+miscarriage_st_rd <- avg_comparisons(miscarriage_st_rd, 
+                               variables = list(caste_group = c(0,1)),
+                               by = "year_bin")
+
+#adding in term column
+miscarriage_st_rd$outcome <- c("Miscarriage")
+
+#keeping only columns care about to plot soon
+miscarriagestrd <- tidy(miscarriage_st_rd) %>% select(c(year_bin, estimate, conf.low, conf.high, outcome))
 
 
 #miscarriage_caste_rd <- miscarriage_caste_rd %>% tidy(conf.int = TRUE)
@@ -1901,6 +2121,17 @@ miscarriagecasterd <- tidy(miscarriage_caste_rd) %>% select(c(year_bin, estimate
 #miscarriage_caste_rd <- miscarriage_caste_rd %>% filter(row_number() %in% c(2))
 #miscarriage_caste_rd$term[miscarriage_caste_rd$term == "scheduled"] <- "Miscarriage"
 
+rr_sc_v1 <- rbind(sbscrr, abortscrr)
+rr_st_v1 <- rbind(sbstrr, abortstrr)
+
+rr_st <- rbind(rr_st_v1, miscarriagestrr)
+rr_sc <- rbind(rr_sc_v1, miscarriagescrr)
+
+rd_sc_v1 <- rbind(sbscrd, abortscrd)
+rd_st_v1 <- rbind(sbstrd, abortstrd)
+
+rd_sc <- rbind(rd_sc_v1, miscarriagescrd)
+rd_st <- rbind(rd_st_v1, miscarriagestrd)
 
 rd_caste_v1 <- rbind(sbcasterd, abortcasterd)
 rd_caste <- rbind(rd_caste_v1, miscarriagecasterd)
@@ -1910,6 +2141,16 @@ rd_caste$estimate <- rd_caste$estimate*1000
 rd_caste$std.error <- rd_caste$std.error*1000
 rd_caste$conf.low <- rd_caste$conf.low*1000
 rd_caste$conf.high <- rd_caste$conf.high*1000
+
+rd_sc$estimate <- rd_sc$estimate*1000
+#rd_sc$std.error <- rd_sc$std.error*1000
+rd_sc$conf.low <- rd_sc$conf.low*1000
+rd_sc$conf.high <- rd_sc$conf.high*1000
+
+rd_st$estimate <- rd_st$estimate*1000
+#rd_st$std.error <- rd_st$std.error*1000
+rd_st$conf.low <- rd_st$conf.low*1000
+rd_st$conf.high <- rd_st$conf.high*1000
 
 rd_caste_plot <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
   geom_point(size = 1.5, position=position_dodge(width=0.5)) + 

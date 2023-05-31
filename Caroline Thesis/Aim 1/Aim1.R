@@ -339,7 +339,7 @@ df$year_bin <- as.factor(df$year_bin)
 design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 
-#sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 #ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 #abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
 
@@ -780,9 +780,10 @@ design_noweight <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, nest 
 #making two groups to compare RII and SII. 2004 - 2010 
 
 #urban vs. rural plots
+miscarriage_state_year_rate <- svyby(~miscarriage, ~outcome_year*~state, 
+                                     design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
 
-ms_year_rate_rurb <- svyby(~miscarriage, ~outcome_year+strat_rurb+age, 
-                           design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
 
 ms_year_rate_rurb$ms_per1000 <- ms_year_rate_rurb$miscarriage*1000
 ms_year_rate_rurb$ci_l_per1000 <- ms_year_rate_rurb$ci_l*1000
@@ -801,6 +802,39 @@ ms_rate_rurb <- ggplot(data = ms_year_rate_rurb, mapping = aes(x= outcome_year, 
   labs(x = "Year")+
   theme_cowplot(11) +
   scale_x_continuous(breaks = seq(2004, 2019, by = 1))
+
+#looking at rates by state by year
+
+df$state_named <- factor(df$state, 
+                     levels = c(2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27, 
+                                28, 29, 31, 32, 33, 34),
+                     labels = c("HP", "Punjab", "Chandigarh", "Uttarakhand", "Haryana",
+                                "Rajasthan", "UP", "Bihar", "Sikkim", "Arunachal Pradesh", "Manipur", "Mizoram",
+                                "Tripura", "Meghalaya", "Assam", "WB", "Jharkhand", "Odisha",
+                                "Chhattisgarh", "MP", "Maharashtra", "Andhra Pradesh","Karnataka", "Goa", "Kerala", "TN", "Puducherry",
+                                "Andaman & Nicobar"))
+
+#redoing design
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
+miscarriage_state_year_rate <- svyby(~miscarriage, ~outcome_year*~state_named, 
+                                     design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+
+
+miscarriage_state_year_rate$ms_per1000 <- miscarriage_state_year_rate$miscarriage*1000
+miscarriage_state_year_rate$ci_l_per1000 <- miscarriage_state_year_rate$ci_l*1000
+miscarriage_state_year_rate$ci_u_per1000 <- miscarriage_state_year_rate$ci_u*1000
+miscarriage_state_year_rate$se_per1000 <- miscarriage_state_year_rate$se*1000
+
+miscarriage_state_year_rate_plot <- ggplot(data = miscarriage_state_year_rate, mapping = aes(x=outcome_year, y = ms_per1000)) +
+  geom_point()+
+  geom_line()+
+  labs(y = "Rate of miscarriages per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)+
+  facet_wrap(~state_named) +
+  scale_x_continuous(breaks = seq(2004, 2019, by = 2))
 
 
 # NFHS only rates ---------------------------------------------------------
@@ -2181,6 +2215,39 @@ rd_caste_plot_poster <- ggplot(data = rd_caste, mapping = aes(x = year_bin, y = 
   theme(axis.text.x=element_text(angle=45,hjust=1), axis.text = element_text(face="bold", colour = "black")) +
   theme(legend.position="top")
 
+rd_sc_plot <- ggplot(data = rd_sc, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_y_continuous(name="Risk Difference SC", limits = c(-18, 15),
+                     breaks = c(-15, -10, -5, 0, 5, 10, 15))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rd_st_plot <- ggplot(data = rd_st, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(size = 1.5, position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_y_continuous(name="Risk Difference ST", limits = c(-18, 15),
+                     breaks = c(-15, -10, -5, 0, 5, 10, 15))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+library(ggpubr)
+rd_sc_st_plot <-  ggarrange(rd_sc_plot, rd_st_plot,
+                            ncol = 1, nrow = 2, labels = "AUTO",
+                            common.legend = TRUE, legend = "right")
+
+
+
 #dw_rd_caste <- dwplot(rd_caste) +
 #  theme_bw() + xlab("Risk Difference by Caste") + ylab("") + 
 #  geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
@@ -2207,12 +2274,54 @@ rr_caste_plot <- ggplot(data = rr_caste, mapping = aes(x = year_bin, y = estimat
   theme(axis.text.x=element_text(angle=45,hjust=1))
 
 
+rr_sc_plot <- ggplot(data = rr_sc, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  ylab("Risk Ratio SC")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rr_st_plot <- ggplot(data = rr_st, mapping = aes(x = year_bin, y = estimate, color = outcome)) + 
+  geom_point(position=position_dodge(width=0.5)) + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept = 1, color = I("black"), linetype = 2)+
+  scale_x_discrete(breaks = c(1,2,3,4,5,6,7,8), labels = c("2004-2005", "2006-2007", "2008-2009", "2010-2011",
+                                                           "2012-2013", "2014-2015", "2016-2017", "2018-2019"))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  ylab("Risk Ratio ST")+
+  xlab("Year") +
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=45,hjust=1))
+
+rr_sc_st_plot <-  ggarrange(rr_sc_plot, rr_st_plot,
+                            ncol = 1, nrow = 2, labels = "AUTO",
+                            common.legend = TRUE, legend = "right")
+
+library(flextable)
+
 rd_caste_flex <- flextable(rd_caste)
 save_as_docx(rd_caste_flex, path = "rd_caste_tab.docx")
+
+rd_sc_flex <- flextable(rd_sc)
+save_as_docx(rd_sc_flex, path = "rd_sc_tab.docx")
+
+rd_st_flex <- flextable(rd_st)
+save_as_docx(rd_st_flex, path = "rd_st_tab.docx")
+
 
 rr_caste_flex <- flextable(rr_caste)
 save_as_docx(rr_caste_flex, path = "rr_caste_tab.docx")
 
+rr_sc_flex <- flextable(rr_sc)
+save_as_docx(rr_sc_flex, path = "rr_sc_tab.docx")
+
+rr_st_flex <- flextable(rr_st)
+save_as_docx(rr_st_flex, path = "rr_st_tab.docx")
 
 
 #NOW EXPONENTIATE THE COEFFICIENT

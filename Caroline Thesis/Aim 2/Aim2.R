@@ -7,6 +7,7 @@ library(cowplot)
 library(did)
 library(survey)
 library(etwfe)
+library(ggpubr)
 
 setwd("./Caroline Thesis/Aim 2")
 
@@ -630,6 +631,15 @@ df$treated <- factor(df$treated,
                      levels = c(0,1),
                      labels = c("No", "Yes"))
 
+df$accessyear <- factor(df$g,
+                        levels = c(2010, 2012, 2014),
+                        labels = c("Early (2010)", "Mid (2012)", "Late (2014)"))
+
+df <- df %>% mutate(exposure = case_when(g == 2010 ~ "Early (2010)",
+                                         g == 2012 ~ "Mid (2012)",
+                                         g == 2014 ~ "Late (2014)"))
+
+
 t1_strat <- df %>% 
   select(treated, age, ruralurban, scheduled_c_t, primary_school, g) %>% 
   mutate(treated = paste("District-level RSBY Access -", treated)) %>%
@@ -645,7 +655,8 @@ t1_strat <- df %>%
                       primary_school ~ "Completed Primary School",
                       g ~ "Year District Received Access By"),
                   statistic = list(all_continuous() ~ "{mean} ({sd})"),
-                  missing_text =  "Missing")
+                  missing_text =  "Missing"
+                  )
   ) %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
   gt::tab_options(table.font.names = "Times New Roman")
 
@@ -653,6 +664,47 @@ library(webshot)
 gt::gtsave(t1_strat, "tab_1.png", expand = 10)
 
 # DiD ---------------------------------------------------------------------
+
+df <- df %>% rename(id = X)
+str(df$state)
+df$state <- as.factor(df$state)
+str(df$rural_urban) 
+df$rural_urban <- as.factor(df$rural_urban)
+
+str(df$age)
+
+#making age category 
+df <- df %>% mutate(age_cat = case_when(age < 20 ~ 1,
+                                        age > 19 & age < 25 ~ 2,
+                                        age > 24 & age < 30 ~ 3,
+                                        age > 29 & age < 35 ~ 4,
+                                        age > 34 & age < 40 ~ 5,
+                                        age > 39 & age < 45 ~ 6,
+                                        age >= 45 ~ 7))
+
+df$age_cat <- as.factor(df$age_cat)
+df$age_squred <- df$age^2
+
+df <- df %>% mutate(EAG = case_when(state == 10 ~ 1,
+                                    state == 22 ~ 1,
+                                    state == 20 ~ 1,
+                                    state == 23 ~ 1,
+                                    state == 21 ~ 1,
+                                    state == 8 ~ 1,
+                                    state == 5 ~ 1, 
+                                    state == 9 ~ 1,
+                                    TRUE ~ 0))
+
+table(df$state, df$EAG)
+
+
+df <- df %>% mutate(g = case_when(treat == 0 ~ 0,
+                                  treat == 1 ~ 2010,
+                                  treat == 2 ~ 2012, 
+                                  treat == 3 ~ 2014,
+                                  TRUE ~ NA_real_))
+
+
 
 
 # district panel ----------------------------------------------------------
@@ -853,11 +905,16 @@ dists_sb_group.plot <- data.frame(time=dists_sb_group[["egt"]],
                                    att=dists_sb_group[["att.egt"]],
                                    se=dists_sb_group[["se.egt"]])
 
-ggplot(data = dists_sb_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
+dists_sb_group.plot$time <- factor(dists_sb_group.plot$time, 
+                         levels = c(2010, 2012, 2014),
+                         labels = c("Early", "Mid", "Late"))
+
+
+pooled_sb_group_plot <- ggplot(data = dists_sb_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  ylim(-10, 10)+
+  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -866,11 +923,16 @@ dists_abort_group.plot <- data.frame(time=dists_abort_group[["egt"]],
                                   att=dists_abort_group[["att.egt"]],
                                   se=dists_abort_group[["se.egt"]])
 
-ggplot(data = dists_abort_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
+dists_abort_group.plot$time <- factor(dists_abort_group.plot$time, 
+                                   levels = c(2010, 2012, 2014),
+                                   labels = c("Early", "Mid", "Late"))
+
+
+pooled_abort_group_plot <- ggplot(data = dists_abort_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  ylim(-80, 50)+
+  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -879,16 +941,22 @@ dists_ms_group.plot <- data.frame(time=dists_ms_group[["egt"]],
                                      att=dists_ms_group[["att.egt"]],
                                      se=dists_ms_group[["se.egt"]])
 
-ggplot(data = dists_ms_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
+dists_ms_group.plot$time <- factor(dists_ms_group.plot$time, 
+                                   levels = c(2010, 2012, 2014),
+                                   labels = c("Early", "Mid", "Late"))
+
+
+pooled_ms_group_plot <- ggplot(data = dists_ms_group.plot, aes(x = as.factor(time), y = round(att, 2))) + geom_point(color = "#024b7a") +
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
 
-
+pooled_group_plots <- ggarrange(pooled_sb_group_plot, pooled_abort_group_plot, pooled_ms_group_plot,
+                                labels = c("A", "B", "C"), nrow = 1)
                   
 #calendar plots
 ggdid(dists_sb_calendar)
@@ -1044,104 +1112,6 @@ more_primary_dist_sb_calendar <- aggte(more_primary_dist_sb, type = "calendar", 
 more_primary_dist_abort_calendar <- aggte(more_primary_dist_abort, type = "calendar", na.rm = T)
 more_primary_dist_ms_calendar <- aggte(more_primary_dist_ms, type = "calendar", na.rm = T)
 
-##### EAG stratified#####
-
-dist_eag <- dists_df %>% filter(eag == 1)
-
-dist_eag_sb <- att_gt(yname = "sb_rate",
-                  tname = "outcome_year",
-                  gname = "enrollgroup",
-                  idname = "dist_id",
-                  xformla = ~ (med_age^2),
-                  data = dist_eag,
-                  panel = TRUE,
-                  clustervars = "dist_id",
-                  control_group = "notyettreated",
-                  print_details = TRUE,
-                  bstrap=TRUE, cband=FALSE
-)
-
-dist_eag_abort <- att_gt(yname = "abort_rate",
-                     tname = "outcome_year",
-                     gname = "enrollgroup",
-                     idname = "dist_id",
-                     xformla = ~ (med_age^2),
-                     data = dist_eag,
-                     panel = TRUE,
-                     clustervars = "dist_id",
-                     control_group = "notyettreated",
-                     print_details = TRUE,
-                     bstrap=TRUE, cband=FALSE
-)
-
-dist_eag_ms <- att_gt(yname = "ms_rate",
-                  tname = "outcome_year",
-                  gname = "enrollgroup",
-                  idname = "dist_id",
-                  xformla = ~ (med_age^2),
-                  data = dist_eag,
-                  panel = TRUE,
-                  clustervars = "dist_id",
-                  control_group = "notyettreated",
-                  print_details = TRUE,
-                  bstrap=TRUE, cband=FALSE
-)
-
-dist_eags_sb_group <- aggte(dist_eag_sb, type = "group")
-dist_eags_sb_dynamic <- aggte(dist_eag_sb, type = "dynamic")
-dist_eags_sb_calendar <- aggte(dist_eag_sb, type = "calendar")
-
-dist_eags_abort_group <- aggte(dist_eag_abort, type = "group")
-dist_eags_abort_dynamic <- aggte(dist_eag_abort, type = "dynamic")
-dist_eags_abort_calendar <- aggte(dist_eag_abort, type = "calendar")
-
-dist_eags_ms_group <- aggte(dist_eag_ms, type = "group")
-dist_eags_ms_dynamic <- aggte(dist_eag_ms, type = "dynamic")
-dist_eags_ms_calendar <- aggte(dist_eag_ms, type = "calendar")
-
-
-dists_ms_dynamic.dyn <- data.frame(time=dists_ms_dynamic[["egt"]],
-                                   att=dists_ms_dynamic[["att.egt"]],
-                                   se=dists_ms_dynamic[["se.egt"]])
-
-dists_ms_dynamic.dyn  <- dists_ms_dynamic.dyn  %>% mutate(post=ifelse(time>=0,1,0))
-
-ggplot(dists_ms_dynamic.dyn)+
-  geom_rect( aes(xmin=0.1,
-                 xmax=9,
-                 ymin=(dists_ms_dynamic[["overall.att"]]-1.96*dists_ms_dynamic[["overall.se"]]),
-                 ymax=(dists_ms_dynamic[["overall.att"]]+1.96*dists_ms_dynamic[["overall.se"]]), alpha="95% CI"), fill = alpha("lightblue"),
-             color="lightblue")+
-  geom_segment( 
-    aes(x = 0, y = dists_ms_dynamic[["overall.att"]], xend = 9, yend = dists_ms_dynamic[["overall.att"]], lty="95% CI"),
-    color="blue3")+
-  
-  geom_pointrange(aes(x=time,y=round(att,2),ymin = round((att-1.96*se),2), ymax = round((att+1.96*se),2),
-                      color=as.factor(post)), size=1,fatten = 1)+
-  
-  ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
-  xlab("Time since received access to RSBY")+
-  scale_x_continuous(breaks=c(-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9),
-                     labels = c("-9","-8","-7","6","-5","-4","-3","-2","-1","0","+1","+2","+3","+4","+5","+6","+7","+8","+9"))+
-  ylim(-30,30)+
-  
-  scale_color_manual(values=c("#e67e00","#024b7a"),labels=c("Pre Intervention","Post Intervention"))+
-  scale_alpha_manual(values=0.3,labels=str_wrap("Overall summary of dynamic ATT's, 95%CI",
-                                                width=25))+
-  
-  scale_linetype_manual(values=2,labels=str_wrap("Overall summary of dynamic ATT's, 95%CI",
-                                                 width=25))+
-  labs(color=str_wrap("Event-time average treatment effects (ATT), 95%CI",
-                      width=28), alpha="",linetype="")+
-  geom_vline(xintercept=-0.1,lty=2,color="gray59")+
-  geom_hline(yintercept=0,lty=2,color="gray59")+
-  theme_bw()+
-  guides(color = guide_legend(order=1,override.aes = list(size =0.5)))+
-  guides(alpha=guide_legend(override.aes = list(alpha =0.5),order=2))+
-  guides(linetype = guide_legend(override.aes=list(size=1),order=2))+
-  theme(legend.text = element_text(size=10),
-        legend.title = element_text(size=10))+
-  theme_cowplot()
 
 #### Rural Urban Stratified ####
 
@@ -1975,7 +1945,201 @@ above_ms_group <- aggte(above_ms, type = "group")
 above_ms_dynamic <- aggte(above_ms, type = "dynamic")
 above_ms_calendar <- aggte(above_ms, type = "calendar")
 
+#### Stratified results overall ATT plots ####
 
+rural_sb_overall_att <- data.frame(strata=c("Rural"),
+                                   att=rural_sb_dynamic[["overall.att"]],
+                                   se=rural_sb_dynamic[["overall.se"]],
+                                   outcome = "Stillbirth")
+
+rural_abort_overall_att <- data.frame(strata=c("Rural"),
+                                   att=rural_abort_dynamic[["overall.att"]],
+                                   se=rural_abort_dynamic[["overall.se"]],
+                                   outcome = "Abortion")
+
+rural_ms_overall_att <- data.frame(strata=c("Rural"),
+                                   att=rural_ms_dynamic[["overall.att"]],
+                                   se=rural_ms_dynamic[["overall.se"]],
+                                   outcome = "Miscarriage")
+
+rural_atts <- rbind(rural_sb_overall_att, rural_abort_overall_att, rural_ms_overall_att)
+
+
+urban_sb_overall_att <- data.frame(strata=c("Urban"),
+                                   att=urban_sb_dynamic[["overall.att"]],
+                                   se=urban_sb_dynamic[["overall.se"]],
+                                   outcome = "Stillbirth")
+
+urban_abort_overall_att <- data.frame(strata=c("Urban"),
+                                      att=urban_abort_dynamic[["overall.att"]],
+                                      se=urban_abort_dynamic[["overall.se"]],
+                                      outcome = "Abortion")
+
+urban_ms_overall_att <- data.frame(strata=c("Urban"),
+                                   att=urban_ms_dynamic[["overall.att"]],
+                                   se=urban_ms_dynamic[["overall.se"]],
+                                   outcome = "Miscarriage")
+
+urban_atts <- rbind(urban_sb_overall_att, urban_abort_overall_att, urban_ms_overall_att)
+
+below_sb_overall_att <- data.frame(strata=c("Below Median Wealth"),
+                                   att=below_sb_dynamic[["overall.att"]],
+                                   se=below_sb_dynamic[["overall.se"]],
+                                   outcome = "Stillbirth")
+
+below_abort_overall_att <- data.frame(strata=c("Below Median Wealth"),
+                                      att=below_abort_dynamic[["overall.att"]],
+                                      se=below_abort_dynamic[["overall.se"]],
+                                      outcome = "Abortion")
+
+below_ms_overall_att <- data.frame(strata=c("Below Median Wealth"),
+                                   att=below_ms_dynamic[["overall.att"]],
+                                   se=below_ms_dynamic[["overall.se"]],
+                                   outcome = "Miscarriage")
+
+
+below_atts <- rbind(below_sb_overall_att, below_abort_overall_att, below_ms_overall_att)
+
+above_sb_overall_att <- data.frame(strata=c("Above Median Wealth"),
+                                   att=above_sb_dynamic[["overall.att"]],
+                                   se=above_sb_dynamic[["overall.se"]],
+                                   outcome = "Stillbirth")
+
+above_abort_overall_att <- data.frame(strata=c("Above Median Wealth"),
+                                      att=above_abort_dynamic[["overall.att"]],
+                                      se=above_abort_dynamic[["overall.se"]],
+                                      outcome = "Abortion")
+
+above_ms_overall_att <- data.frame(strata=c("Above Median Wealth"),
+                                   att=above_ms_dynamic[["overall.att"]],
+                                   se=above_ms_dynamic[["overall.se"]],
+                                   outcome = "Miscarriage")
+
+
+above_atts <- rbind(above_sb_overall_att, above_abort_overall_att, above_ms_overall_att)
+
+rurb_wealth_atts <- rbind(rural_atts, urban_atts, below_atts, above_atts)
+
+
+#now making plot
+mycolors_outcomes <- c("#024b7a", "#e67e00", "#44b7c2")
+
+#making facetwrap variable
+rurb_wealth_atts <- rurb_wealth_atts %>% mutate(facet = case_when(strata == "Rural" ~ "Location",
+                                                                        strata == "Urban" ~ "Location",
+                                                                        TRUE ~ "Wealth"))
+
+ggplot(data = rurb_wealth_atts, aes(x = as.factor(strata), y = round(att, 2), color = outcome)) + geom_point(position=position_dodge(width=0.5)) +
+  geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, position=position_dodge(width=0.5)) + 
+  geom_hline(yintercept=0,lty=2,color="gray59")+
+  scale_color_manual(values = mycolors_outcomes)+
+  facet_wrap(~facet,  scales = "free_x")+
+  scale_y_continuous(limits = c(-30, 30), n.breaks = 6)+
+  ylab("Difference in rate of outcome per 1,000 pregnancies")+
+  xlab("Stratification Group")+
+  theme_cowplot()
+
+
+##### EAG stratified#####
+
+#not using May 31
+
+dist_eag <- dists_df %>% filter(eag == 1)
+
+dist_eag_sb <- att_gt(yname = "sb_rate",
+                      tname = "outcome_year",
+                      gname = "enrollgroup",
+                      idname = "dist_id",
+                      xformla = ~ (med_age^2),
+                      data = dist_eag,
+                      panel = TRUE,
+                      clustervars = "dist_id",
+                      control_group = "notyettreated",
+                      print_details = TRUE,
+                      bstrap=TRUE, cband=FALSE
+)
+
+dist_eag_abort <- att_gt(yname = "abort_rate",
+                         tname = "outcome_year",
+                         gname = "enrollgroup",
+                         idname = "dist_id",
+                         xformla = ~ (med_age^2),
+                         data = dist_eag,
+                         panel = TRUE,
+                         clustervars = "dist_id",
+                         control_group = "notyettreated",
+                         print_details = TRUE,
+                         bstrap=TRUE, cband=FALSE
+)
+
+dist_eag_ms <- att_gt(yname = "ms_rate",
+                      tname = "outcome_year",
+                      gname = "enrollgroup",
+                      idname = "dist_id",
+                      xformla = ~ (med_age^2),
+                      data = dist_eag,
+                      panel = TRUE,
+                      clustervars = "dist_id",
+                      control_group = "notyettreated",
+                      print_details = TRUE,
+                      bstrap=TRUE, cband=FALSE
+)
+
+dist_eags_sb_group <- aggte(dist_eag_sb, type = "group")
+dist_eags_sb_dynamic <- aggte(dist_eag_sb, type = "dynamic")
+dist_eags_sb_calendar <- aggte(dist_eag_sb, type = "calendar")
+
+dist_eags_abort_group <- aggte(dist_eag_abort, type = "group")
+dist_eags_abort_dynamic <- aggte(dist_eag_abort, type = "dynamic")
+dist_eags_abort_calendar <- aggte(dist_eag_abort, type = "calendar")
+
+dist_eags_ms_group <- aggte(dist_eag_ms, type = "group")
+dist_eags_ms_dynamic <- aggte(dist_eag_ms, type = "dynamic")
+dist_eags_ms_calendar <- aggte(dist_eag_ms, type = "calendar")
+
+
+dists_ms_dynamic.dyn <- data.frame(time=dists_ms_dynamic[["egt"]],
+                                   att=dists_ms_dynamic[["att.egt"]],
+                                   se=dists_ms_dynamic[["se.egt"]])
+
+dists_ms_dynamic.dyn  <- dists_ms_dynamic.dyn  %>% mutate(post=ifelse(time>=0,1,0))
+
+ggplot(dists_ms_dynamic.dyn)+
+  geom_rect( aes(xmin=0.1,
+                 xmax=9,
+                 ymin=(dists_ms_dynamic[["overall.att"]]-1.96*dists_ms_dynamic[["overall.se"]]),
+                 ymax=(dists_ms_dynamic[["overall.att"]]+1.96*dists_ms_dynamic[["overall.se"]]), alpha="95% CI"), fill = alpha("lightblue"),
+             color="lightblue")+
+  geom_segment( 
+    aes(x = 0, y = dists_ms_dynamic[["overall.att"]], xend = 9, yend = dists_ms_dynamic[["overall.att"]], lty="95% CI"),
+    color="blue3")+
+  
+  geom_pointrange(aes(x=time,y=round(att,2),ymin = round((att-1.96*se),2), ymax = round((att+1.96*se),2),
+                      color=as.factor(post)), size=1,fatten = 1)+
+  
+  ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
+  xlab("Time since received access to RSBY")+
+  scale_x_continuous(breaks=c(-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9),
+                     labels = c("-9","-8","-7","6","-5","-4","-3","-2","-1","0","+1","+2","+3","+4","+5","+6","+7","+8","+9"))+
+  ylim(-30,30)+
+  
+  scale_color_manual(values=c("#e67e00","#024b7a"),labels=c("Pre Intervention","Post Intervention"))+
+  scale_alpha_manual(values=0.3,labels=str_wrap("Overall summary of dynamic ATT's, 95%CI",
+                                                width=25))+
+  
+  scale_linetype_manual(values=2,labels=str_wrap("Overall summary of dynamic ATT's, 95%CI",
+                                                 width=25))+
+  labs(color=str_wrap("Event-time average treatment effects (ATT), 95%CI",
+                      width=28), alpha="",linetype="")+
+  geom_vline(xintercept=-0.1,lty=2,color="gray59")+
+  geom_hline(yintercept=0,lty=2,color="gray59")+
+  theme_bw()+
+  guides(color = guide_legend(order=1,override.aes = list(size =0.5)))+
+  guides(alpha=guide_legend(override.aes = list(alpha =0.5),order=2))+
+  guides(linetype = guide_legend(override.aes=list(size=1),order=2))+
+  theme(legend.text = element_text(size=10),
+        legend.title = element_text(size=10))+
+  theme_cowplot()
 
 # Wooldridge approach -----------------------------------------------------
 

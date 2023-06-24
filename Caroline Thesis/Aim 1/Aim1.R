@@ -208,7 +208,7 @@ prn<-psych::principal(asset_smc[,4:13], rotate="none", #nfactors=2,
                       covar=T, scores=TRUE, missing = TRUE, impute = "mean")
 
 #creating scree plot of asset index eigenvalues
-scree(asset_smc[,4:13], factors = FALSE, pc = TRUE)
+scree(asset_smc[,3:13], factors = FALSE, pc = TRUE)
 
 index <- prn$scores[,1] #+ prn$scores[,2]
 
@@ -237,7 +237,7 @@ Assets.indexed <- assets_index %>%
 
 df_w_wi <- left_join(df, Assets.indexed)
 
-library(dineq)
+#library(dineq)
 #creating weighted wealth quintile variable
 #df_w_wi$wiquint_weight <- ntiles.wtd(df_w_wi$wi_perc_rank, n = 5, weights = df$weight_adj)
 
@@ -253,14 +253,14 @@ df <- df_w_wi
 
 # First harmonizing
 
-df <- df %>% mutate(insurance = case_when(esis == 1 ~ 1,
-                                          rsby == 1 ~ 1,
-                                          cghsshis == 1 ~ 1,
-                                          reimburse == 1 ~ 1, 
-                                          chip == 1 ~ 1,
-                                          other_private ==1 ~ 1, 
-                                          other_insurance ==1 ~ 1,
-                                          TRUE ~ 0))
+#df <- df %>% mutate(insurance_type = case_when(esis == 1 ~ 1,
+#                                          rsby == 1 ~ 1,
+#                                          cghsshis == 1 ~ 1,
+#                                          reimburse == 1 ~ 1, 
+#                                          chip == 1 ~ 1,
+#                                          other_private ==1 ~ 1, 
+#                                          other_insurance ==1 ~ 1,
+#                                          TRUE ~ 0))
 
 
 # analyses ----------------------------------------------------------------
@@ -291,7 +291,7 @@ df_check <- df_check %>% rename(primary_school = primary_new)
 df_check <- df_check %>% select(-c(primary))
 df <- df_check
 
-#write.csv(df, "df_updated_primary_w_socioeconomic.csv")
+write.csv(df, "df_updated_primary_w_socioeconomic.csv")
 
 df <- read.csv("df_updated_primary_w_socioeconomic.csv")
 

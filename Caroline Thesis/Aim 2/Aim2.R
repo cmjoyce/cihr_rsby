@@ -642,12 +642,36 @@ df <- df %>% mutate(exposure = case_when(g == 2010 ~ "Early (2010)",
                                          g == 2014 ~ "Late (2014)"))
 
 
+
+df <- df %>% mutate(has_ins_interviewed = case_when(g == 0 ~ 0,
+                                                    g == 2010 & outcome_year < 2008 ~ 0,
+                                                    g == 2010 & outcome_year > 2007 ~ 2010,
+                                                    g == 2012 & outcome_year < 2011 ~ 0,
+                                                    g == 2012 & outcome_year > 2010 ~ 2012,
+                                                    g == 2014 & outcome_year < 2013 ~ 0,
+                                                    g == 2014 & outcome_year > 2012 ~ 2014,
+                                                    TRUE ~ NA_real_))
+
+
+df <- df %>% mutate(preg_exposure = case_when(has_ins_interviewed == 2010 ~ "Early (2010)",
+                                              has_ins_interviewed == 2012 ~ "Mid (2012)",
+                                              has_ins_interviewed == 2014 ~ "Late (2014)"#,
+                                              #has_ins_interviewed == 0 ~ "No access to RSBY"
+                                              ))
+df$treated_preg <- ifelse(df$has_ins_interviewed > 0, 1, 0)
+
+df$treated_preg <- factor(df$treated_preg,
+                     levels = c(0,1),
+                     labels = c("No", "Yes"))
+
+
+
 t1_strat <- df %>% 
-  select(treated, age, ruralurban, scheduled_c_t, primary_school, g) %>% 
-  mutate(treated = case_when(treated == "No" ~ "Never Treated",
-                             treated == "Yes" ~ "Ever Treated")) %>%
+  select(treated_preg, age, ruralurban, scheduled_c_t, primary_school, preg_exposure) %>% 
+  mutate(treated_preg = case_when(treated_preg == "No" ~ "Never Treated",
+                             treated_preg == "Yes" ~ "Ever Treated")) %>%
   tbl_strata(
-    strata = treated,
+    strata = treated_preg,
     .tbl_fun =
       ~ .x %>%
       tbl_summary(label = 
@@ -656,7 +680,7 @@ t1_strat <- df %>%
                       ruralurban ~ "Rural / Urban",
                       scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
                       primary_school ~ "Completed Primary School",
-                      g ~ "Year District Received Access By"),
+                      preg_exposure ~ "District-level Access in Year of Pregnancy"),
                   statistic = list(all_continuous() ~ "{mean} ({sd})"),
                   missing_text =  "Missing"
                   )
@@ -766,6 +790,14 @@ str(df$rural_urban)
 df$rural_urban <- as.factor(df$rural_urban)
 
 str(df$age)
+
+df <- df %>% mutate(g = case_when(treat == 0 ~ 0,
+                                  treat == 1 ~ 2010,
+                                  treat == 2 ~ 2012, 
+                                  treat == 3 ~ 2014,
+                                  TRUE ~ NA_real_))
+
+
 
 #making age category 
 df <- df %>% mutate(age_cat = case_when(age < 20 ~ 1,
@@ -2756,7 +2788,6 @@ cowplot::save_plot(
 #now making tables
 
 flextable::flextable(tidy(rural_sb_group))
-
 
 ##### EAG stratified#####
 

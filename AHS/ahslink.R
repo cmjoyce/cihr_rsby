@@ -87,6 +87,96 @@ check <- subset(ahs, n > 3)
 #dropping 96 obs that have more than 3 rounds
 ahs <- ahs %>% filter(n < 4)
 
+#June 22 2023 looking at number of women surveyed across all three rounds
+table(ahs$n, ahs$round) #506,741 interviewed only in first round
+
+
+#seeing how many nas are in health insurance and rsby.
+#then, populating with rounds 2 and 3 answers 
+table(ahs$round, is.na(ahs$iscoveredbyhealthscheme)) #12,629 missing in round 2. 7,359 missing round 3. All missing round 1
+
+#dropping round 1
+ahs_insurance <- ahs %>% filter(round > 1)
+ahs_insurance_complete <- ahs_insurance %>% filter(!is.na(iscoveredbyhealthscheme))
+
+ahs_insurance_complete <- ahs_insurance_complete %>% group_by(caseid)
+
+#seeing if any don't have rounds 2 and 3
+ahs_insurance_complete <- ahs_insurance_complete %>% add_count(caseid)
+table(ahs_insurance_complete$nn)
+
+ahs_insurance_complete <- ahs_insurance_complete %>% select(c(caseid, state, district, rural, stratum_code, psu, house_no, 
+                                                              house_hold_no, hhld_id, round, identifcation_code, member_identity,
+                                                              iscoveredbyhealthscheme, healthscheme_1, healthscheme_2,
+                                                              n, nn))
+
+#filtering out 30 with 3 rounds. Should only be 2 (round 2&3)
+ahs_insurance_complete <- ahs_insurance_complete %>% filter(nn < 3)
+
+
+#filtering out those who are only in rounds 2 or 3
+ahs_insurance_complete_one_round <- ahs_insurance_complete %>% filter(nn == 1)
+
+#for those with two rounds of data keeping only round 3. Round 2 missing 26 districts due to overwriting
+ahs_insurance_complete_round_3 <- ahs_insurance_complete %>% filter(nn == 2) 
+#ahs_insurance_complete_round_3 <- ahs_insurance_complete_round_3 %>% filter(round == 3)
+ahs_insurance_complete_round_3 <- subset(ahs_insurance_complete_round_3, round == 3)
+
+ahs_insurance_complete_no_dupes <- rbind(ahs_insurance_complete_one_round, ahs_insurance_complete_round_3)
+
+#ensuring only one per caseid
+ahs_insurance_complete_no_dupes <- ahs_insurance_complete_no_dupes %>% group_by(caseid) %>% add_count(caseid, name = "obs")
+#removing 20 duplicates
+ahs_insurance_complete_no_dupes <- subset(ahs_insurance_complete_no_dupes, obs == 1)
+
+table(ahs_insurance_complete_no_dupes$round)
+
+ahs_insurance <- ahs_insurance_complete_no_dupes %>% select(c(caseid, iscoveredbyhealthscheme,
+                                                             healthscheme_1, healthscheme_2))
+
+
+ahs_insurance$esis <- ifelse(ahs_insurance$healthscheme_1 == 1 | ahs_insurance$healthscheme_2 == 1, 1, 0)
+ahs_insurance$rsby <- ifelse(ahs_insurance$healthscheme_1 == 2 | ahs_insurance$healthscheme_2 == 2, 1, 0)
+ahs_insurance$othergov <- ifelse(ahs_insurance$healthscheme_1 == 3 | ahs_insurance$healthscheme_2 == 3, 1, 0)
+ahs_insurance$reimburse <- ifelse(ahs_insurance$healthscheme_1 == 4| ahs_insurance$healthscheme_2 == 4, 1, 0)
+ahs_insurance$chip <- ifelse(ahs_insurance$healthscheme_1 == 5| ahs_insurance$healthscheme_2 == 5, 1, 0)
+ahs_insurance$mediclaim <- ifelse(ahs_insurance$healthscheme_1 == 6 | ahs_insurance$healthscheme_2 == 6, 1, 0)
+ahs_insurance$other_insurance <- ifelse(ahs_insurance$healthscheme_1 == 7 | ahs_insurance$healthscheme_2 == 7, 1, 0)
+
+# June 22 2023 now using "df_dist_all_years_w_treatment.csv" and subsetting out AHS observations with missing
+# health insurance and RSBY
+
+df_ahs <- df %>% filter(survey == "AHS")
+df_ahs_nohi <- df_ahs %>% filter(is.na(health_ins))
+
+try <- left_join(df_ahs_nohi, ahs_insurance, by = c("caseid"))
+length(which(is.na(try$iscoveredbyhealthscheme)))
+
+#keeping only health insurance variables after merge
+try <- try %>% select(c(caseid, iscoveredbyhealthscheme, healthscheme_1, healthscheme_2, survey))
+
+#using code below to make health insurance variable
+try$esis <- ifelse(try$healthscheme_1 == 1 | try$healthscheme_2 == 1, 1, 0)
+try$rsby <- ifelse(try$healthscheme_1 == 2 | try$healthscheme_2 == 2, 1, 0)
+try$othergov <- ifelse(try$healthscheme_1 == 3 | try$healthscheme_2 == 3, 1, 0)
+try$reimburse <- ifelse(try$healthscheme_1 == 4| try$healthscheme_2 == 4, 1, 0)
+try$chip <- ifelse(try$healthscheme_1 == 5| try$healthscheme_2 == 5, 1, 0)
+try$mediclaim <- ifelse(try$healthscheme_1 == 6 | try$healthscheme_2 == 6, 1, 0)
+try$other_insurance <- ifelse(try$healthscheme_1 == 7 | try$healthscheme_2 == 7, 1, 0)
+
+#dropping old health insurance variables
+try <- try %>% select(-c(healthscheme_1, healthscheme_2))
+
+#making mediclaim other private
+try <- try %>% rename(other_private = mediclaim)
+#making other gov cghsshis
+try <- try %>% rename(cghsshis = othergov)
+
+#renaming iscoveredbyhealthscheme health insurance
+try <- try %>% rename(health_insurance = iscoveredbyhealthscheme)
+
+write.csv(try, "ahs_health_ins_later_rounds.csv")
+
 #making health insurance variables.
 
 #note 2045 observations where healthscheme_1 == healthscheme_2
@@ -285,6 +375,18 @@ ahs_preg <- wps_preg
 ahs_preg <- ahs_preg %>% group_by(caseid)
 ahs_preg <- ahs_preg %>% add_count(caseid)
 
+ahs_preg_rounds <- ahs_preg %>% filter(nn < 4)
+ahs_preg_rounds <- ahs_preg_rounds %>% group_by(caseid) %>% mutate(rounds_interviewed = sum(round))
+table(ahs_preg$rounds_interviewed)
+
+# June 22 2023 looking at number of pregnancies with round 2 or 3 data in addition to round 1.
+# round 1 doesn't inlcude health insurance data, can try to import from rounds 2 or 3
+ahs_preg_rounds <- ahs_preg %>% filter(nn < 4) 
+ahs_preg_rounds <- ahs_preg_rounds %>% group_by(caseid) %>% mutate(rounds_interviewed = sum(round))
+table(ahs_preg$rounds_interviewed)
+
+
+
 #wpssb <- wps_full %>% filter(stillbirths > 0)
 #wpssb <- wpssb %>% mutate(checkmax = max(stillbirth_year, na.rm = TRUE))
 
@@ -304,7 +406,8 @@ names(dlhsnfhs_preg_mothercov)
 names(ahs_preg)
 
 #dropping ahs_preg variables we don't need
-ahs_preg <- ahs_preg %>% select(-c(hhld_id, member_identity, result_of_interview, intvw_yrmo, abort_yrmo, n, stillbirths, prev_stillbirth, stillbirth_year, 
+ahs_preg <- ahs_preg %>% select(-c(hhld_id, member_identity, result_of_interview, intvw_yrmo, abort_yrmo, n, 
+                                   stillbirths, prev_stillbirth, stillbirth_year, 
                                    maxyearsb, nn))
 
 
@@ -370,9 +473,11 @@ ahs_preg_match <- ahs_preg %>% select(c(caseid, state, district, psu, out_come_o
                                         survey, year_of_abortion, yob, wt, year_of_intr, age,
                                   rural, religion, social_group_code, highest_qualification,
                                   drinking_water_source,
-                                  is_water_filter, water_filteration, toilet_used, is_toilet_shared, cooking_fuel, is_radio, 
+                                  is_water_filter, water_filteration, toilet_used, #is_toilet_shared, 
+                                  cooking_fuel, is_radio, 
                                   is_television, is_computer, is_telephone, is_refrigerator, is_bicycle, is_scooter, is_car, cart,
                                   land_possessed,
+                                  iscoveredbyhealthscheme,
                                   healthscheme_1, 
                                   healthscheme_2, age_at_first_conception,
                                   born_alive_total, no_of_months_first_anc, no_of_anc, kind_of_birth, previous_current_diff, where_del_took_place, who_conducted_del_at_home,
@@ -393,8 +498,28 @@ ahs_preg_match <- ahs_preg_match %>% select(-c(healthscheme_1, healthscheme_2))
 #write.csv(ahs_preg_match, "ahs_preg_match.csv")
 ahs_preg_match <- read.csv("ahs_preg_match.csv")
 
+#adding in iscoveredbyhealthscheme variable from ahs_preg into ahs_preg_match
+names(ahs_preg)
+names(ahs_preg_match)
+
+
+#selecting matching  variables in ahs_preg
+ahs_preg <- ahs_preg %>% select(c(caseid, state, district, psu, yob, 
+                                  year_of_intr, iscoveredbyhealthscheme))
+
+
+ahs_preg_match_iscovered <- left_join(ahs_preg_match, ahs_preg, by = c("caseid", "state", "district", "psu", "yob",
+                                                                       "year_of_intr", keep = NULL))
+
+
+ahs_preg_match <- ahs_preg_match_iscovered
+
+
 names(dlhsnfhs_preg_mothercov)
 names(ahs_preg_match)
+
+#renaming iscoveredhealthscheme as health_ins to match
+ahs_preg_match <- ahs_preg_match %>% rename(health_ins = iscoveredbyhealthscheme)
 
 #making ahs_preg state_dist variable to match dlhsnfhs
 ahs_preg_match$district <- str_pad(ahs_preg_match$district, 2, "left", "0")
@@ -428,7 +553,10 @@ length(which(is.na(ahs_preg_match$dist_id)))
 
 #dropping dlhsnfhs_preg_mothercov variables not in ahs
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(ever_terminated, month_last_terminated, year_last_terminated, caste,
-                                                                 fp_future, bpl, health_ins, other_terminations, miscarriage_abortion_stillbirth))
+                                                                 fp_future, bpl, #health_ins, 
+                                                                 other_terminations))
+                                                                 #, 
+                                                                 #miscarriage_abortion_stillbirth))
 
 
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(using_method))
@@ -484,7 +612,7 @@ ahs_preg_match$primary <- ifelse(ahs_preg_match$highest_qualification > 2, 1, 0)
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(years_school))
 ahs_preg_match <- ahs_preg_match %>% select(-c(highest_qualification))
 
-#dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(nonbirth))
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(nonbirth))
 
 #making mediclaim other private
 ahs_preg_match <- ahs_preg_match %>% rename(other_private = mediclaim)
@@ -498,6 +626,27 @@ ahs_preg_match <- ahs_preg_match %>% select(-c(as))
 ahs_preg_match <- ahs_preg_match %>% select(-c(district))
 ahs_preg_match <- ahs_preg_match %>% rename(district = nfhs4_census2011_district_id)
 ahs_preg_match <- ahs_preg_match %>% relocate(district, .after = state)
+
+#harmonizing health_ins variable
+table(ahs_preg_match$health_ins)
+ahs_preg_match$health_ins <- ifelse(ahs_preg_match$health_ins == 3, NA, ahs_preg_match$health_ins)
+ahs_preg_match$health_ins <- ifelse(ahs_preg_match$health_ins == 2, 0, ahs_preg_match$health_ins)
+
+table(dlhsnfhs_preg_mothercov$health_ins, dlhsnfhs_preg_mothercov$survey)
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% mutate(health_ins_harmonized = case_when(
+  survey == "dlhs3" & health_ins == 2 ~ 0,
+  survey == "dlhs3" & health_ins == 8 ~ NA_real_,
+  survey == "dlhs4" & health_ins == 2 ~ 0,
+  survey == "dlhs4" & health_ins == 8 ~ NA_real_,
+  survey == "nfhs4" ~ health_ins,
+  survey == "nfhs5" ~ health_ins,
+  TRUE ~ health_ins
+))
+
+dlhsnfhs_preg_mothercov$health_ins <- dlhsnfhs_preg_mothercov$health_ins_harmonized
+dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(health_ins_harmonized))
+
+#harmonized
 
 #dropping index mob and yob as the date is in outcome
 dlhsnfhs_preg_mothercov <- dlhsnfhs_preg_mothercov %>% select(-c(index_mob, index_yob))

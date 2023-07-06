@@ -845,6 +845,7 @@ dists_df$sb_rate <- (dists_df$sb / dists_df$pregs)*1000
 dists_df$abort_rate <- (dists_df$abort / dists_df$pregs)*1000
 dists_df$ms_rate <- (dists_df$ms / dists_df$pregs)*1000
 
+
 dist_sb <- att_gt(yname = "sb_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",

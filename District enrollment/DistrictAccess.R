@@ -282,10 +282,121 @@ dist_check <- left_join(dist, dist_names_state, by = c("District", "state_match"
 
 dist_check <- unique(dist_check)
 
-write.csv(dist_check, "dist_check_unique.csv")
+#write.csv(dist_check, "dist_check_unique.csv")
+
+dist_check <- read.csv("dist_check_unique.csv")
 
 check <- dist_check %>% filter(is.na(dist_id))
 
+#updating names for consistency across all datasets
+
 #fix district names and match to spelling in district harmonization file
+
+#for districts that changed from 2010 onwards using changes made already in district harominization
+
+check_dist <- dist %>% mutate(district_fix = case_when(District == "Rangareddi" ~ "Rangareddy",
+                                              District == "Aurangabad" ~ "Aurangabad_bihar",
+                                              District == "Kaimur" ~ "Kaimur Bhabua",
+                                              District == "Balod" ~ "Durg",
+                                              District ==	"Balodabazar"	~	"Raipur",
+                                              District ==	"Balrampur"	~	"Surguja",
+                                              District ==	"Bemetara"	~	"Durg",
+                                              District ==	"Gariyaband"	~	"Raipur",
+                                              District ==	"Gaurella-Pendra-Marwahi"	~	"Bilaspur",
+                                              District == "Janjgir Champa" ~ " Janjgir-Champa",
+                                              District ==	"Kondagaon"	~	"Bastar",
+                                              District ==	"Mungeli"	~	"Bilaspur",
+                                              District == "Narayanpur" ~ "Bastar",
+                                              District ==	"Sukma"	~	"Dantewada",
+                                              District ==	"Surajpur"	~	"Surguja",
+                                              District == "Bhuj" ~ " Kachchh",
+                                              District == "Dahod" ~ "Dohad",
+                                              District ==	"Tapi"	~	"Surat",
+                                              District == "Bilaspur" & State == "Himachal Pradesh" ~ "Bilaspur_hp",
+                                              District == "Hamirpur" & State == "Himachal Pradesh" ~ "Hamirpur_hp",
+                                              District == "Lahul And Spiti" ~ "Lahul Spiti",
+                                              District == "Palwal" ~ "Faridabad",
+                                              District == "Hazaribag" ~ "Hazaribagh",
+                                              District ==	"Khunti"	~	"Ranchi",
+                                              District ==	"Ramgarh"	~	"Hazaribagh",
+                                              District == "Saraikela" ~ "Saraikela Kharsawan",
+                                              District == "Budgam" ~ "Badgam",
+                                              District == "Poonch" ~ "Punch",
+                                              District == "Rajauri" ~ "Rajouri",
+                                              District == "Chamrajnagar" ~ "Chamarajanagar",
+                                              District == "Chikballapur" ~	"Kolar",
+                                              District == "Davangere" ~ "Davanagere",
+                                              District ==	"Ramanagara"	~	"Bangalore Rural",
+                                              District ==	"Yadgir"	~	"Kalaburagi", 
+                                              District ==	"East Jaintia Hills"	~	"Jaintia Hills", 
+                                              District == "West Jaintia Hills"	~	"Jaintia Hills", 
+                                              District ==	"North Garo Hills"	~	"East Garo Hills", 
+                                              District ==	"South West Garo Hills"	~	"West Garo Hills", 
+                                              District ==	"South West Khasi Hills"	~	"West Khasi Hills",
+                                              District == "Aizwal" ~ "Aizawl",
+                                              District == "Anugul" ~ "Anugul",
+                                              District == "Balasore" ~ "Baleshwar",
+                                              District == "Bolangir" ~ "Balangir",
+                                              District == "Boudh" ~ "Baudh",
+                                              District == "Deogarh" ~ "Debagarh",
+                                              District == "Jagatsinghpur" ~ "Jagatsinghapur",
+                                              District == "Jajpur" ~ "Jajapur",
+                                              District == "Keonjhar" ~ "Kendujhar",
+                                              District == "Raygada" ~ "Rayagada",
+                                              District == "Sonepur" ~ "Sonapur",
+                                              District == "Aurangabad" ~ "Aurangabad_maharashtra",
+                                              District == "Buldhana" ~ "Buldana",
+                                              District == "Gondia" ~ "Gondiya",
+                                              District == "Raigarh" & State == "Maharashtra" ~ "Raigarh_mh",
+                                              District == "Anuppur" ~ "Shahdol",
+                                              District == "Ashoknagar" ~ "Guna",
+                                              District == "Burhanpur" ~ "East Nimar",
+                                              District == "Khandwa" ~ "East Nimar",
+                                              District == "Khargone West Nimar" ~ "West Nimar",
+                                              District == "Narsinghpur" ~ "Narsimhapur",
+                                              District == "Pondicherry" ~ "Puducherry",
+                                              District == "Fazilka" ~ "Firozpur",
+                                              District == "Mohali" ~ "Sas Nagar",
+                                              District == "Pathankot" ~ "Gurdaspur",
+                                              District == "Chittorgarh" ~ "Chittaurgarh",
+                                              District == "Dholpur" ~ "Dhaulpur",
+                                              District == "Jhunjhunu" ~ "Jhunjhunun",
+                                              District ==	"Pratapgarh"	~	"Chittaurgarh",
+                                              District == "Sri Ganganagar" ~ "Ganganagar",
+                                              District ==	"Gomathi"	~	"Dhalai",
+                                              District ==	"Khowai"	~	"West Tripura",
+                                              District ==	"Sepahijala"	~	"West Tripura",
+                                              District ==	"Unakoti"	~	"North Tripura",
+                                              District == "Balrampur" ~ "Balrampur_up",
+                                              District == "Bhim Nagar" ~ "Moradabad",
+                                              District == "Chatrapati Shahuji Maharaj Nagar" ~ "Sultanpur",
+                                              District == "Kashiram Nagar" ~ "Etah",
+                                              District == "Panchsheel Nagar" ~ "Ghaziabad",
+                                              District == "Prabudh Nagar" ~  "Muzaffarnagar",
+                                              District == "Pratapgarh" & State == "Uttar Pradesh" ~
+                                                "Pratapgarh_up",
+                                              District == "Sant Ravidas Nagar" ~ "Sant Ravidas Nagar Bhadohi",
+                                              District == "Haridwar" ~ "Hardwar",
+                                              District ==	"Alipurduar"	~	"Jalpaiguri",
+                                              District == "Coochbehar" ~ "Koch Bihar",
+                                              District == "Darjeeling" ~ "Darjiling",
+                                              District == "Darjiling GTA" ~ "Darjiling",
+                                              District == "Hoogly" ~ "Hugli",
+                                              District == "Howrah" ~ "Haora",
+                                              District == "North 24 Parganas" ~ "North Twenty Four Parganas",
+                                              District == "Purba Midnapore" ~ "Purba Medinipur",
+                                              District == "Purulia" ~ "Puruliya",
+                                              District == "South 24 Parganas" ~ "South Twenty Four Parganas",
+                                              TRUE ~ District))
+
+#now doing same process again
+#using "districts_harmonized.csv" that was created in District harmonization 
+
+dist_names_state <- dist_names_state %>% rename(district_fix = District)
+
+check_dist <- left_join(check_dist, dist_names_state, by = c("district_fix"))
+
+check_dist <- unique(check_dist)
+
 
                                                     

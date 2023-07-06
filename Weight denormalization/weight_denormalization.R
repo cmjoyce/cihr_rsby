@@ -421,7 +421,7 @@ sampled <- full_join(census, ahsdlhsnfhs, by = "state")
 #(total females age 15-49 in the country at the time of the survey)/(number of women age 15-49 interviewed in the survey)
 
 #using closest census to outcome year. Only DLHS3 will use census 2001. Will calculate proportion for both 2001 and 2011, outcome year
-#will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 20001. 2006-2008 will use 2011.
+#will determine which proportion to use. If outcome year is closer 2004 or 2005 we will use 2001. 2006-2008 will use 2011.
 
 sampled$dlhs3_prop_2001 <- sampled$EM_2001 / sampled$dlhs3_sampled
 sampled$dlhs3_prop_2011 <- sampled$EM_2011 / sampled$dlhs3_sampled
@@ -435,4 +435,4 @@ sampled$nfhs5_prop <- sampled$EM_2011 / sampled$nfhs5_sampled
 
 #saving as csv
 #write.csv(sampled, "sampled_prop_by_state.csv")
-
+weights_sample <- read.csv("sampled_prop_by_state.csv")

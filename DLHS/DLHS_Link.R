@@ -986,7 +986,7 @@ dlhs4_preg <- dlhs4_preg %>% select(-c(starts_with("q147"), starts_with("q148"),
 #looking at age of death variables. dlhs4 has more than dlhs3
 table(dlhs3_preg$v146_1)
 
-#dlhs4 has indicator variable saying whether pregnancy ended in dyas or months (q153_1)
+#dlhs4 has indicator variable saying whether pregnancy ended in days or months (q153_1)
 table(dlhs4_preg$q153_1)
 table(dlhs4_preg$q153_days_1)
 length(which(dlhs4_preg$q153_days_1 >= 0))

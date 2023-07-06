@@ -8,6 +8,12 @@ library(flextable)
 library(janitor)
 library(AER)
 library(broom)
+library(gtsummary)
+library(etwfe)
+library(modelsummary)
+library(fixest)
+library(did)
+library(data.table)
 #library(kableExtra)
 
 
@@ -164,7 +170,7 @@ design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weig
 
 #filtering out NAs
 #instrument is treatment group 0, 1, 2, 3
-table(df$treat)
+table(df_rsby$treat)
 #making so matches outcome year
 #creating new exposure variable so 0 if in year RSBY not yet eligible
 df_rsby <- df_rsby %>% mutate(treat_iv = case_when(outcome_year < 2008 ~ 0,
@@ -176,42 +182,437 @@ df_rsby <- df_rsby %>% mutate(treat_iv = case_when(outcome_year < 2008 ~ 0,
                                          outcome_year < 2012 & treat == 3 ~ 0,
                                          TRUE ~ NA_real_))
 
+#creating leads and lags variable
+df_rsby$timing <- df_rsby$outcome_year - df_rsby$g ## doesn't work for never-treated. ignoring for now.
+
 #redoing design
 design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
-#design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
-
-sb_iv <- svyivreg(sb ~ rsby_iv + age + rural_urban + wi_perc_rank + outcome_year 
-                  | . - rsby_iv + treat_iv, design = design_rsby)
-
-abort_iv <- svyivreg(abort ~ rsby_iv + age + rural_urban + wi_perc_rank + outcome_year 
-                     | . - rsby_iv + treat_iv, design = design_rsby)
-
-ms_iv <- svyivreg(miscarriage ~ rsby_iv + age + rural_urban + wi_perc_rank + outcome_year 
-                  | . - rsby_iv + treat_iv, design = design_rsby)
-
-summary(sb_iv)
-summary(abort_iv)
-summary(ms_iv)
-
-sb_iv <- tidy(sb_iv)
-abort_iv <- tidy(abort_iv)
-ms_iv <- tidy(ms_iv)
 
 
-sb_iv$est_per_1000 <- (sb_iv$estimate * 1000) 
-sb_iv$std.error_per1000 <- sb_iv$std.error*1000 
-sb_iv[6:7] <- sb_iv[6:7] %>% round_half_up(digits = 2)
 
-abort_iv$est_per_1000 <- (abort_iv$estimate * 1000) 
-abort_iv$std.error_per1000 <- abort_iv$std.error*1000 
-abort_iv[6:7] <- abort_iv[6:7] %>% round_half_up(digits = 2)
+# Tables & Figures ------------------------------------------------------------------
+
+df_rsby$ruralurban <- factor(df_rsby$strat_rurb, 
+                        levels = c(1, 2),
+                        labels = c("Urban", "Rural"))
+
+df_rsby$scheduled_c_t <- factor(df_rsby$caste_group,
+                           levels = c(0,1,2),
+                           labels = c("None", "Scheduled Caste", "Scheduled Tribe"))
+table(df_rsby$treat)
+df_rsby$treated <- ifelse(df_rsby$treat > 0, 1, 0)
+table(df_rsby$treated)
+
+df_rsby$treated <- factor(df_rsby$treated,
+                     levels = c(0,1),
+                     labels = c("No", "Yes"))
 
 
-ms_iv$est_per_1000 <- (ms_iv$estimate * 1000) 
-ms_iv$std.error_per1000 <- ms_iv$std.error*1000 
-ms_iv[6:7] <- ms_iv[6:7] %>% round_half_up(digits = 2)
+t1_strat <- df_rsby %>% 
+  select(treated, age, ruralurban, scheduled_c_t, rsby_iv, primary_school) %>% 
+  mutate(treated = case_when(treated == "No" ~ "Never Treated",
+                                  treated == "Yes" ~ "Ever Treated")) %>%
+  tbl_strata(
+    strata = treated,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(label = 
+                    list(
+                      age ~ "Age",
+                      ruralurban ~ "Rural / Urban",
+                      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+                      primary_school ~ "Completed Primary School",
+                      rsby_iv ~ "Reported enrollment in RSBY"),
+                  statistic = list(all_continuous() ~ "{mean} ({sd})"),
+                  missing_text =  "Missing"
+      )
+  ) %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman")
 
+library(webshot)
+gt::gtsave(t1_strat, "tab_1.png", expand = 10)
+
+df_rsby %>% 
+  select(age, ruralurban, scheduled_c_t, rsby_match_fact, primary_school, g) %>% 
+  tbl_summary(
+    label = list(
+      age ~ "Age",
+      ruralurban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary_school ~ "Completed Primary School",
+      rsby_match_fact ~ "Enrolled in RSBY at Survey Time",
+      g ~ "District-level access to RSBY"),
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman", #table.font.size = 22, 
+                  column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
+                  table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
+
+
+# plotting percentage reporting enrollment in RSBY for each outcome year
+
+year_enrollment <- df_rsby %>% group_by(outcome_year) %>% summarise(enrolled = mean(rsby_iv))
+
+year_enrollment$percent_enrolled <- year_enrollment$enrolled*100
+
+library(cowplot)
+
+ggplot(data = year_enrollment, aes(x = outcome_year, y = percent_enrolled)) + geom_col() +
+  scale_y_continuous(limits = c(0,100), n.breaks = 10) +
+  scale_x_continuous(breaks = c(2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017,
+                                2018, 2019), labels = c("2004", "2005", "2006", "2007", "2008", "2009", "2010",
+                                                        "2011", "2012", "2013", "2014", "2015", "2016", "2017",
+                                                        "2018", "2019"))+
+  ylab("% Households enrolled in RSBY")+
+  xlab("Year Pregnancy Occurred")+
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+# Wooldridge estimator for first-stage IV ---------------------------------
+
+#July 6 2023 using ETWFE package for estimates
+
+# Y ~ A + T + Group + (A*T*Group) + (A*T) + (A*Group) + (T*Group)+ outcome_year + district + XkCovars
+
+
+
+step1_etwfe <- etwfe(
+  fml = rsby_iv ~ wi_perc_rank + strat_rurb, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby
+)
+
+#need to remove the 42 obs dropped from the feols before adding back in residuals
+
+rows_to_delete <- step1_etwfe$obs_selection
+
+
+df_rsby_full <- df_rsby %>% rowid_to_column()
+rows_to_delete <- as.data.frame(step1_etwfe$obs_selection)
+rows_to_delete$obsRemoved <- rows_to_delete$obsRemoved * -1
+colnames(rows_to_delete) <- c("rowid")
+
+cleaned_full_df_rsby_etwfe <- anti_join(df_rsby_full,rows_to_delete,by="rowid")
+
+
+df_rsby_step1_etwfe <- (augment_columns(step1_etwfe, cleaned_full_df_rsby_etwfe)) %>% rename(pred_step1 = .fitted)
+
+
+
+stage_2_sb <- feols(sb ~ pred_step1 + primary_school + wi_perc_rank + strat_rurb + age 
+                    | dist_id + outcome_year, 
+                    cluster = ~ dist_id, weights = ~ weight_adj, data = df_rsby_step1_etwfe)
+summary(stage_2_sb)
+
+stage2_sb <- avg_predictions(stage_2_sb, by = "g")
+
+stage_2_abort <- feols(abort ~ pred_marg, cluster = ~ dist_id, weights = ~ weight_adj, data = with_pred)
+summary(stage_2_abort)
+
+stage2_abort <- avg_predictions(stage_2, by = "g")
+
+stage_2_miscarriage <- feols(miscarriage ~ pred_marg, cluster = ~ dist_id, weights = ~ weight_adj, data = with_pred)
+summary(stage_2)
+
+stage2_miscarriage <- avg_predictions(stage_2, by = "g")
+
+#now comparing to C&S results from Aim 2
+#sb_wooldridge <- feols(sb ~ (dist_acces_int : factor(timing) : factor(g)) + age | dist_id + outcome_year,
+#                       cluster = ~ dist_id,
+#                       weights = ~ weight_adj, data = df_rsby)
+
+
+# Comparing CS and Wooldridge ---------------------------------------------
+
+#C/S
+#from Aim 2 file
+dists_df <- read.csv("dist_rates_weighted.csv")
+names(dists_df)
+
+table(dists_df$dist_id, dists_df$outcome_year)
+dists_df <- dists_df %>% select(-c(X))
+
+dists_df$sb_rate <- (dists_df$sb / dists_df$pregs)*1000
+dists_df$abort_rate <- (dists_df$abort / dists_df$pregs)*1000
+dists_df$ms_rate <- (dists_df$ms / dists_df$pregs)*1000
+
+
+#using etwfe package
+mod_package  <- etwfe(
+  fml  = sb_rate ~ 0, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  ivar = dist_id,
+  data = dists_df,       # dataset
+  vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+emfx(mod_package, type = "simple")
+
+csa_sb_check <- att_gt(yname = "sb_rate",
+                 gname = "enrollgroup",
+                 idname = "dist_id",
+                 tname = "outcome_year",
+                 control_group = "notyettreated",
+                 panel = TRUE,
+                 clustervars = "dist_id",
+                 data = dists_df
+)
+
+aggte(csa_sb_check, type = "simple")
+
+
+#now comparing using sample data from did package
+
+#data("mpdta", package = "did")
+mod =
+  etwfe(
+    fml  = lemp ~ 1, # outcome ~ controls
+    tvar = year,        # time variable
+    gvar = first.treat, # group variable
+    data = mpdta,       # dataset
+    vcov = ~countyreal,  # vcov adjustment (here: clustered)
+    cgroup = "notyet"
+  )
+
+mod_att <- emfx(mod)
+
+mw.attgt <- att_gt(yname = "lemp",
+                   gname = "first.treat",
+                   idname = "countyreal",
+                   tname = "year",
+                   #xformla = ~1,
+                   clustervars = "countyreal",
+                   data = mpdta,
+                   panel = TRUE,
+                   control_group = "notyettreated"
+)
+
+mw_att <- aggte(mw.attgt, type = "simple")
+
+mod_sb <- etwfe(
+  fml  = sb_rate ~ 0, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  #ivar = dist_id,
+  data = dists_df,       # dataset
+  #vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+#mod_sb = as.data.table(tidy(mod_sb))
+#mod_sb = mod_sb[
+#  , .(term = term, mod_sb = estimate)][
+#    , group := as.numeric(gsub(".*enrollgroup.", "", term))][
+#      , year := as.numeric(gsub(".*outcome_year.(\\d+).*", "\\1", term)) + group][
+#        , .(group, year, mod_sb)]
+
+mod_att_sb <- emfx(mod_sb)
+mod_att_sb <- tidy(mod_att_sb)
+mod_att_sb <- mod_att_sb %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mod_att_sb$outcome <- c("stillbirth")
+mod_att_sb$type <- c("etwfe")
+
+
+mw.attgt_sb <- att_gt(yname = "sb_rate",
+                   gname = "enrollgroup",
+                   idname = "dist_id",
+                   tname = "outcome_year",
+                   #xformla = ~1,
+                   panel = TRUE,
+                   #clustervars = "dist_id",
+                   data = dists_df,
+                   control_group = "notyettreated"
+)
+
+#mw.attgt_sb = data.table(group = mw.attgt_sb$group, year = mw.attgt_sb$t, mw.attgt_sb = mw.attgt_sb$att)
+
+mw_att_sb <- aggte(mw.attgt_sb, type = "simple")
+mw_att_sb <- tidy(mw_att_sb) 
+mw_att_sb <- mw_att_sb %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mw_att_sb$outcome <- c("stillbirth")
+mw_att_sb$type <- c("c/s'a")
+
+
+
+#now trying with 3 year bins to see if we get less noisy estimates
+
+dists_df <- dists_df %>% mutate(year_bin_big = (case_when(outcome_year < 2008 ~ 1,
+                                          outcome_year > 2007 & outcome_year < 2011 ~ 2,
+                                          outcome_year > 2010 & outcome_year < 2013 ~ 3,
+                                          outcome_year > 2012 & outcome_year < 2015 ~ 4,
+                                          outcome_year > 2014 & outcome_year < 2017 ~ 5,
+                                          outcome_year > 2016 ~ 6,
+                                          TRUE ~ NA_real_)))
+
+#putting treatment / enrollment groups in same format as year_bin for dummies
+dists_df <- dists_df %>% mutate(treat_bin_big = case_when(enrollgroup == 0 ~ 0,
+                                                      enrollgroup == 2010 ~ 2,
+                                                      enrollgroup == 2012 ~ 3,
+                                                      enrollgroup == 2014 ~ 4))
+
+mod_sb_bins <- etwfe(
+  fml  = sb_rate ~ 0, # outcome ~ controls
+  tvar = year_bin_big,        # time variable
+  gvar = treat_bin_big, # group variable
+  #ivar = dist_id,
+  data = dists_df,       # dataset
+  #vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+mod_att_sb_bins <- emfx(mod_sb_bins)
+
+mod_att_sb_binnedyear <- emfx(mod_sb_bins)
+mod_att_sb_binnedyear <- tidy(mod_att_sb_binnedyear)
+mod_att_sb_binnedyear <- mod_att_sb_binnedyear %>% select(c(estimate, std.error, conf.low, conf.high)) %>% 
+  rename(att = estimate)
+mod_att_sb_binnedyear$outcome <- c("stillbirth 2-year bins")
+mod_att_sb_binnedyear$type <- c("etwfe 2-year bins")
+
+mw.attgt_sb_bins <- att_gt(yname = "sb_rate",
+                      gname = "treat_bin_big",
+                      idname = "dist_id",
+                      tname = "year_bin_big",
+                      #xformla = ~1,
+                      panel = FALSE,
+                      #clustervars = "dist_id",
+                      data = dists_df,
+                      control_group = "notyettreated"
+)
+
+mw_att_sb_bins <- aggte(mw.attgt_sb_bins, type = "simple")
+
+mw_att_sb_binnedyear <- tidy(mw_att_sb_bins)
+mw_att_sb_binnedyear <- mw_att_sb_binnedyear %>% select(c(estimate, std.error, conf.low, conf.high)) %>% 
+  rename(att = estimate)
+mw_att_sb_binnedyear$outcome <- c("stillbirth 2-year bins")
+mw_att_sb_binnedyear$type <- c("c/s'a 2-year bins")
+
+mod_abort <- etwfe(
+  fml  = abort_rate ~ 1, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  #ivar = dist_id,
+  data = dists_df,       # dataset
+  #vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+mod_att_abort <- emfx(mod_abort)
+
+mod_att_abort <- tidy(mod_att_abort)
+mod_att_abort <- mod_att_abort %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mod_att_abort$outcome <- c("abortion")
+mod_att_abort$type <- c("etwfe")
+
+
+mw.attgt_abort <- att_gt(yname = "abort_rate",
+                      gname = "enrollgroup",
+                      idname = "dist_id",
+                      tname = "outcome_year",
+                      #xformla = ~1,
+                      panel = TRUE,
+                      #clustervars = "dist_id",
+                      data = dists_df,
+                      control_group = "notyettreated"
+)
+
+mw_att_abort <- aggte(mw.attgt_abort, type = "simple")
+
+mw_att_abort <- tidy(mw_att_abort)
+mw_att_abort <- mw_att_abort %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mw_att_abort$outcome <- c("abortion")
+mw_att_abort$type <- c("c/s'a")
+
+
+mod_ms <- etwfe(
+  fml  = ms_rate ~ 1, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  #ivar = dist_id,
+  data = dists_df,       # dataset
+  #vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+
+mod_att_ms <- emfx(mod_ms)
+
+mod_att_ms <- tidy(mod_att_ms)
+mod_att_ms <- mod_att_ms %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mod_att_ms$outcome <- c("miscarriage")
+mod_att_ms$type <- c("etwfe")
+
+mw.attgt_ms <- att_gt(yname = "ms_rate",
+                      gname = "enrollgroup",
+                      idname = "dist_id",
+                      tname = "outcome_year",
+                      #xformla = ~1,
+                      panel = TRUE,
+                      #clustervars = "dist_id",
+                      data = dists_df,
+                      control_group = "notyettreated"
+)
+
+mw_att_ms <- aggte(mw.attgt_ms, type = "simple")
+
+mw_att_ms <- tidy(mw_att_ms)
+mw_att_ms <- mw_att_ms %>% select(c(estimate, std.error, conf.low, conf.high)) %>% rename(att = estimate)
+mw_att_ms$outcome <- c("miscarriage")
+mw_att_ms$type <- c("c/s'a")
+
+
+#now combining all estimates into table
+estimates <- rbind(mod_att_sb, mw_att_sb, mod_att_sb_binnedyear, mw_att_sb_binnedyear,
+                  mod_att_abort, mw_att_abort, mod_att_ms, mw_att_ms)
+
+estimates[1:4] <- estimates[1:4] %>% round_half_up(digits = 2)
+
+
+flextable(estimates)
+
+#checking and doing by hand
+
+mod_ms$fml_all
+
+dists_df2 = dists_df |>
+  transform(
+    .Dtreat = outcome_year >= enrollgroup & enrollgroup != 0
+  )
+
+
+# Then estimate the manual version of etwfe
+mod2 = fixest::feols(
+  ms_rate ~ .Dtreat:i(enrollgroup, i.outcome_year, ref = 0, ref2 = 2004) |
+    dist_id + outcome_year,
+  data = dists_df2,
+  vcov = ~dist_id
+)
+
+library(modelsummary)
+modelsummary(
+  list("etwfe" = mod_ms, "manual" = mod2),
+  gof_map = NA # drop all goodness-of-fit info for brevity
+)
+
+#now create comparisons for etwfe vs. att_gt for each outcome
+
+modelsummary(
+  list("etwfe stillbirth" = mod_sb, "c/s'a stillbirth" = mw.attgt_sb, 
+       "etwfe stillbirth 2-year bins" = mod_att_sb_bins, "c/s'a stillbirth 2-year bins" = mw.attgt_sb_bins,
+       "etwfe abortion" = mod_abort, "c/s'a abortion" = mw.attgt_abort,
+       "etwfe miscarriage" = mod_ms, "c/s'a miscarriage" = mw.attgt_ms),
+  estimate  = "{estimate} [{conf.low}, {conf.high}]",
+  gof_map = NA
+)
 
 # ARCHIVE -----------------------------------------------------------------
 
@@ -392,5 +793,223 @@ summary(sb_iv)
 summary(abort_iv)
 summary(ms_iv)
 
+#### Survey IV Reg ####
+#design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
+sb_iv <- svyivreg(sb ~ rsby_iv + age + rural_urban + wi_perc_rank + as.factor(outcome_year) + dist_id
+                  | . - rsby_iv + treat_iv, design = design_rsby)
+
+abort_iv <- svyivreg(abort ~ rsby_iv + age + rural_urban + wi_perc_rank + as.factor(outcome_year) + dist_id
+                     | . - rsby_iv + treat_iv, design = design_rsby)
+
+ms_iv <- svyivreg(miscarriage ~ rsby_iv + age + rural_urban + wi_perc_rank + as.factor(outcome_year) + dist_id
+                  | . - rsby_iv + treat_iv, design = design_rsby)
+
+summary(sb_iv)
+summary(abort_iv)
+summary(ms_iv)
+
+sb_iv <- tidy(sb_iv, conf.int = 0.95)
+abort_iv <- tidy(abort_iv, conf.int = 0.95)
+ms_iv <- tidy(ms_iv, conf.int = 0.95)
+
+
+sb_iv$est_per_1000 <- (sb_iv$estimate * 1000) 
+sb_iv$std.error_per1000 <- sb_iv$std.error*1000 
+sb_iv$conf.low_per1000 <- sb_iv$conf.low*1000
+sb_iv$conf.high_per1000 <- sb_iv$conf.high*1000
+sb_iv[8:11] <- sb_iv[8:11] %>% round_half_up(digits = 2)
+
+sb_iv_tab <- sb_iv %>% select(c(term, est_per_1000, std.error_per1000, conf.low_per1000, conf.high_per1000))
+flextable(sb_iv_tab)
+
+abort_iv$est_per_1000 <- (abort_iv$estimate * 1000) 
+abort_iv$std.error_per1000 <- abort_iv$std.error*1000 
+abort_iv$conf.low_per1000 <- abort_iv$conf.low*1000
+abort_iv$conf.high_per1000 <- abort_iv$conf.high*1000
+abort_iv[8:11] <- abort_iv[8:11] %>% round_half_up(digits = 2)
+
+abort_iv_tab <- abort_iv %>% select(c(term, est_per_1000, std.error_per1000, conf.low_per1000, conf.high_per1000))
+flextable(abort_iv_tab)
+
+
+ms_iv$est_per_1000 <- (ms_iv$estimate * 1000) 
+ms_iv$std.error_per1000 <- ms_iv$std.error*1000 
+ms_iv$conf.low_per1000 <- ms_iv$conf.low*1000
+ms_iv$conf.high_per1000 <- ms_iv$conf.high*1000
+ms_iv[8:11] <- ms_iv[8:11] %>% round_half_up(digits = 2)
+
+ms_iv_tab <- ms_iv %>% select(c(term, est_per_1000, std.error_per1000, conf.low_per1000, conf.high_per1000))
+flextable(ms_iv_tab)
+
+
+#### Wooldridge IV estimators ####
+#creating leads and lags variable
+df_rsby$timing <- df_rsby$outcome_year - df_rsby$g 
+
+df_rsby$timing <- ifelse(df_rsby$g == 0, -999, df_rsby$timing)
+
+df_rsby$timing_fact <- as.factor(df_rsby$timing)
+
+
+#update Treat_IV 
+df_rsby <- df_rsby %>% mutate(dist_acces_int = case_when(outcome_year < 2008 ~ 0,
+                                                         outcome_year > 2007 & g == 2010 ~ 1,
+                                                         outcome_year < 2011 & g > 2010 ~ 0,
+                                                         outcome_year > 2010 & g == 2012 ~ 1,
+                                                         outcome_year > 2012 & g == 2012 ~ 0,
+                                                         outcome_year > 2012 & g == 2014 ~ 1,
+                                                         TRUE ~ NA_real_))
+
+df_rsby$dist_acces_fact <- as.factor(df_rsby$dist_acces_int)
+
+df_rsby$group_fact <- as.factor(df_rsby$treat)
+df_rsby$year_fact <- as.factor(df_rsby$outcome_year)
+
+#redoing design
+design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+stage1 <- svyglm(rsby_iv ~ (dist_acces_int*timing_fact*treat) + outcome_year + dist_id + 
+                   age + rural_urban + wi_perc_rank, design = design_rsby, family = quasibinomial())
+
+library(fixest)
+
+#factor(timing) 
+# factor(outcome_year)*factor(group) just during + after
+
+#making new year timing variable for interactions. Only implementation year + after
+df_rsby$year_wooldridge <- ifelse(df_rsby$outcome_year < df_rsby$g, 0, df_rsby$outcome_year)
+#dropping 0s for factor variable
+df_rsby$year_wooldridge <- ifelse(df_rsby$year_wooldridge == 0, NA, df_rsby$year_wooldridge)
+
+#making 0 group NAs for interactions
+df_rsby$group <- ifelse(df_rsby$g == 0, NA, df_rsby$g)
+
+#hand-coding dummies to check
+df_rsby$y2008 <- ifelse(df_rsby$outcome_year == 2008, 1, 0)
+df_rsby$y2009 <- ifelse(df_rsby$outcome_year == 2009, 1, 0)
+df_rsby$y2010 <- ifelse(df_rsby$outcome_year == 2010, 1, 0)
+df_rsby$y2011 <- ifelse(df_rsby$outcome_year == 2011, 1, 0)
+df_rsby$y2012 <- ifelse(df_rsby$outcome_year == 2012, 1, 0)
+df_rsby$y2013 <- ifelse(df_rsby$outcome_year == 2013, 1, 0)
+df_rsby$y2014 <- ifelse(df_rsby$outcome_year == 2014, 1, 0)
+df_rsby$y2015 <- ifelse(df_rsby$outcome_year == 2015, 1, 0)
+df_rsby$y2016 <- ifelse(df_rsby$outcome_year == 2016, 1, 0)
+df_rsby$y2017 <- ifelse(df_rsby$outcome_year == 2017, 1, 0)
+df_rsby$y2018 <- ifelse(df_rsby$outcome_year == 2018, 1, 0)
+df_rsby$y2019 <- ifelse(df_rsby$outcome_year == 2019, 1, 0)
+
+df_rsby$group1 <- ifelse(df_rsby$g == 2010, 1, 0)
+df_rsby$group2 <- ifelse(df_rsby$g == 2012, 1, 0)
+df_rsby$group3 <- ifelse(df_rsby$g == 2014, 1, 0)
+
+step_1 <- feols(rsby_iv ~ (dist_acces_int : factor(timing) : factor(g)) | outcome_year + g,
+                cluster = ~dist_id,
+                weights = ~weight_adj, data = df_rsby)
+
+step_1_att <- avg_predictions(step_1)
+
+summary(step_1)
+glance(step_1)
+wald(step_1)
+
+step1_hand_code <- feols(rsby_iv ~ (group1:y2010) +
+                           (group1:y2011) + (group1:y2012) + (group1:y2013) + (group1:y2014) + (group1:y2015)+
+                           (group1:y2016) + (group1:y2017) + (group1:y2018) + (group1:y2019) +
+                           (group2:y2012) + (group2:y2013) + (group2:y2014) + (group2:y2015)+
+                           (group2:y2016) + (group2:y2017) + (group2:y2018) + (group2:y2019) +
+                           (group3:y2012) + (group3:y2013) + (group3:y2014) + (group3:y2015)+
+                           (group3:y2016) + (group3:y2017) + (group3:y2018) + (group3:y2019) |
+                           outcome_year + g, cluster = ~ dist_id, weights = ~weight_adj, data = df_rsby)
+#need to remove the 215,978 obs dropped from the feols before adding back in residuals
+rows_to_delete <- step_1$obs_selection
+
+df_rsby_full <- df_rsby %>% rowid_to_column()
+rows_to_delete <- as.data.frame(step_1$obs_selection)
+rows_to_delete$obsRemoved <- rows_to_delete$obsRemoved * -1
+
+colnames(rows_to_delete) <- c("rowid")
+
+cleaned_full_df_rsby <- anti_join(df_rsby_full,rows_to_delete,by="rowid")
+
+with_pred <- augment_columns(step_1, cleaned_full_df_rsby) %>% rename(pred_marg = .fitted)
+head(with_pred)
+
+#design_stage1 <- svydesign(data = with_pred, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+#hand-coding dummies to check
+dists_df$y2008 <- ifelse(dists_df$outcome_year == 2008, 1, 0)
+dists_df$y2009 <- ifelse(dists_df$outcome_year == 2009, 1, 0)
+dists_df$y2010 <- ifelse(dists_df$outcome_year == 2010, 1, 0)
+dists_df$y2011 <- ifelse(dists_df$outcome_year == 2011, 1, 0)
+dists_df$y2012 <- ifelse(dists_df$outcome_year == 2012, 1, 0)
+dists_df$y2013 <- ifelse(dists_df$outcome_year == 2013, 1, 0)
+dists_df$y2014 <- ifelse(dists_df$outcome_year == 2014, 1, 0)
+dists_df$y2015 <- ifelse(dists_df$outcome_year == 2015, 1, 0)
+dists_df$y2016 <- ifelse(dists_df$outcome_year == 2016, 1, 0)
+dists_df$y2017 <- ifelse(dists_df$outcome_year == 2017, 1, 0)
+dists_df$y2018 <- ifelse(dists_df$outcome_year == 2018, 1, 0)
+dists_df$y2019 <- ifelse(dists_df$outcome_year == 2019, 1, 0)
+
+dists_df$group1 <- ifelse(dists_df$enrollgroup == 2010, 1, 0)
+dists_df$group2 <- ifelse(dists_df$enrollgroup == 2012, 1, 0)
+dists_df$group3 <- ifelse(dists_df$enrollgroup == 2014, 1, 0)
+
+csa_sb <- att_gt(yname = "sb_rate",
+                 gname = "cohort",
+                 idname = "dist_id",
+                 tname = "outcome_year",
+                 control_group = "notyettreated",
+                 data = dists_df_alltreated
+)
+
+csa = att_gt(
+  yname = "y",
+  gname = "cohort",
+  idname = "firm",
+  tname = "year",
+  control_group = "notyettreated",
+  data = dat)
+
+csa_sb = data.table(group = csa_sb$group, year = csa_sb$t, csa = csa_sb$att)
+
+dist_sb_dynamic <- aggte(dist_sb, type = "dynamic")
+
+#Wooldridge
+
+dists_df_alltreated <- dists_df %>% filter(enrollgroup >0)
+
+
+dists_df <- dists_df %>% mutate(treat = case_when(enrollgroup == 0 ~ 0,
+                                                  enrollgroup > 0 & outcome_year >= enrollgroup ~ 1,
+                                                  enrollgroup > 0 & outcome_year < enrollgroup ~ 0,
+                                                  TRUE ~ NA_real_))
+
+#dists_df$treat <- ifelse(dists_df$outcome_year >= dists_df$enrollgroup, 1, 0)
+
+dists_df <- dists_df %>% mutate(time_to_treat = case_when(enrollgroup == 0 ~ NA,
+                                                          enrollgroup > 0 ~ outcome_year - enrollgroup,
+                                                          TRUE ~ NA_real_))
+
+dists_df$cohort <- ifelse(dists_df$enrollgroup == 0, NA, dists_df$enrollgroup)
+
+#dists_df$time_to_treat <- dists_df$outcome_year - dists_df$enrollgroup
+etwfe_sb <- feols(sb_rate ~ (treat : factor(time_to_treat) : factor(cohort)) | dist_id + outcome_year,
+                  data = dists_df_alltreated)
+
+etwfe_sb = as.data.table(tidy(etwfe_sb))
+etwfe_sb = etwfe_sb[
+  , .(term = term, etwfe_sb = estimate)][
+    , group := as.numeric(gsub(".*cohort.", "", term))][
+      , year := as.numeric(gsub(".*time_to_treat.(\\d+).*", "\\1", term)) + group][
+        , .(group, year, etwfe_sb)]
+
+results = merge(etwfe_sb, csa_sb, by = c("group", "year"))
+colnames(results) = c("Group", "Year", "TWFE w/ interactions", "CSA (2021)")
+results[, Group := factor(Group)]
+
+dat_plot = melt(results, id.vars = c("Group", "Year"))
+ggplot(dat_plot, aes(Year, value, color = variable, linetype = Group)) +
+  geom_line(size = 1.4) +
+  theme_minimal() +
+  labs(x = "Year", y = "ATT", color = "Estimator", linetype = "Group")
 

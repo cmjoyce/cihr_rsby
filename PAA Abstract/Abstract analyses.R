@@ -16,7 +16,7 @@ table(df$years_school)
 df$years_school <- ifelse(df$years_school > 97, NA, df$years_school)
 
 #separating into at least primary (grade 8) and less than primary.
-#could later seperate into lower primary or higher, lower primary is class 1-IV
+#could later separate into lower primary or higher, lower primary is class 1-IV
 length(which(df$years_school > df$age)) #42 women who have more years of school than their age. Must be error.
 #making into NA
 

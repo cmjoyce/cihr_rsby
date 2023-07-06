@@ -746,7 +746,6 @@ nfhs5_preg <- nfhs5_preg %>% mutate(month_event1 = case_when(outcome == 1 ~ lb_c
                                                       outcome == 3 ~ la_cmc - ((year_event1 - 1900)*12), 
                                                       outcome == 4 ~ lm_cmc - ((year_event1 - 1900)*12),
                                                       outcome ==  "T" ~ lt_cmc - ((year_event1 - 1900)*12),
-                                                      TRUE ~ NA_real_))
   
 
 #making stillbirths out of two short months into miscarriages. Keeping stillbirths where pregnant at start of calendar.
@@ -1488,6 +1487,7 @@ dlhsnfhs_preg_mothercov <- left_join(
 
 dlhsnfhspreg <- read.csv("dlhsnfhs_preg_w_mom_cov.csv")
 
+dlhsnfhs_preg_mothercov <- dlhsnfhspreg
 #harmonizing miscarriage/abortion/stillbirth across dlhs and nfhs
 
 

@@ -637,9 +637,10 @@ df$accessyear <- factor(df$g,
                         levels = c(2010, 2012, 2014),
                         labels = c("Early (2010)", "Mid (2012)", "Late (2014)"))
 
-df <- df %>% mutate(exposure = case_when(g == 2010 ~ "Early (2010)",
-                                         g == 2012 ~ "Mid (2012)",
-                                         g == 2014 ~ "Late (2014)"))
+df <- df %>% mutate(exposure = case_when(g == 0 ~ "None",
+                                         g == 2010 ~ "2010 - Early",
+                                         g == 2012 ~ "2012 - Mid",
+                                         g == 2014 ~ "2014 - Late"))
 
 
 
@@ -716,6 +717,35 @@ t1_poster <- df %>%
 library(webshot2)
 gt::gtsave(t1_poster, "tab_1_poster.png", expand = 10)
 
+#Aug 21 2023 creating weighted counts by enrollment group
+
+design <- svydesign(data = df, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+design %>%
+  tbl_svysummary(
+    by = exposure,
+    include = c(age, ruralurban, scheduled_c_t, primary_school),
+    label = list(
+      age ~ "Age",
+      ruralurban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary_school ~ "Completed Primary School"),
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n_unweighted} ({p}%)"),
+    missing =  "no"
+  ) %>% add_overall()%>% add_n("{N_miss_unweighted}") %>% modify_header(n ~ "**Missing (N)**") %>% 
+  modify_header(all_stat_cols() ~ "**{level}**  \n (N = {n_unweighted})") %>%  
+  modify_spanning_header(all_stat_cols() ~ "**District-level Access**") %>%
+  modify_footnote(all_stat_cols() ~ "Mean (SD); n (%)") %>%
+  #modify_caption("**Table 1**. Socio-demographic information on respondents") %>%
+  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman", #table.font.size = 22, 
+                  column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
+                  table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
+
+
+
 ## creating simulated plot for thesis chapter
 
 N <- 100000
@@ -779,6 +809,55 @@ ggplot(data = sim_df_group, aes(x = year, y = rate_of_y, color = (group))) + geo
   geom_vline(xintercept = 0, linetype = 2) + geom_vline(xintercept = 3, linetype = 2) + geom_vline(xintercept = 6, linetype = 2) +
   labs(x = "Year", y = "Rate of Outcome",color = "Treatment Group")
 
+
+#Aug 22 overall rate plot of each outcome by each year
+sb_year_rate <- svyby(~sb, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+ms_year_rate <- svyby(~miscarriage, ~outcome_year, design, svymean, vartype=c("se","ci"), na.rm.all = TRUE)
+abort_year_rate <- svyby(~abort, ~outcome_year, design, svymean, vartype = c("se", "ci"))
+
+sb_year_rate$sb_per1000 <- sb_year_rate$sb*1000
+sb_year_rate$ci_l_per1000 <- sb_year_rate$ci_l*1000
+sb_year_rate$ci_u_per1000 <- sb_year_rate$ci_u*1000
+sb_year_rate$se_per1000 <- sb_year_rate$se*1000
+
+abort_year_rate$abort_per1000 <- abort_year_rate$abort*1000
+abort_year_rate$ci_l_per1000 <- abort_year_rate$ci_l*1000
+abort_year_rate$ci_u_per1000 <- abort_year_rate$ci_u*1000
+abort_year_rate$se_per1000 <- abort_year_rate$se*1000
+
+ms_year_rate$ms_per1000 <- ms_year_rate$miscarriage*1000
+ms_year_rate$ci_l_per1000 <- ms_year_rate$ci_l*1000
+ms_year_rate$ci_u_per1000 <- ms_year_rate$ci_u*1000
+ms_year_rate$se_per1000 <- ms_year_rate$se*1000
+
+library(cowplot)
+library(rcartocolor)
+library(nord)
+mycolors_outcomes <- c("#024b7a", "#e67e00", "#44b7c2")
+
+sb_year_rate$outcome <- c("Stillbirth")
+abort_year_rate$outcome <- c("Abortion")
+ms_year_rate$outcome <- c("Miscarriage")
+
+sb_year_rate_small <- sb_year_rate %>% select(c(outcome_year, sb_per1000, ci_l_per1000, ci_u_per1000, se_per1000, outcome))
+sb_year_rate_small <- sb_year_rate_small %>% rename(rate_per1000 = sb_per1000)
+
+abort_year_rate_small <- abort_year_rate %>% select(c(outcome_year, abort_per1000, ci_l_per1000, ci_u_per1000, se_per1000, outcome))
+abort_year_rate_small <- abort_year_rate_small %>% rename(rate_per1000 = abort_per1000)
+
+ms_year_rate_small <- ms_year_rate %>% select(c(outcome_year, ms_per1000, ci_l_per1000, ci_u_per1000, se_per1000, outcome))
+ms_year_rate_small <- ms_year_rate_small %>% rename(rate_per1000 = ms_per1000)
+
+outcomes_year_rate <- rbind(sb_year_rate_small, abort_year_rate_small, ms_year_rate_small)
+
+stillbirth_wi <- ggplot(data = outcomes_year_rate, mapping = aes(x= outcome_year, y = rate_per1000, color = outcome)) + geom_point() + 
+  #geom_errorbar(aes(ymin = ci_l_per1000, ymax = ci_u_per1000, color="black", width=.1))+
+  geom_line() + 
+  scale_y_continuous(limits = c(0, 115), breaks = c(0, 25, 50, 75, 100))+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
+  labs(y = "Rate of outcome per 1000 pregnancies") +
+  labs(x = "Year")+
+  theme_cowplot(11)
 
 
 # DiD ---------------------------------------------------------------------
@@ -850,7 +929,7 @@ dist_sb <- att_gt(yname = "sb_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~ (med_age^2),
+                  xformla = ~1,
                   data = dists_df,
                   panel = TRUE,
                   clustervars = "dist_id",
@@ -863,7 +942,7 @@ dist_abort <- att_gt(yname = "abort_rate",
                      tname = "outcome_year",
                      gname = "enrollgroup",
                      idname = "dist_id",
-                     xformla = ~ (med_age^2),
+                     xformla = ~1,
                      data = dists_df,
                      panel = TRUE,
                      clustervars = "dist_id",
@@ -876,7 +955,7 @@ dist_ms <- att_gt(yname = "ms_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~ (med_age^2),
+                  xformla = ~1,
                   data = dists_df,
                   panel = TRUE,
                   clustervars = "dist_id",
@@ -896,6 +975,61 @@ dists_abort_calendar <- aggte(dist_abort, type = "calendar")
 dists_ms_group <- aggte(dist_ms, type = "group")
 dists_ms_dynamic <- aggte(dist_ms, type = "dynamic")
 dists_ms_calendar <- aggte(dist_ms, type = "calendar")
+
+#comparing to wooldridge estimates
+library(etwfe)
+
+dists_df$med_age_squared <- dists_df$med_age^2
+
+wooldridge_sb <- etwfe(
+  fml  = sb_rate ~ 1,
+    #med_age_squared, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  ivar = dist_id,
+  data = dists_df,       # dataset
+  vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+wooldridge_abort <- etwfe(
+  fml  = abort_rate ~ 1,
+    #med_age_squared, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  ivar = dist_id,
+  data = dists_df,       # dataset
+  vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+wooldridge_ms <- etwfe(
+  fml  = ms_rate ~ 1,
+    #med_age_squared, # outcome ~ controls
+  tvar = outcome_year,        # time variable
+  gvar = enrollgroup, # group variable
+  ivar = dist_id,
+  data = dists_df,       # dataset
+  vcov = ~dist_id,  # vcov adjustment (here: clustered)
+  cgroup = "notyet"
+)
+
+emfx(wooldridge_ms, type = "simple")
+
+wooldridge_sb <- emfx(wooldridge_sb, type = "simple")
+wooldridge_sb <- wooldridge_sb %>% select(c(estimate, std.error, conf.low, conf.high))
+
+wooldridge_abort <- emfx(wooldridge_abort, type = "simple")
+wooldridge_ms <- emfx(wooldridge_ms, type = "simple")
+
+csa_sb <- aggte(dist_sb, type = "simple")
+csa_sb <- data.frame(esetimate = csa_sb[["overall.att"]],
+                     std.error = csa_sb[["overall.se"]],
+                     conf.low = csa_sb[["overall.att"]] - 1.96*csa_sb[["overall.se"]],
+                     conf.high = csa_sb[["overall.att"]] + 1.96*csa_sb[["overall.se"]])
+
+
+
 
 dists_sb_dynamic.dyn <- data.frame(time=dists_sb_dynamic[["egt"]],
                                                 att=dists_sb_dynamic[["att.egt"]],
@@ -1009,7 +1143,7 @@ ggplot(dists_abort_dynamic.dyn)+
   xlab("Time since received access to RSBY")+
   scale_x_continuous(breaks=c(-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9),
                      labels = c("-9","-8","-7","6","-5","-4","-3","-2","-1","0","+1","+2","+3","+4","+5","+6","+7","+8","+9"))+
-  ylim(-30,30)+
+  ylim(-20,20)+
   
   scale_color_manual(values=c("#e67e00","#024b7a"),labels=c("Pre Intervention","Post Intervention"))+
   scale_alpha_manual(values=0.3,labels=str_wrap("Overall summary of dynamic ATT's, 95%CI",
@@ -1179,7 +1313,7 @@ pooled_sb_group_plot <- ggplot(data = dists_sb_group.plot, aes(x = as.factor(tim
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 5)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1206,7 +1340,7 @@ pooled_abort_group_plot <- ggplot(data = dists_abort_group.plot, aes(x = as.fact
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 5)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1233,7 +1367,7 @@ pooled_ms_group_plot <- ggplot(data = dists_ms_group.plot, aes(x = as.factor(tim
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-70, 70), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 5)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1329,7 +1463,7 @@ noprim_sb <- att_gt(yname = "sb_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~(med_age^2),
+                  xformla = ~1,
                   data = noprim,
                   panel = FALSE,
                   clustervars = "dist_id",
@@ -1342,7 +1476,7 @@ noprim_abort <- att_gt(yname = "abort_rate",
                      tname = "outcome_year",
                      gname = "enrollgroup",
                      idname = "dist_id",
-                     xformla = ~(med_age^2),
+                     xformla = ~1,
                      data = noprim,
                      panel = FALSE,
                      clustervars = "dist_id",
@@ -1355,7 +1489,7 @@ noprim_ms <- att_gt(yname = "ms_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~(med_age^2),
+                  xformla = ~1,
                   data = noprim,
                   panel = FALSE,
                   clustervars = "dist_id",
@@ -1382,7 +1516,7 @@ prim_sb <- att_gt(yname = "sb_rate",
                                tname = "outcome_year",
                                gname = "enrollgroup",
                                idname = "dist_id",
-                               xformla = ~ (med_age^2),
+                               xformla = ~1,
                                data = prim,
                                panel = FALSE,
                                clustervars = "dist_id",
@@ -1395,7 +1529,7 @@ prim_abort <- att_gt(yname = "abort_rate",
                                   tname = "outcome_year",
                                   gname = "enrollgroup",
                                   idname = "dist_id",
-                                  xformla = ~ (med_age^2),
+                                  xformla = ~1,
                                   data = prim,
                                   panel = FALSE,
                                   clustervars = "dist_id",
@@ -1408,7 +1542,7 @@ prim_ms <- att_gt(yname = "ms_rate",
                                tname = "outcome_year",
                                gname = "enrollgroup",
                                idname = "dist_id",
-                               xformla = ~ (med_age^2),
+                               xformla = ~1,
                                data = prim,
                                panel = FALSE,
                                clustervars = "dist_id",
@@ -1505,7 +1639,7 @@ prim_sb_grouped_plot <- ggplot(data = prim_sb_group.plot, aes(x = as.factor(time
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-35, 35))+
+  scale_y_continuous(limits = c(-25, 25))+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1518,7 +1652,7 @@ prim_abort_grouped_plot <- ggplot(data = prim_abort_group.plot, aes(x = as.facto
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-35, 35))+
+  scale_y_continuous(limits = c(-25, 25))+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1531,7 +1665,7 @@ prim_ms_grouped_plot <- ggplot(data = prim_ms_group.plot, aes(x = as.factor(time
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-35, 35))+
+  scale_y_continuous(limits = c(-25, 25))+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1580,7 +1714,7 @@ rural_sb <- att_gt(yname = "sb_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~ (med_age^2),
+                  xformla = ~1,
                   data = rural,
                   panel = TRUE,
                   clustervars = "dist_id",
@@ -1593,7 +1727,7 @@ rural_abort <- att_gt(yname = "abort_rate",
                      tname = "outcome_year",
                      gname = "enrollgroup",
                      idname = "dist_id",
-                     xformla = ~ (med_age^2),
+                     xformla = ~1,
                      data = rural,
                      panel = TRUE,
                      clustervars = "dist_id",
@@ -1606,7 +1740,7 @@ rural_ms <- att_gt(yname = "ms_rate",
                   tname = "outcome_year",
                   gname = "enrollgroup",
                   idname = "dist_id",
-                  xformla = ~ (med_age^2),
+                  xformla = ~1,
                   data = rural,
                   panel = TRUE,
                   clustervars = "dist_id",
@@ -1767,7 +1901,7 @@ rural_sb_grouped_plot <- ggplot(data = rural_sb_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1776,7 +1910,7 @@ rural_sb_grouped_plot_poster <- ggplot(data = rural_sb_group.plot, aes(x = as.fa
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot(26)
@@ -1792,7 +1926,7 @@ rural_abort_grouped_plot <- ggplot(data = rural_abort_group.plot, aes(x = as.fac
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1801,7 +1935,7 @@ rural_abort_grouped_plot_poster <- ggplot(data = rural_abort_group.plot, aes(x =
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot(26)
@@ -1814,7 +1948,7 @@ rural_ms_grouped_plot <- ggplot(data = rural_ms_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-20, 20), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -1827,6 +1961,7 @@ rural_ms_grouped_plot_poster <- ggplot(data = rural_ms_group.plot, aes(x = as.fa
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot(26)
+
 
 rural_group_plots <- ggarrange(rural_sb_grouped_plot, rural_abort_grouped_plot, rural_ms_grouped_plot,
                                 labels = c("A", "B", "C"), nrow = 1)
@@ -1917,7 +2052,7 @@ urban_sb <- att_gt(yname = "sb_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = urban,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -1930,7 +2065,7 @@ urban_abort <- att_gt(yname = "abort_rate",
                       tname = "outcome_year",
                       gname = "enrollgroup",
                       idname = "dist_id",
-                      #xformla = ~ (med_age^2),
+                      xformla = ~1,
                       data = urban,
                       panel = TRUE,
                       clustervars = "dist_id",
@@ -1943,7 +2078,7 @@ urban_ms <- att_gt(yname = "ms_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = urban,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -2104,7 +2239,7 @@ urban_sb_grouped_plot <- ggplot(data = urban_sb_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-50, 50), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2117,7 +2252,7 @@ urban_abort_grouped_plot <- ggplot(data = urban_abort_group.plot, aes(x = as.fac
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-50, 50), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2130,7 +2265,7 @@ urban_ms_grouped_plot <- ggplot(data = urban_ms_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-50, 50), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2177,7 +2312,7 @@ below_sb <- att_gt(yname = "sb_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = below,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -2190,7 +2325,7 @@ below_abort <- att_gt(yname = "abort_rate",
                       tname = "outcome_year",
                       gname = "enrollgroup",
                       idname = "dist_id",
-                      #xformla = ~ (med_age^2),
+                      xformla = ~1,
                       data = below,
                       panel = TRUE,
                       clustervars = "dist_id",
@@ -2203,7 +2338,7 @@ below_ms <- att_gt(yname = "ms_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = below,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -2363,7 +2498,7 @@ ggplot(data = below_sb_group.plot, aes(x = as.factor(time), y = round(att, 2))) 
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  ylim(-10, 10)+
+  ylim(-35, 35)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2376,7 +2511,7 @@ ggplot(data = below_abort_group.plot, aes(x = as.factor(time), y = round(att, 2)
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  ylim(-80, 50)+
+  ylim(-35, 35)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2389,7 +2524,7 @@ ggplot(data = below_ms_group.plot, aes(x = as.factor(time), y = round(att, 2))) 
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-35, 35), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2449,7 +2584,7 @@ below_sb_grouped_plot <- ggplot(data = below_sb_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-35, 35), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2462,7 +2597,7 @@ below_abort_grouped_plot <- ggplot(data = below_abort_group.plot, aes(x = as.fac
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-35, 35), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2475,7 +2610,7 @@ below_ms_grouped_plot <- ggplot(data = below_ms_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-35, 35), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2519,7 +2654,7 @@ above_sb <- att_gt(yname = "sb_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = above,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -2532,7 +2667,7 @@ above_abort <- att_gt(yname = "abort_rate",
                       tname = "outcome_year",
                       gname = "enrollgroup",
                       idname = "dist_id",
-                      #xformla = ~ (med_age^2),
+                      xformla = ~1,
                       data = above,
                       panel = TRUE,
                       clustervars = "dist_id",
@@ -2545,7 +2680,7 @@ above_ms <- att_gt(yname = "ms_rate",
                    tname = "outcome_year",
                    gname = "enrollgroup",
                    idname = "dist_id",
-                   #xformla = ~ (med_age^2),
+                   xformla = ~1,
                    data = above,
                    panel = TRUE,
                    clustervars = "dist_id",
@@ -2575,7 +2710,7 @@ above_sb_grouped_plot <- ggplot(data = above_sb_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-30, 30), n.breaks = 7)+
   ylab("Difference in rate of stillbirths per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2588,7 +2723,7 @@ above_abort_grouped_plot <- ggplot(data = above_abort_group.plot, aes(x = as.fac
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-30, 30), n.breaks = 7)+
   ylab("Difference in rate of abortions per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2601,7 +2736,7 @@ above_ms_grouped_plot <- ggplot(data = above_ms_group.plot, aes(x = as.factor(ti
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, color = "#024b7a") + 
   #scale_color_binned(values = "#024b7a")+
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_y_continuous(limits = c(-80, 80), n.breaks = 7)+
+  scale_y_continuous(limits = c(-30, 30), n.breaks = 7)+
   ylab("Difference in rate of miscarriages per 1,000 pregnancies")+
   xlab("Treatment Group")+
   theme_cowplot()
@@ -2760,13 +2895,12 @@ strat_atts <- strat_atts %>% mutate(facet = case_when(strata == "Rural" ~ "Locat
 ggplot(data = strat_atts, aes(x = as.factor(strata), y = round(att, 2), color = outcome)) + geom_point(position=position_dodge(width=0.5)) +
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, position=position_dodge(width=0.5)) + 
   geom_hline(yintercept=0,lty=2,color="gray59")+
-  scale_color_manual(values = mycolors_outcomes, name = "Outcome")+
+  scale_color_manual(values = mycolors_outcomes, name = "Outcome", breaks = c("Stillbirth", "Abortion", "Miscarriage"))+
   facet_wrap(~facet,  scales = "free_x")+
-  scale_y_continuous(limits = c(-30, 30), n.breaks = 6)+
+  scale_y_continuous(limits = c(-25, 25), n.breaks = 6)+
   ylab("Difference in rate of outcome per 1,000 pregnancies")+
   xlab("Stratification Group")+
   theme_cowplot()
-
 
 strat_atts_plot_poster <- ggplot(data = strat_atts, aes(x = as.factor(strata), y = round(att, 2), color = outcome)) + geom_point(position=position_dodge(width=0.5)) +
   geom_errorbar(aes(ymin = round((att - 1.96*se),2), ymax = round((att + 1.96*se),2)), width = 0.2, position=position_dodge(width=0.5)) + 

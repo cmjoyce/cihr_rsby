@@ -15,6 +15,9 @@ library(fixest)
 library(did)
 library(data.table)
 #library(kableExtra)
+library(boot)
+library(fwildclusterboot)
+library(marginaleffects)
 
 
 
@@ -64,7 +67,7 @@ df_fixed <- rbind(df_dropped, ahs_fixed)
 
 
 #write.csv(df_fixed, "df_updated_primary_w_socioeconomic_fixed_ahs_insurance.csv")
-df <- df_fixed
+#df <- df_fixed
 
 df <- read.csv("df_updated_primary_w_socioeconomic_fixed_ahs_insurance.csv")
 
@@ -185,6 +188,11 @@ df_rsby <- df_rsby %>% mutate(treat_iv = case_when(outcome_year < 2008 ~ 0,
 #creating leads and lags variable
 df_rsby$timing <- df_rsby$outcome_year - df_rsby$g ## doesn't work for never-treated. ignoring for now.
 
+#making separate dataset
+#write.csv(df_rsby, "df_rsby.csv")
+
+df_rsby <- read.csv("df_rsby.csv")
+
 #redoing design
 design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
@@ -210,8 +218,8 @@ df_rsby$treated <- factor(df_rsby$treated,
 
 
 t1_strat <- df_rsby %>% 
-  select(treated, age, ruralurban, scheduled_c_t, rsby_iv, primary_school) %>% 
-  mutate(treated = case_when(treated == "No" ~ "Never Treated",
+  select(treat_iv, age, ruralurban, scheduled_c_t, rsby_iv, primary_school) %>% 
+  mutate(treat_iv = case_when(treated == "No" ~ "Never Treated",
                                   treated == "Yes" ~ "Ever Treated")) %>%
   tbl_strata(
     strata = treated,
@@ -233,6 +241,11 @@ t1_strat <- df_rsby %>%
 library(webshot)
 gt::gtsave(t1_strat, "tab_1.png", expand = 10)
 
+df_rsby$rsby_match_fact <- factor(df_rsby$rsby_iv,
+                             levels = c(0,1),
+                             labels = c("No", "Yes"))
+
+
 df_rsby %>% 
   select(age, ruralurban, scheduled_c_t, rsby_match_fact, primary_school, g) %>% 
   tbl_summary(
@@ -249,6 +262,65 @@ df_rsby %>%
                   column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
                   table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
 
+stage_2_full$rsby_match_fact <- factor(stage_2_full$rsby_iv,
+                                  levels = c(0,1),
+                                  labels = c("No", "Yes"))
+
+
+stage_2_full %>% 
+  select(age, ruralurban, scheduled_c_t, rsby_match_fact, primary_school, g) %>% 
+  tbl_summary(
+    label = list(
+      age ~ "Age",
+      ruralurban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary_school ~ "Completed Primary School",
+      rsby_match_fact ~ "Enrolled in RSBY at Survey Time",
+      g ~ "District-level access to RSBY"),
+    statistic = list(all_continuous() ~ "{mean} ({sd})"),
+    missing_text =  "Missing") %>% modify_header(label = "**Variable**")  %>%  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman", #table.font.size = 22, 
+                  column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
+                  table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
+
+
+
+#creating weighted counts by enrollment group
+df_rsby$poorest <- ifelse(df_rsby$wi_quintile == 1, 1, 0)
+
+df_rsby <- df_rsby %>% mutate(treat_group = case_when(treat_iv == 0 ~ "None",
+                            treat_iv == 1 ~ "2010 - Early",
+                            treat_iv == 2 ~ "2012 - Mid",
+                            treat_iv == 3 ~ "2014 - Late"))
+
+design_rsby <- svydesign(data = df_rsby, ids = ~psu2, strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+design_rsby %>%
+  tbl_svysummary(
+    by = treat_group,
+    include = c(age, ruralurban, scheduled_c_t, primary_school, poorest),
+    label = list(
+      age ~ "Age",
+      ruralurban ~ "Rural / Urban",
+      scheduled_c_t ~ "Member of Scheduled Caste or Scheduled Tribe",
+      primary_school ~ "Completed Primary School",
+      poorest ~ "Lowest wealth quintile"),
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n_unweighted} ({p}%)"),
+    missing =  "no"
+  ) %>% add_overall()%>%  
+  modify_header(all_stat_cols() ~ "**{level}**  \n (N = {n_unweighted})") %>%  
+  modify_spanning_header(all_stat_cols() ~ "**District-level Access**") %>%
+  modify_footnote(all_stat_cols() ~ "Mean (SD); n (%)") %>%
+  #modify_caption("**Table 1**. Socio-demographic information on respondents") %>%
+  as_gt() %>%
+  gt::tab_options(table.font.names = "Times New Roman", #table.font.size = 22, 
+                  column_labels.border.top.color = "black", column_labels.border.bottom.color = "black", table.border.bottom.color = "black", 
+                  table_body.border.bottom.color = "black", table_body.hlines.color = "black" )
+                  
+
+
 
 # plotting percentage reporting enrollment in RSBY for each outcome year
 
@@ -258,7 +330,7 @@ year_enrollment$percent_enrolled <- year_enrollment$enrolled*100
 
 library(cowplot)
 
-ggplot(data = year_enrollment, aes(x = outcome_year, y = percent_enrolled)) + geom_col() +
+ggplot(data = year_enrollment, aes(x = outcome_year, y = percent_enrolled)) + geom_line() +
   scale_y_continuous(limits = c(0,100), n.breaks = 10) +
   scale_x_continuous(breaks = c(2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017,
                                 2018, 2019), labels = c("2004", "2005", "2006", "2007", "2008", "2009", "2010",
@@ -274,12 +346,21 @@ ggplot(data = year_enrollment, aes(x = outcome_year, y = percent_enrolled)) + ge
 
 #July 6 2023 using ETWFE package for estimates
 
-# Y ~ A + T + Group + (A*T*Group) + (A*T) + (A*Group) + (T*Group)+ outcome_year + district + XkCovars
+#step1_etwfe <- etwfe(
+#  fml = rsby_iv ~ wi_perc_rank + strat_rurb, # outcome ~ controls
+#  tvar = outcome_year, #time vars
+#  gvar = g, #treatment group 
+#  cgroup = "notyet",
+#  vcov = ~ dist_id,
+#  weights = ~ weight_adj,
+#  data = df_rsby
+#)
 
-
-
+#trying with controls for scheduled caste/tribe + primary school. Not controlling for rural/urban
+df_rsby <- df_rsby %>% filter(!is.na(caste_group)) %>% filter(!is.na(primary_school))
 step1_etwfe <- etwfe(
-  fml = rsby_iv ~ wi_perc_rank + strat_rurb, # outcome ~ controls
+  fml = rsby_iv ~ caste_group + wi_perc_rank,
+    #caste_group + wi_perc_rank + primary_school, # outcome ~ controls
   tvar = outcome_year, #time vars
   gvar = g, #treatment group 
   cgroup = "notyet",
@@ -287,6 +368,94 @@ step1_etwfe <- etwfe(
   weights = ~ weight_adj,
   data = df_rsby
 )
+
+#wald(step1_etwfe)
+#hypotheses(step1_etwfe, joint = "g")
+
+fitstat(step1_etwfe, "wf")
+
+#linearHypothesis(step1_etwfe)
+
+#looking at enrollment
+
+rates_enrolled <- df_rsby %>% group_by(outcome_year, treat_iv) %>% 
+  summarise(enrolled_prop = (mean(rsby_iv)*100))
+
+#adding in 0s for groups
+group_add <- data.frame(outcome_year = c(2004, 2005, 2006, 2007, 
+                                         2004, 2005, 2006, 2007, 2008, 2009,
+                                         2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011),
+                        treat_iv = c(1,1,1,1,
+                                     2,2,2,2,2,2,
+                                     3,3,3,3,3,3,3,3),
+                        enrolled_prop = c(0,0,0,0,
+                                          0,0,0,0,0,0,
+                                          0,0,0,0,0,0,0,0))
+
+rates_figure <- rbind(rates_enrolled, group_add)
+
+library(NatParksPalettes)
+
+mycolors_groups <- c("#024b7a", "#44b7c2", "#458e48", "#e67e00")
+
+ggplot(data = rates_figure, aes(x = outcome_year, y = enrolled_prop, color = as.factor(treat_iv))) + 
+  geom_line() +
+  scale_y_continuous(limits = c(0,100), n.breaks = 10) +
+  scale_x_continuous(breaks = c(2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017,
+                                2018, 2019), labels = c("2004", "2005", "2006", "2007", "2008", "2009", "2010",
+                                                        "2011", "2012", "2013", "2014", "2015", "2016", "2017",
+                                                        "2018", "2019"))+
+  scale_color_manual(values=mycolors_groups,name = "District-Level Access", breaks = c(0, 1, 2,3), 
+                     labels = c("None", "Early (2008-2010)", "Mid (2011-2012)", "Late (2013-2014)"))+
+  ylab("% Households enrolled in RSBY")+
+  xlab("Year Pregnancy Occurred")+
+  theme_cowplot()+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+
+
+
+rates_enrolled <- rates_enrolled %>% pivot_wider(names_from = treat_iv, values_from = enrolled_prop)
+rates_enrolled <- rates_enrolled %>% rename("Never-Adopter Districts" = "0", "Early-Adopter Districts" = "1", "Mid-Adopter Districts" = "2",
+                                            "Late-Adopter Districts" = "3", "Year" = outcome_year)
+
+rates_enrolled$`Never-Adopter Districts` <- ifelse(is.na(rates_enrolled$`Never-Adopter Districts`), 0, 
+                                                  rates_enrolled$`Never-Adopter Districts`)
+rates_enrolled$`Early-Adopter Districts` <- ifelse(is.na(rates_enrolled$`Early-Adopter Districts`), 0, 
+                                                   rates_enrolled$`Early-Adopter Districts`)
+rates_enrolled$`Mid-Adopter Districts` <- ifelse(is.na(rates_enrolled$`Mid-Adopter Districts`), 0, 
+                                                 rates_enrolled$`Mid-Adopter Districts`)
+rates_enrolled$`Late-Adopter Districts` <- ifelse(is.na(rates_enrolled$`Late-Adopter Districts`), 0, 
+                                                  rates_enrolled$`Late-Adopter Districts`)
+
+rates_enrolled <- rates_enrolled %>% round_half_up(digits = 1)
+
+
+
+flextable(rates_enrolled) %>% colformat_num(j = 1, big.mark = "") %>% font(fontname = "Times New Roman", part = "all") %>%
+  bold(bold = TRUE, part = "header")
+
+
+#checking f-test with iv_robust
+#library(estimatr)
+#checkingfsb <- iv_robust(sb ~ rsby_iv + caste_group + wi_perc_rank + primary_school | caste_group + wi_perc_rank + primary_school + treat_iv, 
+#                       data = df_rsby, diagnostics = TRUE)
+
+#summary(checkingfsb)
+
+#checkingfabort <- iv_robust(abort ~ rsby_iv + caste_group + wi_perc_rank + primary_school | caste_group + wi_perc_rank + primary_school + treat_iv, 
+#                            data = df_rsby, diagnostics = TRUE)
+
+#summary(checkingfabort)
+
+#checkingfms <- iv_robust(miscarriage ~ rsby_iv + caste_group + wi_perc_rank + primary_school | caste_group + wi_perc_rank + primary_school + treat_iv, 
+#                       data = df_rsby, diagnostics = TRUE)
+
+#summary(checkingfms)
+
+#check <- lm(rsby_iv ~ treat_iv+ caste_group + wi_perc_rank + primary_school, data = df_rsby)
+#linearHypothesis(check, 
+#                 "treat_iv = 0",
+#                 vcov = vcovHC, type = "HC1")
 
 #need to remove the 42 obs dropped from the feols before adding back in residuals
 
@@ -303,29 +472,637 @@ cleaned_full_df_rsby_etwfe <- anti_join(df_rsby_full,rows_to_delete,by="rowid")
 
 df_rsby_step1_etwfe <- (augment_columns(step1_etwfe, cleaned_full_df_rsby_etwfe)) %>% rename(pred_step1 = .fitted)
 
+#writing csv
+#write.csv(df_rsby_step1_etwfe, "df_rsby_step1_etwfe.csv")
+
+df_rsby_step1_etwfe <- read.csv("df_rsby_step1_etwfe.csv")
+
+#making factor for comparisons
+dqrng::dqset.seed(781234)
+set.seed(514)
+
+df_rsby_step1_etwfe$treat_iv_fact <- factor(df_rsby_step1_etwfe$treat_iv)
+
+#redoing design
+design_rsby_step1_etwfe <- svydesign(data = df_rsby_step1_etwfe, ids = ~psu2, 
+                                     strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
 
 
-stage_2_sb <- feols(sb ~ pred_step1 + primary_school + wi_perc_rank + strat_rurb + age 
-                    | dist_id + outcome_year, 
-                    cluster = ~ dist_id, weights = ~ weight_adj, data = df_rsby_step1_etwfe)
+stage_2_sb <- feols(sb ~ pred_step1 + strat_rurb + age
+                    | treat_iv + outcome_year, 
+                    cluster = ~dist_id, 
+                    weights = ~weight_adj, data = df_rsby_step1_etwfe)
+
 summary(stage_2_sb)
 
-stage2_sb <- avg_predictions(stage_2_sb, by = "g")
+#getting F-statistic
+wald(stage_2_sb)
 
-stage_2_abort <- feols(abort ~ pred_marg, cluster = ~ dist_id, weights = ~ weight_adj, data = with_pred)
+#comparing to wooldridge did estimates
+
+#have to remove caseid character column and use new rowid as ids
+df_rsby_etwfe <- df_rsby_step1_etwfe %>% select(-c(rowid))
+df_rsby_etwfe <- df_rsby_etwfe %>% rowid_to_column()
+df_rsby_etwfe <- df_rsby_etwfe %>% select(-c(X, X.1, caseid))
+
+#have to remove all character variables
+df_rsby_etwfe <- df_rsby_etwfe %>% select(-c(survey, state_labeled, wiquint_labeled, namefix, District, State, treated, scheduled_c_t, 
+                                             rsby_match_fact, rural_urban))
+
+woold_sb <- etwfe(
+  fml = sb ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_sb, type = "simple", collapse = FALSE)
+
+woold_abort <- etwfe(
+  fml = abort ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_abort, type = "simple", collapse = FALSE)
+
+woold_miscarriage <- etwfe(
+  fml = miscarriage ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_miscarriage, type = "simple", collapse = FALSE)
+
+#need to remove 96,293 rows
+#rows_to_delete_2 <- stage_2_sb$obs_selection
+
+#df_rsby_step1_etwfe <- df_rsby_step1_etwfe %>% select(-c(rowid))
+#df_rsby_step1_full <- df_rsby_step1_etwfe %>% rowid_to_column()
+#rows_to_delete_2 <- as.data.frame(stage_2_sb$obs_selection)
+#rows_to_delete_2$obsRemoved <- rows_to_delete_2$obsRemoved * -1
+#colnames(rows_to_delete_2) <- c("rowid")
+
+#stage_2_full <- anti_join(df_rsby_step1_full,rows_to_delete_2,by="rowid")
+#write.csv(stage_2_full, "stage_2_full.csv")
+
+
+stage_2_sb <- feols(sb ~ pred_step1 + strat_rurb + age  
+                    | treat_iv + outcome_year, 
+                    data = df_rsby_step1_etwfe,
+                    cluster = ~dist_id, 
+                    weights = ~weight_adj)
+
+stage_2_sb_nocontr <- feols(sb ~ pred_step1
+                    | treat_iv + outcome_year, 
+                    data = df_rsby_step1_etwfe,
+                    cluster = ~dist_id, 
+                    weights = ~weight_adj)
+
+
+#check <- svyglm(sb ~ pred_step1*treat_iv_fact + age + outcome_year + rural_urban, design = design_rsby_step1_etwfe)
+
+#basic_check <- lm(sb ~ pred_step1*treat_iv_fact, data = stage_2_full)
+
+sb_bootstrapped <- avg_comparisons(stage_2_sb, variables = "treat_iv") %>% inferences(method = "boot", R = 100)
+
+summary(stage_2_sb)
+summary(stage_2_sb_nocontr)
+
+sb_iv <- tidy(stage_2_sb, conf.int = T)
+sb_iv_nocontr <- tidy(stage_2_sb_nocontr, conf.int = T)
+
+sb_iv_pp <- sb_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                             conf.high.pp = conf.high*100)
+
+sb_iv_pp_nocontr <- sb_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                             conf.high.pp = conf.high*100)
+
+
+sb_iv_pp <- sb_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+sb_iv_pp[2:5] <- sb_iv_pp[2:5] %>% round_half_up(digits = 2)
+sb_iv_pp$outcome <- c("Stillbirth")
+sb_iv_pp <- sb_iv_pp %>% filter(term == "pred_step1")
+
+sb_iv_pp_nocontr <- sb_iv_pp_nocontr %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+sb_iv_pp_nocontr[2:5] <- sb_iv_pp_nocontr[2:5] %>% round_half_up(digits = 2)
+sb_iv_pp_nocontr$outcome <- c("Stillbirth")
+sb_iv_pp_nocontr <- sb_iv_pp_nocontr %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster 0.0155 0.0274
+sb_iv_pp$conf.low.pp.bootstrap <- 0.0038*100
+sb_iv_pp$conf.high.pp.bootstrap <- 0.0229*100
+sb_iv_pp <- sb_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+flextable(sb_iv_pp)
+
+sb_iv[2:7] <- sb_iv[2:7] %>% round_half_up(digits = 5)
+sb_iv$outcome <- c("Stillbirth")
+flextable(sb_iv)
+
+sb_iv_groups <- tidy(avg_comparisons(stage_2_sb, 
+                                     variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+sb_iv_groups[3:9] <- sb_iv_groups[3:9] %>% round_half_up(digits = 4)
+sb_iv_groups$outcome <- c("Stillbirth")
+
+#all bootstrapping will be done on cluster
+
+boot_sb <- boottest(
+  stage_2_sb, 
+  clustid = "dist_id", 
+  param = "pred_step1", 
+  B = 9999
+)
+
+stage2_sb <- avg_comparisons(stage_2_sb,  by = "treat_iv_fact", variables = "pred_step1") %>% 
+  inferences(method = "boot", R = 100)
+
+stage_2_abort <- feols(abort ~ pred_step1 + age + strat_rurb
+                       | treat_iv + outcome_year, 
+                       cluster = ~dist_id, 
+                       weights = ~weight_adj, data = df_rsby_step1_etwfe)
+
+wald(stage_2_abort)
 summary(stage_2_abort)
+
+stage_2_abort_nocontr <- feols(abort ~ pred_step1
+                       | treat_iv + outcome_year, 
+                       cluster = ~dist_id, 
+                       weights = ~weight_adj, data = df_rsby_step1_etwfe)
+
+
+summary(stage_2_abort)
+
+avg_comparisons(stage_2_abort, 
+                variables = list(treat_iv_fact= "reference")
+) #%>% inferences(method = "boot", R = 10)
+
 
 stage2_abort <- avg_predictions(stage_2, by = "g")
 
-stage_2_miscarriage <- feols(miscarriage ~ pred_marg, cluster = ~ dist_id, weights = ~ weight_adj, data = with_pred)
-summary(stage_2)
+abort_iv <- tidy(stage_2_abort, conf.int = T)
+abort_iv_nocontr <- tidy(stage_2_abort_nocontr, conf.int = T)
+
+abort_iv_pp <- abort_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                             conf.high.pp = conf.high*100)
+
+abort_iv_pp_nocontr <- abort_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                   conf.high.pp = conf.high*100)
+
+
+abort_iv_pp <- abort_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+abort_iv_pp[2:5] <- abort_iv_pp[2:5] %>% round_half_up(digits = 3)
+abort_iv_pp$outcome <- c("Abortion")
+
+abort_iv_pp <- abort_iv_pp %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster  0.0239 0.0633
+abort_iv_pp$conf.low.pp.bootstrap <- 0.0239*100
+abort_iv_pp$conf.high.pp.bootstrap <- 0.0633*100
+abort_iv_pp <- abort_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+
+flextable(abort_iv_pp)
+
+
+abort_iv[2:7] <- abort_iv[2:7] %>% round_half_up(digits = 4)
+abort_iv$outcome <- c("Abortion")
+flextable(abort_iv)
+
+abort_iv_groups <- tidy(avg_comparisons(stage_2_abort, 
+                                     variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+abort_iv_groups[3:9] <- abort_iv_groups[3:9] %>% round_half_up(digits = 5)
+abort_iv_groups$outcome <- c("Abortion")
+
+stage_2_miscarriage <- feols(miscarriage ~ pred_step1 + strat_rurb + age
+                             | treat_iv + outcome_year, 
+                             cluster = ~dist_id, 
+                             weights = ~weight_adj, data = df_rsby_step1_etwfe)
+summary(stage_2_miscarriage)
+
+wald(stage_2_miscarriage)
+
+stage_2_miscarriage_nocontr <- feols(miscarriage ~ pred_step1
+                             | treat_iv + outcome_year, 
+                             cluster = ~dist_id, 
+                             weights = ~weight_adj, data = df_rsby_step1_etwfe)
+
+
+summary(stage_2_miscarriage)
+avg_comparisons(stage_2_miscarriage, 
+                variables = list(treat_iv_fact= "reference")
+) #%>% inferences(method = "boot", R = 10)
+
+miscarriage_iv <- tidy(stage_2_miscarriage, conf.int = T)
+miscarriage_iv_nocontr <- tidy(stage_2_miscarriage_nocontr, conf.int = T)
+
+
+miscarriage_iv_pp <- miscarriage_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                   conf.high.pp = conf.high*100)
+miscarriage_iv_pp_nocontr <- miscarriage_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                               conf.high.pp = conf.high*100)
+
+
+
+miscarriage_iv_pp <- miscarriage_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+miscarriage_iv_pp_nocontr <- miscarriage_iv_pp_nocontr %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+miscarriage_iv_pp[2:5] <- miscarriage_iv_pp[2:5] %>% round_half_up(digits = 3)
+miscarriage_iv_pp$outcome <- c("Miscarriage")
+
+miscarriage_iv_pp <- miscarriage_iv_pp %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster  0.0574 0.1111
+miscarriage_iv_pp$conf.low.pp.bootstrap <- 0.0574*100
+miscarriage_iv_pp$conf.high.pp.bootstrap <- 0.1111*100
+miscarriage_iv_pp <- miscarriage_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+
+flextable(miscarriage_iv_pp)
+
+
+miscarriage_iv[2:7] <- miscarriage_iv[2:7] %>% round_half_up(digits = 4)
+miscarriage_iv$outcome <- c("Miscarriage")
+flextable(miscarriage_iv)
+
+miscarriage_iv_groups <- tidy(avg_comparisons(stage_2_miscarriage, 
+                                        variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+miscarriage_iv_groups[3:9] <- miscarriage_iv_groups[3:9] %>% round_half_up(digits = 4)
+miscarriage_iv_groups$outcome <- c("Miscarriage")
+
 
 stage2_miscarriage <- avg_predictions(stage_2, by = "g")
 
-#now comparing to C&S results from Aim 2
-#sb_wooldridge <- feols(sb ~ (dist_acces_int : factor(timing) : factor(g)) + age | dist_id + outcome_year,
-#                       cluster = ~ dist_id,
-#                       weights = ~ weight_adj, data = df_rsby)
+#grouping contrasts for outcomes
+contrasts_treatmentgroups <- rbind(sb_iv_groups, abort_iv_groups, miscarriage_iv_groups)
+contrasts_treatmentgroups <- contrasts_treatmentgroups %>% select(-c(term))
+contrasts_treatmentgroups <- contrasts_treatmentgroups %>% mutate(contrastgroup = case_when(
+  contrast == "1 - 0" ~ "Early vs. Not",
+  contrast == "2 - 0" ~ "Mid vs. Not",
+  contrast == "3 - 0" ~ "Late vs. Not"
+))
+
+contrasts_treatmentgroups <- contrasts_treatmentgroups %>% select(-c(contrast))
+contrasts_treatmentgroups <- contrasts_treatmentgroups %>% relocate(contrastgroup, .before = estimate)
+flextable(contrasts_treatmentgroups)
+
+#making forest plot of iv_pp estimates with bootrapped standard errors
+iv_pp <- rbind(sb_iv_pp, abort_iv_pp, miscarriage_iv_pp)
+
+ggplot(data = iv_pp, mapping = aes(x = outcome, y = estimate_pp#, color = outcome
+                                   )) + 
+  geom_point(size = 1.5#, position=position_dodge(width=0.5)
+             ) + 
+  geom_errorbar(aes(ymin = conf.low.pp.bootstrap, ymax = conf.high.pp.bootstrap), 
+                width = 0.3, position=position_dodge(width=0.5)) + 
+  #geom_hline(yintercept = 0, color = I("black"), linetype = 2)+
+  xlab("Outcome")+
+  ylab("Change in percentage points") +
+  ylim(0,15)+
+ # coord_flip()+
+  theme_cowplot()
+
+
+##### sensitivity analyses #####
+
+table(df_rsby$treat_iv, df_rsby$rsby_iv)
+
+df_rsby_sens <- df_rsby
+
+df_rsby_sens <- df_rsby_sens %>% filter(!is.na(caste_group)) %>% filter(!is.na(primary_school))
+
+#dropping 6,730 report enrolled in RSBY in not-treated districts
+
+df_rsby_sens$rsby_iv <- ifelse(df_rsby_sens$treat_iv == 0 & df_rsby_sens$rsby_iv == 1, 0, df_rsby_sens$rsby_iv)
+
+#trying with controls for scheduled caste/tribe + primary school. Not controlling for rural/urban
+
+step1_etwfe_sens <- etwfe(
+  fml = rsby_iv ~ caste_group + wi_perc_rank + primary_school, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_sens
+)
+
+#need to remove the 42 obs dropped from the feols before adding back in residuals
+
+rows_to_delete_sens <- step1_etwfe_sens$obs_selection
+
+
+df_rsby_full_sens <- df_rsby_sens %>% rowid_to_column()
+rows_to_delete_sens <- as.data.frame(step1_etwfe_sens$obs_selection)
+rows_to_delete_sens$obsRemoved <- rows_to_delete_sens$obsRemoved * -1
+colnames(rows_to_delete_sens) <- c("rowid")
+
+cleaned_full_df_rsby_etwfe_sens <- anti_join(df_rsby_full_sens,rows_to_delete_sens,by="rowid")
+
+
+df_rsby_step1_etwfe_sens <- (augment_columns(step1_etwfe_sens, cleaned_full_df_rsby_etwfe_sens)) %>% 
+  rename(pred_step1 = .fitted)
+
+#writing csv
+#write.csv(df_rsby_step1_etwfe_sens, "df_rsby_step1_etwfe_sens.csv")
+
+df_rsby_step1_etwfe_sens <- read.csv("df_rsby_step1_etwfe_sens.csv")
+
+#making factor for comparisons
+dqrng::dqset.seed(781234)
+set.seed(514)
+
+df_rsby_step1_etwfe_sens$treat_iv_fact <- factor(df_rsby_step1_etwfe_sens$treat_iv)
+
+#redoing design
+design_rsby_step1_etwfe_sens <- svydesign(data = df_rsby_step1_etwfe_sens, ids = ~psu2, 
+                                     strata = ~strat_rurb, weights = ~weight_adj, nest = TRUE)
+
+
+stage_2_sb_sens <- feols(sb ~ pred_step1 + strat_rurb + age
+                    | treat_iv + outcome_year, 
+                    cluster = ~dist_id, 
+                    weights = ~weight_adj, data = df_rsby_step1_etwfe_sens)
+
+#getting F-statistic
+wald(stage_2_sb_sens)
+
+#comparing to wooldridge did estimates
+
+#have to remove caseid character column and use new rowid as ids
+df_rsby_etwfe <- df_rsby_step1_etwfe %>% select(-c(rowid))
+df_rsby_etwfe <- df_rsby_etwfe %>% rowid_to_column()
+df_rsby_etwfe <- df_rsby_etwfe %>% select(-c(X, X.1, caseid))
+
+#have to remove all character variables
+df_rsby_etwfe <- df_rsby_etwfe %>% select(-c(survey, state_labeled, wiquint_labeled, namefix, District, State, treated, scheduled_c_t, 
+                                             rsby_match_fact, rural_urban))
+
+woold_sb <- etwfe(
+  fml = sb ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_sb, type = "simple", collapse = FALSE)
+
+woold_abort <- etwfe(
+  fml = abort ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_abort, type = "simple", collapse = FALSE)
+
+woold_miscarriage <- etwfe(
+  fml = miscarriage ~ strat_rurb + age, # outcome ~ controls
+  tvar = outcome_year, #time vars
+  gvar = g, #treatment group 
+  cgroup = "notyet",
+  vcov = ~ dist_id,
+  weights = ~ weight_adj,
+  data = df_rsby_etwfe
+)
+
+emfx(woold_miscarriage, type = "simple", collapse = FALSE)
+
+#need to remove 96,293 rows
+#rows_to_delete_2 <- stage_2_sb$obs_selection
+
+#df_rsby_step1_etwfe <- df_rsby_step1_etwfe %>% select(-c(rowid))
+#df_rsby_step1_full <- df_rsby_step1_etwfe %>% rowid_to_column()
+#rows_to_delete_2 <- as.data.frame(stage_2_sb$obs_selection)
+#rows_to_delete_2$obsRemoved <- rows_to_delete_2$obsRemoved * -1
+#colnames(rows_to_delete_2) <- c("rowid")
+
+#stage_2_full <- anti_join(df_rsby_step1_full,rows_to_delete_2,by="rowid")
+#write.csv(stage_2_full, "stage_2_full.csv")
+
+
+stage_2_sb_sens <- feols(sb ~ pred_step1 + strat_rurb + age  
+                    | treat_iv + outcome_year, 
+                    data = df_rsby_step1_etwfe_sens,
+                    cluster = ~dist_id, 
+                    weights = ~weight_adj)
+
+stage_2_sb_nocontr_sens <- feols(sb ~ pred_step1
+                            | treat_iv + outcome_year, 
+                            data = df_rsby_step1_etwfe_sens,
+                            cluster = ~dist_id, 
+                            weights = ~weight_adj)
+
+
+#check <- svyglm(sb ~ pred_step1*treat_iv_fact + age + outcome_year + rural_urban, design = design_rsby_step1_etwfe)
+
+#basic_check <- lm(sb ~ pred_step1*treat_iv_fact, data = stage_2_full)
+
+#sb_bootstrapped <- avg_comparisons(stage_2_sb, variables = "treat_iv") %>% inferences(method = "boot", R = 100)
+
+summary(stage_2_sb)
+summary(stage_2_sb_nocontr)
+
+sb_iv <- tidy(stage_2_sb, conf.int = T)
+sb_iv_nocontr <- tidy(stage_2_sb_nocontr, conf.int = T)
+
+sb_iv_pp <- sb_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                             conf.high.pp = conf.high*100)
+
+sb_iv_pp_nocontr <- sb_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                             conf.high.pp = conf.high*100)
+
+
+sb_iv_pp <- sb_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+sb_iv_pp[2:5] <- sb_iv_pp[2:5] %>% round_half_up(digits = 2)
+sb_iv_pp$outcome <- c("Stillbirth")
+sb_iv_pp <- sb_iv_pp %>% filter(term == "pred_step1")
+
+sb_iv_pp_nocontr <- sb_iv_pp_nocontr %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+sb_iv_pp_nocontr[2:5] <- sb_iv_pp_nocontr[2:5] %>% round_half_up(digits = 2)
+sb_iv_pp_nocontr$outcome <- c("Stillbirth")
+sb_iv_pp_nocontr <- sb_iv_pp_nocontr %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster 0.0155 0.0274
+sb_iv_pp$conf.low.pp.bootstrap <- 0.0038*100
+sb_iv_pp$conf.high.pp.bootstrap <- 0.0229*100
+sb_iv_pp <- sb_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+flextable(sb_iv_pp)
+
+sb_iv[2:7] <- sb_iv[2:7] %>% round_half_up(digits = 5)
+sb_iv$outcome <- c("Stillbirth")
+flextable(sb_iv)
+
+sb_iv_groups <- tidy(avg_comparisons(stage_2_sb, 
+                                     variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+sb_iv_groups[3:9] <- sb_iv_groups[3:9] %>% round_half_up(digits = 4)
+sb_iv_groups$outcome <- c("Stillbirth")
+
+#all bootstrapping will be done on cluster
+
+boot_sb <- boottest(
+  stage_2_sb, 
+  clustid = "dist_id", 
+  param = "pred_step1", 
+  B = 9999
+)
+
+stage2_sb <- avg_comparisons(stage_2_sb,  by = "treat_iv_fact", variables = "pred_step1") %>% 
+  inferences(method = "boot", R = 100)
+
+stage_2_abort_sens <- feols(abort ~ pred_step1 + age + strat_rurb
+                       | treat_iv + outcome_year, 
+                       cluster = ~dist_id, 
+                       weights = ~weight_adj, data = df_rsby_step1_etwfe_sens)
+
+wald(stage_2_abort_sens)
+
+stage_2_abort_nocontr_sens <- feols(abort ~ pred_step1
+                               | treat_iv + outcome_year, 
+                               cluster = ~dist_id, 
+                               weights = ~weight_adj, data = df_rsby_step1_etwfe_sens)
+
+
+summary(stage_2_abort_sens)
+
+avg_comparisons(stage_2_abort, 
+                variables = list(treat_iv_fact= "reference")
+) #%>% inferences(method = "boot", R = 10)
+
+
+stage2_abort <- avg_predictions(stage_2, by = "g")
+
+abort_iv <- tidy(stage_2_abort, conf.int = T)
+abort_iv_nocontr <- tidy(stage_2_abort_nocontr, conf.int = T)
+
+abort_iv_pp <- abort_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                   conf.high.pp = conf.high*100)
+
+abort_iv_pp_nocontr <- abort_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                                   conf.high.pp = conf.high*100)
+
+
+abort_iv_pp <- abort_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+abort_iv_pp[2:5] <- abort_iv_pp[2:5] %>% round_half_up(digits = 3)
+abort_iv_pp$outcome <- c("Abortion")
+
+abort_iv_pp <- abort_iv_pp %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster  0.0239 0.0633
+abort_iv_pp$conf.low.pp.bootstrap <- 0.0239*100
+abort_iv_pp$conf.high.pp.bootstrap <- 0.0633*100
+abort_iv_pp <- abort_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+
+flextable(abort_iv_pp)
+
+
+abort_iv[2:7] <- abort_iv[2:7] %>% round_half_up(digits = 4)
+abort_iv$outcome <- c("Abortion")
+flextable(abort_iv)
+
+abort_iv_groups <- tidy(avg_comparisons(stage_2_abort, 
+                                        variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+abort_iv_groups[3:9] <- abort_iv_groups[3:9] %>% round_half_up(digits = 5)
+abort_iv_groups$outcome <- c("Abortion")
+
+stage_2_miscarriage_sens <- feols(miscarriage ~ pred_step1 + strat_rurb + age
+                             | treat_iv + outcome_year, 
+                             cluster = ~dist_id, 
+                             weights = ~weight_adj, data = df_rsby_step1_etwfe_sens)
+
+
+stage_2_miscarriage_nocontr <- feols(miscarriage ~ pred_step1
+                                     | treat_iv + outcome_year, 
+                                     cluster = ~dist_id, 
+                                     weights = ~weight_adj, data = df_rsby_step1_etwfe_sens)
+
+
+summary(stage_2_miscarriage_sens)
+avg_comparisons(stage_2_miscarriage, 
+                variables = list(treat_iv_fact= "reference")
+) #%>% inferences(method = "boot", R = 10)
+
+miscarriage_iv <- tidy(stage_2_miscarriage, conf.int = T)
+miscarriage_iv_nocontr <- tidy(stage_2_miscarriage_nocontr, conf.int = T)
+
+
+miscarriage_iv_pp <- miscarriage_iv %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                               conf.high.pp = conf.high*100)
+miscarriage_iv_pp_nocontr <- miscarriage_iv_nocontr %>% mutate(estimate_pp = estimate*100, std.error.pp = std.error*100, conf.low.pp = conf.low*100,
+                                                               conf.high.pp = conf.high*100)
+
+
+
+miscarriage_iv_pp <- miscarriage_iv_pp %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+miscarriage_iv_pp_nocontr <- miscarriage_iv_pp_nocontr %>% select(c(term, estimate_pp, std.error.pp, conf.low.pp, conf.high.pp))
+miscarriage_iv_pp[2:5] <- miscarriage_iv_pp[2:5] %>% round_half_up(digits = 3)
+miscarriage_iv_pp$outcome <- c("Miscarriage")
+
+miscarriage_iv_pp <- miscarriage_iv_pp %>% filter(term == "pred_step1")
+
+#bootstrapped CI from cluster  0.0574 0.1111
+miscarriage_iv_pp$conf.low.pp.bootstrap <- 0.0574*100
+miscarriage_iv_pp$conf.high.pp.bootstrap <- 0.1111*100
+miscarriage_iv_pp <- miscarriage_iv_pp %>% select(-c(conf.low.pp, conf.high.pp))
+
+
+flextable(miscarriage_iv_pp)
+
+
+miscarriage_iv[2:7] <- miscarriage_iv[2:7] %>% round_half_up(digits = 4)
+miscarriage_iv$outcome <- c("Miscarriage")
+flextable(miscarriage_iv)
+
+miscarriage_iv_groups <- tidy(avg_comparisons(stage_2_miscarriage, 
+                                              variables = list(treat_iv_fact= "reference")), conf.int = T)
+
+miscarriage_iv_groups[3:9] <- miscarriage_iv_groups[3:9] %>% round_half_up(digits = 4)
+miscarriage_iv_groups$outcome <- c("Miscarriage")
+
+
+stage2_miscarriage <- avg_predictions(stage_2, by = "g")
+
+
+#### bootstrapping estimates and standard error ####
+
+
+library(boot)
+set.seed(123)
+
+bootfun <- function(data, indices, formula) {
+  d <- data[indices, ]
+  mod <- feols(sb ~ pred_step1*treat_iv_fact + primary_school + wi_perc_rank + strat_rurb + age  
+               | dist_id + outcome_year, 
+               cluster = ~dist_id, 
+               weights = ~weight_adj, data = d)
+  cmp <- comparisons(mod, newdata = d, vcov = FALSE, variables = "treat_iv_fact")
+  tidy(cmp)$estimate
+}
+
+b <- boot(data = stage_2_full, statistic = bootfun, R = 10)
 
 
 # Comparing CS and Wooldridge ---------------------------------------------
@@ -1013,3 +1790,25 @@ ggplot(dat_plot, aes(Year, value, color = variable, linetype = Group)) +
   theme_minimal() +
   labs(x = "Year", y = "ATT", color = "Estimator", linetype = "Group")
 
+stage_2_sb_lm <- svyglm(sb ~ pred_step1 + primary_school + wi_perc_rank + strat_rurb + age + as.factor(g) +
+                          as.factor(outcome_year) + rural_urban, design = design_rsby_step1_etwfe)
+
+nfhs <- df_rsby_step1_etwfe %>% filter(survey == "NFHS4" | survey == "NFHS5")
+
+stage_2_nfhs <- feols(sb ~ pred_step1 + primary_school + wi_perc_rank + strat_rurb + age
+                      | dist_id + outcome_year, 
+                      cluster = ~ dist_id, weights = ~ weight_adj, data = nfhs)
+
+# Same for RD
+RD <- function(data, indices, formula) { 
+  dta <- data[indices,] 
+  # Model
+  mod <- feols(formula, data=dta)
+  # Get predicted probabilities (ie risks) for a 50 and 60 yr old based on this model
+  pp <- predict(mod, newdata=transform(dta,age0=50), type="response") 
+  return(predict) 
+}
+
+library(boot) 
+boot.RD <- boot(data = nfhs, statistic=RD, R=1000, formula=sb ~ pred_step1 + primary_school + 
+                  wi_perc_rank + strat_rurb + age+ factor(dist_id) + factor(outcome_year)); boot.RD 
